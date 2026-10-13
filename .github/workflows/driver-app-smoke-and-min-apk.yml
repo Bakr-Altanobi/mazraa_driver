@@ -2,6 +2,16 @@ name: Driver App Smoke Screenshot & Minimal APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - chatgpt/ci-run-screenshot-min-apk
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/driver-app-smoke-and-min-apk.yml'
   pull_request:
     branches: [main]
     paths:
