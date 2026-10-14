@@ -6,6 +6,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/home/home_bootstrap.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -144,27 +145,33 @@ class OnboardingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ar = isArabic(context);
     return Scaffold(
-      appBar: AppBar(),
+      key: const Key('onboardingScreen'),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
           child: Column(
             children: [
-              const Spacer(),
-              Container(
-                width: 210,
-                height: 210,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF2E9D7),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: SvgPicture.asset(
-                  'assets/branding/mazraa_mark.svg',
-                  width: 115,
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Image.asset(
+                  ReferenceAssets.brandLeaf,
+                  width: 52,
+                  height: 52,
+                  fit: BoxFit.contain,
+                  cacheWidth: 180,
                 ),
               ),
-              const SizedBox(height: 32),
+              const Spacer(),
+              SizedBox(
+                height: 300,
+                width: double.infinity,
+                child: Image.asset(
+                  ReferenceAssets.onboardingFarm,
+                  fit: BoxFit.contain,
+                  cacheWidth: 900,
+                ),
+              ),
+              const SizedBox(height: 22),
               Text(
                 ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
                 textAlign: TextAlign.center,
@@ -239,7 +246,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final ar = isArabic(context);
-    final busy = auth.state == AuthState.signingIn;
+    final busy = auth.state == AuthState.signingIn ||
+        auth.state == AuthState.preparingHome;
     return Scaffold(
       key: const Key('loginScreen'),
       body: SafeArea(
@@ -260,30 +268,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    Hero(
-                      tag: 'mazraa-logo',
-                      child: SvgPicture.asset(
-                        'assets/branding/mazraa_mark.svg',
-                        height: 104,
-                        alignment: AlignmentDirectional.centerStart,
+                    SizedBox(
+                      height: 150,
+                      child: Image.asset(
+                        ReferenceAssets.loginPhoneOtp,
+                        fit: BoxFit.contain,
+                        cacheWidth: 520,
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    Text(
-                      ar ? 'أهلًا بك يا كابتن' : 'Welcome, driver',
-                      style: Theme.of(context).textTheme.headlineLarge,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Image.asset(
+                          ReferenceAssets.brandLeaf,
+                          width: 48,
+                          height: 48,
+                          cacheWidth: 160,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            ar ? 'أهلًا بك يا كابتن' : 'Welcome, driver',
+                            style: Theme.of(context).textTheme.headlineLarge,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       ar
-                          ? 'سجّل دخولك بحساب السائق المعتمد للبدء.'
-                          : 'Sign in with your approved driver account.',
+                          ? 'سجّل دخولك بحساب السائق المعتمد للبدء. بعد نجاح الدخول لن ينتقل التطبيق قبل اكتمال بيانات الشاشة التالية.'
+                          : 'Sign in with your approved driver account. The app waits for the next screen data before navigating.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 26),
                     TextFormField(
                       key: const Key('emailField'),
                       controller: _email,
