@@ -64,15 +64,22 @@ jobs:
           restore-keys: |
             driver-pub-${{ runner.os }}-
 
-      - name: Set up Java 17 with Gradle cache
+      - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
-          cache-dependency-path: |
-            android/**/*.gradle*
-            android/**/gradle-wrapper.properties
+
+      - name: Restore Gradle cache
+        id: gradle-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: driver-gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            driver-gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
 
       - name: Set up pinned Flutter SDK
         uses: subosito/flutter-action@v2
@@ -101,6 +108,18 @@ jobs:
             ~/.android/adb*
           key: driver-emulator-${{ runner.os }}-api35-x64-v2
 
+      - name: Restore incremental Flutter build cache
+        id: flutter-build-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            .dart_tool
+            android/.gradle
+            build
+          key: driver-build-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+          restore-keys: |
+            driver-build-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
+
       - name: Enable KVM acceleration
         shell: bash
         run: |
@@ -114,8 +133,8 @@ jobs:
       - name: Resolve Dart packages
         run: flutter pub get
 
-      - name: Build debug APK for emulator
-        run: flutter build apk --debug --no-pub
+      - name: Build x64 debug APK for emulator
+        run: flutter build apk --debug --target-platform android-x64 --no-pub
 
       - name: Boot emulator, run app and capture main screen
         id: smoke
@@ -173,6 +192,7 @@ jobs:
           name: mazraa-driver-emulator-diagnostics
           path: |
             artifacts/activity-dump.txt
+            artifacts/window-dump.txt
             artifacts/logcat.txt
           if-no-files-found: ignore
           compression-level: 6
@@ -191,6 +211,15 @@ jobs:
         with:
           path: ~/.pub-cache
           key: driver-pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+
+      - name: Save Gradle cache
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: driver-gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
 
       - name: Save Android native build cache
         if: always() && steps.android-native-cache.outputs.cache-hit != 'true'
@@ -211,3 +240,13 @@ jobs:
             ~/.android/avd
             ~/.android/adb*
           key: driver-emulator-${{ runner.os }}-api35-x64-v2
+
+      - name: Save incremental Flutter build cache
+        if: always() && steps.flutter-build-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            .dart_tool
+            android/.gradle
+            build
+          key: driver-build-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
