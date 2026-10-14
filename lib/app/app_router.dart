@@ -5,6 +5,7 @@ import 'package:mazraa_driver/features/auth/auth_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
@@ -40,11 +41,16 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    if (location == '/splash') return '/login';
+    // A fresh install/session starts at the design's screen 01 instead of
+    // bypassing onboarding. The user can then move to screen 02 (login).
+    if (location == '/splash') return '/onboarding';
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/home' : null;
+  // Once authentication and HomeScreen preload are complete, continue the
+  // numbered reference journey at screen 03. Screens 01/02 remain the actual
+  // onboarding/login routes before authentication.
+  return isPublic ? '/journey/03' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -67,6 +73,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(
+        path: '/journey/:screen',
+        builder: (context, state) {
+          final raw = state.pathParameters['screen'] ?? '1';
+          final parsed = int.tryParse(raw) ?? 1;
+          final number = parsed.clamp(1, 48);
+          return ReferenceJourneyScreen(screenNumber: number);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
