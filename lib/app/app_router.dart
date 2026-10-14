@@ -23,13 +23,19 @@ String? resolveAuthRedirect({
       location == '/splash' ||
       location == '/onboarding';
 
-  if (authState == AuthState.initial || authState == AuthState.restoring) {
+  final isBootState =
+      authState == AuthState.initial ||
+      authState == AuthState.restoring ||
+      authState == AuthState.preparingHome ||
+      authState == AuthState.bootstrapFailed;
+
+  // Never expose a private screen until session restoration, driver profile
+  // validation and the first home-data preload have all finished.
+  if (isBootState) {
     return location == '/splash' ? null : '/splash';
   }
 
   if (authState != AuthState.authenticated) {
-    // The splash screen is only a temporary restoration route. Once session
-    // restoration finishes without an authenticated driver, always leave it.
     if (location == '/splash') return '/login';
     return isPublic ? null : '/login';
   }
@@ -91,8 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (_, _) => const ProfileScreen(),
-              ),
+                builder: (_, _) => const ProfileScreen()),
             ],
           ),
         ],
