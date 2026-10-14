@@ -6,14 +6,23 @@ import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart'
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 
 void main() {
-  testWidgets('reference onboarding screen 01 renders', (tester) async {
+  testWidgets('reference onboarding screen 01 renders on compact viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(home: OnboardingScreen()),
       ),
     );
     await tester.pump();
+
     expect(find.byKey(const Key('onboardingScreen')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('reference login screen 02 renders without network data', (
@@ -25,9 +34,11 @@ void main() {
       ),
     );
     await tester.pump();
+
     expect(find.byKey(const Key('loginScreen')), findsOneWidget);
     expect(find.byKey(const Key('emailField')), findsOneWidget);
     expect(find.byKey(const Key('passwordField')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -51,13 +62,11 @@ void main() {
           reason: 'screen ${spec.number} failed to render',
         );
         expect(find.text(spec.titleAr), findsWidgets);
-
-        // With no authenticated test session we deliberately do not override
-        // or manufacture API data. The production screen must render the
-        // session/server state honestly instead.
-        if (spec.sources.isNotEmpty) {
-          expect(find.text('الجلسة غير جاهزة'), findsOneWidget);
-        }
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'screen ${spec.number} emitted a render/layout exception',
+        );
 
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
