@@ -1,58 +1,58 @@
-/// Canonical paths for the visual assets delivered with the 48-screen reference.
+/// Runtime visual contract for the 48-screen driver reference journey.
 ///
-/// ASSET_INDEX.csv intentionally reuses identical visual sources between screens.
-/// To keep the APK small we package one canonical copy of each visual source and
-/// map the screen slots to that copy instead of bundling hundreds of duplicate
-/// multi-megabyte PNG files.
+/// `refrinces/assets_primary/ASSET_INDEX.csv` and its original PNG files remain
+/// the design source of truth. The APK uses 768px WebP derivatives generated
+/// from those exact canonical pixels so reference art stays faithful without
+/// shipping dozens of 1920px multi-megabyte PNGs to every driver.
 abstract final class ReferenceAssets {
   static const brandLeaf =
-      'refrinces/assets_primary/by_screen/01/01_asset_brand_leaf_mark.png';
+      'assets/reference_runtime/asset_brand_leaf_mark.webp';
   static const driverAvatar =
-      'refrinces/assets_primary/by_screen/01/02_asset_driver_avatar.png';
+      'assets/reference_runtime/asset_driver_avatar.webp';
   static const onboardingFarm =
-      'refrinces/assets_primary/by_screen/asset_onboarding_farm_sun.png';
+      'assets/reference_runtime/asset_onboarding_farm_sun.webp';
   static const routeArrow =
-      'refrinces/assets_primary/by_screen/01/04_asset_route_arrow.png';
+      'assets/reference_runtime/asset_route_arrow.webp';
   static const deliveryTote =
-      'refrinces/assets_primary/common/asset_delivery_tote.png';
+      'assets/reference_runtime/asset_delivery_tote.webp';
   static const loginPhoneOtp =
-      'refrinces/assets_primary/by_screen/asset_login_phone_otp.png';
+      'assets/reference_runtime/asset_login_phone_otp.webp';
   static const identityScan =
-      'refrinces/assets_primary/common/asset_identity_scan.png';
+      'assets/reference_runtime/asset_identity_scan.webp';
   static const supportHeadset =
-      'refrinces/assets_primary/by_screen/02/05_asset_support_headset.png';
+      'assets/reference_runtime/asset_support_headset.webp';
   static const routeMap =
-      'refrinces/assets_primary/common/asset_route_map_pin_cluster.png';
+      'assets/reference_runtime/asset_route_map_pin_cluster.webp';
   static const homePin =
-      'refrinces/assets_primary/by_screen/03/02_asset_home_pin.png';
+      'assets/reference_runtime/asset_home_pin.webp';
   static const deliveryScooter =
-      'refrinces/assets_primary/by_screen/03/05_asset_delivery_scooter.png';
+      'assets/reference_runtime/asset_delivery_scooter.webp';
   static const farmCrate =
-      'refrinces/assets_primary/by_screen/04/02_asset_farm_crate.png';
+      'assets/reference_runtime/asset_farm_crate.webp';
   static const deliveryParcel =
-      'refrinces/assets_primary/by_screen/04/03_asset_delivery_parcel.png';
+      'assets/reference_runtime/asset_delivery_parcel.webp';
   static const freshProduce =
-      'refrinces/assets_primary/by_screen/05/03_asset_fresh_produce_basket.png';
+      'assets/reference_runtime/asset_fresh_produce_basket.webp';
   static const navigationSign =
-      'refrinces/assets_primary/by_screen/asset_navigation_road_sign.png';
+      'assets/reference_runtime/asset_navigation_road_sign.webp';
   static const successBadge =
-      'refrinces/assets_primary/by_screen/07/04_asset_success_badge.png';
+      'assets/reference_runtime/asset_success_badge.webp';
   static const documentShield =
-      'refrinces/assets_primary/common/asset_document_shield.png';
+      'assets/reference_runtime/asset_document_shield.webp';
   static const earningsArrow =
-      'refrinces/assets_primary/by_screen/asset_earnings_chart_arrow.png';
+      'assets/reference_runtime/asset_earnings_chart_arrow.webp';
   static const bankCard =
-      'refrinces/assets_primary/common/asset_bank_transfer_card.png';
+      'assets/reference_runtime/asset_bank_transfer_card.webp';
   static const cashReceipt =
-      'refrinces/assets_primary/common/asset_cash_and_receipt.png';
+      'assets/reference_runtime/asset_cash_and_receipt.webp';
   static const ratingStars =
-      'refrinces/assets_primary/common/asset_rating_stars.png';
+      'assets/reference_runtime/asset_rating_stars.webp';
   static const carMaintenance =
-      'refrinces/assets_primary/common/asset_car_maintenance.png';
+      'assets/reference_runtime/asset_car_maintenance.webp';
   static const emergencyTriangle =
-      'refrinces/assets_primary/common/asset_emergency_triangle.png';
+      'assets/reference_runtime/asset_emergency_triangle.webp';
   static const qrFrame =
-      'refrinces/assets_primary/common/asset_qr_scanner_frame.png';
+      'assets/reference_runtime/asset_qr_scanner_frame.webp';
 
   // ASSET_INDEX aliases that deliberately point to identical source pixels.
   static const homeRouteDashboard = routeMap;
