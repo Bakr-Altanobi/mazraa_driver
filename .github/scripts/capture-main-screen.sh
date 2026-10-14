@@ -5,7 +5,7 @@ set -euo pipefail
 : "${DEBUG_APK:?DEBUG_APK is required}"
 
 mkdir -p artifacts
-rm -f artifacts/window.xml artifacts/window.xml.tmp artifacts/main-screen.png artifacts/not-ready-screen.png
+rm -f artifacts/window.xml artifacts/window.xml.tmp artifacts/main-screen.png artifacts/main-screen-candidate.png artifacts/not-ready-screen.png
 # Quick-boot AVD snapshots preserve /sdcard across jobs. A stale UIAutomator XML
 # from a previous successful HomeScreen run must never be allowed to satisfy the
 # readiness markers for the app that is launching now.
@@ -51,6 +51,14 @@ if [[ "$launched" != true ]]; then
   exit 1
 fi
 
+# API 35 default emulator images occasionally let Quickstep/Launcher ANR during
+# cold boot while our app is already foreground and healthy. Stop that background
+# launcher once the driver app owns the foreground; this cannot hide an ANR from
+# com.mazraa.driver because we never stop or dismiss that package here.
+if adb shell pm path com.android.launcher3 >/dev/null 2>&1; then
+  adb shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
+fi
+
 fresh_window_dump() {
   rm -f artifacts/window.xml.tmp
   # Remove the remote file before *every* attempt. If uiautomator cannot inspect
@@ -67,6 +75,64 @@ fresh_window_dump() {
     return 1
   fi
   mv artifacts/window.xml.tmp artifacts/window.xml
+  return 0
+}
+
+# Returns success only when the current top-level UI is an emulator-system ANR
+# for Quickstep/Launcher/System UI. It deliberately does NOT dismiss Mazraa
+# Driver ANRs or arbitrary dialogs. The button coordinates are read from the
+# fresh XML rather than hard-coded to a particular emulator resolution.
+dismiss_known_emulator_blocker() {
+  [[ -s artifacts/window.xml ]] || return 1
+
+  local target
+  target="$(python3 - <<'PY'
+import re
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.parse('artifacts/window.xml').getroot()
+except Exception:
+    raise SystemExit(0)
+
+nodes = list(root.iter('node'))
+title = ''
+for node in nodes:
+    if node.attrib.get('resource-id') == 'android:id/alertTitle':
+        title = node.attrib.get('text', '')
+        break
+
+known_system_anr = (
+    ('Quickstep' in title or 'Launcher' in title or 'System UI' in title)
+    and ('respond' in title.lower())
+)
+if not known_system_anr:
+    raise SystemExit(0)
+
+# Prefer Close app for the broken emulator launcher process; the driver app is
+# already foreground and is a different package. Fall back to Wait if needed.
+for resource_id in ('android:id/aerr_close', 'android:id/aerr_wait'):
+    for node in nodes:
+        if node.attrib.get('resource-id') != resource_id:
+            continue
+        bounds = node.attrib.get('bounds', '')
+        match = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds)
+        if not match:
+            continue
+        x1, y1, x2, y2 = map(int, match.groups())
+        print(f'{title}\t{(x1 + x2) // 2}\t{(y1 + y2) // 2}')
+        raise SystemExit(0)
+PY
+)"
+
+  [[ -n "$target" ]] || return 1
+
+  local title x y
+  IFS=$'\t' read -r title x y <<< "$target"
+  [[ -n "$x" && -n "$y" ]] || return 1
+  echo "Dismissing emulator system blocker: $title"
+  adb shell input tap "$x" "$y" >/dev/null 2>&1 || return 1
+  sleep 1
   return 0
 }
 
@@ -89,6 +155,12 @@ for attempt in $(seq 1 45); do
   wallet_ready=false
 
   if fresh_window_dump; then
+    if dismiss_known_emulator_blocker; then
+      ready_streak=0
+      echo "Home data check $attempt: emulator blocker dismissed; retrying fresh window"
+      continue
+    fi
+
     if grep -Eq "أنت متصل|You are online" artifacts/window.xml 2>/dev/null; then
       profile_ready=true
     fi
@@ -124,17 +196,56 @@ if [[ "$home_ready" != true ]]; then
   exit 1
 fi
 
-# Give Android one final frame, then prove the currently inspectable window still
-# contains the complete HomeScreen immediately before the screenshot is taken.
-sleep 1
-if ! fresh_window_dump || ! window_has_complete_home; then
-  echo "HomeScreen markers disappeared before screenshot capture; refusing a splash/loading screenshot."
+# Bracket the screenshot between two fresh HomeScreen snapshots. If an emulator
+# system dialog appears in the tiny interval around capture, dismiss it and retry
+# rather than publishing a screenshot with an overlay.
+captured=false
+for attempt in $(seq 1 8); do
+  if ! fresh_window_dump; then
+    sleep 1
+    continue
+  fi
+  if dismiss_known_emulator_blocker; then
+    sleep 1
+    continue
+  fi
+  if ! window_has_complete_home; then
+    sleep 1
+    continue
+  fi
+
+  adb exec-out screencap -p > artifacts/main-screen-candidate.png
+  if [[ ! -s artifacts/main-screen-candidate.png ]]; then
+    sleep 1
+    continue
+  fi
+
+  if ! fresh_window_dump; then
+    sleep 1
+    continue
+  fi
+  if dismiss_known_emulator_blocker; then
+    sleep 1
+    continue
+  fi
+  if ! window_has_complete_home; then
+    sleep 1
+    continue
+  fi
+
+  mv artifacts/main-screen-candidate.png artifacts/main-screen.png
+  captured=true
+  break
+done
+
+if [[ "$captured" != true ]]; then
+  echo "Could not capture a HomeScreen frame free of emulator system overlays."
   adb exec-out screencap -p > artifacts/not-ready-screen.png || true
+  adb shell dumpsys activity activities > artifacts/activity-dump.txt || true
+  adb shell dumpsys window windows > artifacts/window-dump.txt || true
   adb logcat -d > artifacts/logcat.txt || true
   exit 1
 fi
-
-adb exec-out screencap -p > artifacts/main-screen.png
 
 test -s artifacts/main-screen.png
 file artifacts/main-screen.png
