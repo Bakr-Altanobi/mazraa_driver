@@ -53,7 +53,8 @@ jobs:
           flutter test \
             test/app/app_router_test.dart \
             test/features/reference_journey/reference_catalog_test.dart \
-            test/features/reference_journey/reference_assets_bundle_test.dart
+            test/features/reference_journey/reference_assets_bundle_test.dart \
+            test/features/reference_journey/reference_asset_index_contract_test.dart
 
       - name: Static analyze reference implementation
         run: |
