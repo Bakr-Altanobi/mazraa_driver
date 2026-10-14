@@ -55,7 +55,8 @@ jobs:
             test/features/reference_journey/reference_catalog_test.dart \
             test/features/reference_journey/reference_assets_bundle_test.dart \
             test/features/reference_journey/reference_asset_index_contract_test.dart \
-            test/features/reference_journey/reference_screens_render_test.dart
+            test/features/reference_journey/reference_screens_render_test.dart \
+            test/features/reference_journey/reference_production_body_test.dart
 
       - name: Static analyze reference implementation
         run: |

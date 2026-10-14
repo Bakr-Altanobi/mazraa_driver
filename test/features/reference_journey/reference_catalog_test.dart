@@ -21,9 +21,13 @@ void main() {
           reason: 'screen ${screen.number} must match ASSET_INDEX.csv',
         );
         for (final asset in screen.assets) {
+          // The logical asset name is the ASSET_INDEX contract. The original
+          // PNG source remains under refrinces/assets_primary and is validated
+          // separately by reference_asset_index_contract_test.dart. Production
+          // intentionally renders the lightweight derivative of those pixels.
           expect(asset.name, startsWith('asset_'));
-          expect(asset.path, startsWith('refrinces/assets_primary/'));
-          expect(asset.path, endsWith('.png'));
+          expect(asset.path, startsWith('assets/reference_runtime/'));
+          expect(asset.path, endsWith('.webp'));
         }
       }
     });
