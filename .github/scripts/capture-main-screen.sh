@@ -46,25 +46,41 @@ if [[ "$launched" != true ]]; then
   exit 1
 fi
 
-# Do not accept the Android/Flutter launch splash as a successful screenshot.
-# Wait until accessibility exposes a stable marker from the actual HomeScreen.
+# CI_SMOKE_HOME renders deterministic, fully-loaded HomeScreen data. Do not
+# accept the Android/Flutter splash or a HomeScreen whose providers are still
+# loading. The three markers below prove that profile, shipments and wallet
+# data have all reached the rendered accessibility tree.
 home_ready=false
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 45); do
   adb shell uiautomator dump --compressed /sdcard/mazraa-window.xml >/dev/null 2>&1 || true
   adb exec-out cat /sdcard/mazraa-window.xml > artifacts/window.xml 2>/dev/null || true
 
-  if grep -Eq "صباح الخير|Good morning|ملخص اليوم|Today's summary|وصول سريع|Quick access" artifacts/window.xml 2>/dev/null; then
-    echo "HomeScreen marker detected on attempt $attempt."
+  profile_ready=false
+  shipment_ready=false
+  wallet_ready=false
+
+  if grep -Eq "أنت متصل|You are online" artifacts/window.xml 2>/dev/null; then
+    profile_ready=true
+  fi
+  if grep -Fq "SHP-9101" artifacts/window.xml 2>/dev/null; then
+    shipment_ready=true
+  fi
+  if grep -Fq "YER" artifacts/window.xml 2>/dev/null; then
+    wallet_ready=true
+  fi
+
+  echo "Home data check $attempt: profile=$profile_ready shipments=$shipment_ready wallet=$wallet_ready"
+  if [[ "$profile_ready" == true && "$shipment_ready" == true && "$wallet_ready" == true ]]; then
+    echo "Fully loaded HomeScreen detected on attempt $attempt."
     home_ready=true
     break
   fi
 
-  echo "Waiting for the real HomeScreen ($attempt/30)..."
   sleep 1
 done
 
 if [[ "$home_ready" != true ]]; then
-  echo "The app resumed, but the real HomeScreen never became visible. Refusing to capture a splash screen."
+  echo "The app resumed, but profile/shipments/wallet did not all render. Refusing to capture an incomplete HomeScreen."
   adb exec-out screencap -p > artifacts/not-ready-screen.png || true
   adb shell dumpsys activity activities > artifacts/activity-dump.txt || true
   adb shell dumpsys window windows > artifacts/window-dump.txt || true
