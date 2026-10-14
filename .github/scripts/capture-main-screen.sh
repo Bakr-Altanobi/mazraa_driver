@@ -6,8 +6,10 @@ set -euo pipefail
 
 mkdir -p artifacts
 
-adb install -r "$DEBUG_APK"
-adb shell pm clear "$APP_ID" || true
+# A cached AVD may contain an APK signed by a previous runner's ephemeral debug key.
+# Remove it first so Quick Boot remains reusable without signature conflicts.
+adb uninstall "$APP_ID" >/dev/null 2>&1 || true
+adb install "$DEBUG_APK"
 adb shell am force-stop "$APP_ID" || true
 
 # Launch through the app's launcher intent without hard-coding the activity class.
