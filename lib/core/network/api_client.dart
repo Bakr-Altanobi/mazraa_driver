@@ -23,7 +23,12 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final session = await _store.read();
+          AuthSession? session;
+          try {
+            session = await _store.read().timeout(_storageTimeout);
+          } catch (_) {
+            // Never block a request forever on platform secure-storage I/O.
+          }
           if (session != null && !options.path.contains('api/Auth/')) {
             options.headers['Authorization'] = 'Bearer ${session.accessToken}';
           }
@@ -43,13 +48,22 @@ class ApiClient {
             request.headers['Authorization'] = 'Bearer ${session.accessToken}';
             handler.resolve(await _dio.fetch<dynamic>(request));
           } catch (_) {
-            await _store.clear();
+            try {
+              await _store.clear().timeout(_storageTimeout);
+            } catch (_) {
+              // The caller still receives the original 401 and can recover.
+            }
             handler.next(error);
           }
         },
       ),
     );
   }
+
+  static const _storageTimeout = Duration(seconds: 6);
+  static const _connectTimeout = Duration(seconds: 15);
+  static const _receiveTimeout = Duration(seconds: 20);
+  static const _sendTimeout = Duration(seconds: 20);
 
   final SecureSessionStore _store;
   final Dio _dio;
@@ -64,9 +78,18 @@ class ApiClient {
   }
 
   Future<AuthSession?> _refresh() async {
-    final current = await _store.read();
+    final current = await _store.read().timeout(_storageTimeout);
     if (current == null) return null;
-    final plainDio = Dio(BaseOptions(baseUrl: ApiEndpoints.baseUrl));
+
+    final plainDio = Dio(
+      BaseOptions(
+        baseUrl: ApiEndpoints.baseUrl,
+        connectTimeout: _connectTimeout,
+        receiveTimeout: _receiveTimeout,
+        sendTimeout: _sendTimeout,
+        headers: const {'Accept': 'application/json'},
+      ),
+    );
     final response = await plainDio.post<Map<String, dynamic>>(
       ApiEndpoints.refresh,
       data: {
@@ -76,7 +99,7 @@ class ApiClient {
     );
     final next = AuthSession.fromJson(response.data ?? const {});
     if (!next.isUsable) return null;
-    await _store.write(next);
+    await _store.write(next).timeout(_storageTimeout);
     return next;
   }
 

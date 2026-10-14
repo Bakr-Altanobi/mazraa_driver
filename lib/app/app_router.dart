@@ -9,6 +9,11 @@ import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
 
+const _ciSmokeHome = bool.fromEnvironment(
+  'CI_SMOKE_HOME',
+  defaultValue: false,
+);
+
 String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
@@ -22,9 +27,19 @@ String? resolveAuthRedirect({
     return location == '/splash' ? null : '/splash';
   }
 
+  // During an explicit login we keep the LoginScreen mounted while its
+  // WidgetRef warms the HomeScreen providers. Session restoration, however,
+  // remains on the splash screen until the same preload is complete.
+  if (authState == AuthState.preparingHome) {
+    if (location == '/splash' || location == '/login') return null;
+    return '/splash';
+  }
+
+  if (authState == AuthState.bootstrapFailed) {
+    return location == '/splash' ? null : '/splash';
+  }
+
   if (authState != AuthState.authenticated) {
-    // The splash screen is only a temporary restoration route. Once session
-    // restoration finishes without an authenticated driver, always leave it.
     if (location == '/splash') return '/login';
     return isPublic ? null : '/login';
   }
@@ -35,9 +50,14 @@ String? resolveAuthRedirect({
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: _ciSmokeHome ? '/home' : '/splash',
     refreshListenable: auth,
     redirect: (context, state) {
+      // CI screenshot builds render the real HomeScreen without persisting or
+      // embedding test credentials. Release builds never enable this flag.
+      if (_ciSmokeHome) {
+        return state.matchedLocation == '/home' ? null : '/home';
+      }
       return resolveAuthRedirect(
         authState: auth.state,
         location: state.matchedLocation,

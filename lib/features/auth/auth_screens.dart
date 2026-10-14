@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
+import 'package:mazraa_driver/features/home/home_bootstrap.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -18,14 +19,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authControllerProvider).initialize();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  Future<void> _bootstrap({bool force = false}) {
+    return ref.read(authControllerProvider).initialize(
+      force: force,
+      preloadHome: () => preloadDriverHome(ref),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
+    final ar = isArabic(context);
+    final failed = auth.state == AuthState.bootstrapFailed;
+    final preparingHome = auth.state == AuthState.preparingHome;
+
     return Scaffold(
+      key: const Key('splashScreen'),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -34,38 +46,90 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             colors: [Color(0xFFFFFCF5), Color(0xFFF4EBD9)],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Hero(
-                tag: 'mazraa-logo',
-                child: SvgPicture.asset(
-                  'assets/branding/mazraa_mark.svg',
-                  width: 96,
-                ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Hero(
+                    tag: 'mazraa-logo',
+                    child: SvgPicture.asset(
+                      'assets/branding/mazraa_mark.svg',
+                      width: 96,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'مزرعتي',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: MazraaColors.forest,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    ar ? 'رفيقك في كل رحلة' : 'Your companion on every trip',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: MazraaColors.forest.withValues(alpha: .72),
+                    ),
+                  ),
+                  const SizedBox(height: 34),
+                  if (failed) ...[
+                    Icon(
+                      Icons.cloud_off_rounded,
+                      size: 34,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      auth.errorMessage ??
+                          (ar
+                              ? 'تعذر إكمال تهيئة التطبيق.'
+                              : 'App initialization could not be completed.'),
+                      key: const Key('bootstrapError'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      key: const Key('bootstrapRetryButton'),
+                      onPressed: () => _bootstrap(force: true),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(ar ? 'إعادة المحاولة' : 'Retry'),
+                    ),
+                  ] else ...[
+                    const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2.7),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      preparingHome
+                          ? (ar
+                                ? 'جاري تحميل بيانات الشاشة الرئيسية…'
+                                : 'Loading home data…')
+                          : (ar
+                                ? 'جاري استعادة الجلسة…'
+                                : 'Restoring your session…'),
+                      key: Key(
+                        preparingHome
+                            ? 'homeBootstrapProgress'
+                            : 'sessionRestoreProgress',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 18),
-              Text(
-                'مزرعتي',
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineLarge?.copyWith(color: MazraaColors.forest),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'رفيقك في كل رحلة',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: MazraaColors.forest.withValues(alpha: .72),
-                ),
-              ),
-              const SizedBox(height: 34),
-              const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.7),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -164,7 +228,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     await ref
         .read(authControllerProvider)
-        .login(_email.text.trim(), _password.text);
+        .login(
+          _email.text.trim(),
+          _password.text,
+          preloadHome: () => preloadDriverHome(ref),
+        );
   }
 
   @override
@@ -173,6 +241,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final ar = isArabic(context);
     final busy = auth.state == AuthState.signingIn;
     return Scaffold(
+      key: const Key('loginScreen'),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
