@@ -23,15 +23,19 @@ String? resolveAuthRedirect({
       location == '/splash' ||
       location == '/onboarding';
 
-  final isBootState =
-      authState == AuthState.initial ||
-      authState == AuthState.restoring ||
-      authState == AuthState.preparingHome ||
-      authState == AuthState.bootstrapFailed;
+  if (authState == AuthState.initial || authState == AuthState.restoring) {
+    return location == '/splash' ? null : '/splash';
+  }
 
-  // Never expose a private screen until session restoration, driver profile
-  // validation and the first home-data preload have all finished.
-  if (isBootState) {
+  // During an explicit login we keep the LoginScreen mounted while its
+  // WidgetRef warms the HomeScreen providers. Session restoration, however,
+  // remains on the splash screen until the same preload is complete.
+  if (authState == AuthState.preparingHome) {
+    if (location == '/splash' || location == '/login') return null;
+    return '/splash';
+  }
+
+  if (authState == AuthState.bootstrapFailed) {
     return location == '/splash' ? null : '/splash';
   }
 
@@ -97,7 +101,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (_, _) => const ProfileScreen()),
+                builder: (_, _) => const ProfileScreen(),
+              ),
             ],
           ),
         ],
