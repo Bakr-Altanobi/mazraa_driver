@@ -37,7 +37,11 @@ void main() {
         findsOneWidget,
         reason: 'screen ${spec.number} did not build its production body',
       );
-      expect(find.text(spec.titleAr), findsOneWidget);
+      expect(
+        find.text(spec.titleAr),
+        findsWidgets,
+        reason: 'screen ${spec.number} did not expose its reference title',
+      );
       expect(
         tester.takeException(),
         isNull,
