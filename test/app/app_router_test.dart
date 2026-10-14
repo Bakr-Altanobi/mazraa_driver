@@ -51,23 +51,30 @@ void main() {
       );
     });
 
-    test('leaves splash for login when no session exists', () {
+    test('fresh signed-out sessions start at reference onboarding', () {
       expect(
         resolveAuthRedirect(
           authState: AuthState.signedOut,
           location: '/splash',
         ),
-        '/login',
+        '/onboarding',
       );
     });
 
-    test('moves authenticated drivers from splash to home', () {
+    test('authenticated drivers continue at reference screen 03', () {
       expect(
         resolveAuthRedirect(
           authState: AuthState.authenticated,
           location: '/splash',
         ),
-        '/home',
+        '/journey/03',
+      );
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.authenticated,
+          location: '/login',
+        ),
+        '/journey/03',
       );
     });
 

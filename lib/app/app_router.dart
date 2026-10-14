@@ -5,6 +5,7 @@ import 'package:mazraa_driver/features/auth/auth_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
@@ -27,9 +28,6 @@ String? resolveAuthRedirect({
     return location == '/splash' ? null : '/splash';
   }
 
-  // During an explicit login we keep the LoginScreen mounted while its
-  // WidgetRef warms the HomeScreen providers. Session restoration, however,
-  // remains on the splash screen until the same preload is complete.
   if (authState == AuthState.preparingHome) {
     if (location == '/splash' || location == '/login') return null;
     return '/splash';
@@ -40,11 +38,11 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    if (location == '/splash') return '/login';
+    if (location == '/splash') return '/onboarding';
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/home' : null;
+  return isPublic ? '/journey/03' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -53,8 +51,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: _ciSmokeHome ? '/home' : '/splash',
     refreshListenable: auth,
     redirect: (context, state) {
-      // CI screenshot builds render the real HomeScreen without persisting or
-      // embedding test credentials. Release builds never enable this flag.
       if (_ciSmokeHome) {
         return state.matchedLocation == '/home' ? null : '/home';
       }
@@ -67,6 +63,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(
+        path: '/journey/:screen',
+        builder: (context, state) {
+          final raw = state.pathParameters['screen'] ?? '1';
+          final parsed = int.tryParse(raw) ?? 1;
+          final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
+          return ReferenceJourneyScreen(screenNumber: number);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),

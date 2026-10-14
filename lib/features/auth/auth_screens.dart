@@ -6,6 +6,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/home/home_bootstrap.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -111,11 +112,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     Text(
                       preparingHome
                           ? (ar
-                                ? 'جاري تحميل بيانات الشاشة الرئيسية…'
-                                : 'Loading home data…')
+                              ? 'جاري تحميل بيانات الشاشة الرئيسية…'
+                              : 'Loading home data…')
                           : (ar
-                                ? 'جاري استعادة الجلسة…'
-                                : 'Restoring your session…'),
+                              ? 'جاري استعادة الجلسة…'
+                              : 'Restoring your session…'),
                       key: Key(
                         preparingHome
                             ? 'homeBootstrapProgress'
@@ -144,55 +145,80 @@ class OnboardingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ar = isArabic(context);
     return Scaffold(
-      appBar: AppBar(),
+      key: const Key('onboardingScreen'),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            children: [
-              const Spacer(),
-              Container(
-                width: 210,
-                height: 210,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF2E9D7),
-                  shape: BoxShape.circle,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final artworkHeight = constraints.maxHeight < 660 ? 205.0 : 270.0;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - 42).clamp(0, double.infinity),
                 ),
-                alignment: Alignment.center,
-                child: SvgPicture.asset(
-                  'assets/branding/mazraa_mark.svg',
-                  width: 115,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Image.asset(
+                        ReferenceAssets.brandLeaf,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.contain,
+                        cacheWidth: 180,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: artworkHeight,
+                      width: double.infinity,
+                      child: Image.asset(
+                        ReferenceAssets.onboardingFarm,
+                        fit: BoxFit.contain,
+                        cacheWidth: 900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const _ReferenceAssetRow(
+                      paths: [
+                        ReferenceAssets.driverAvatar,
+                        ReferenceAssets.routeArrow,
+                        ReferenceAssets.deliveryTote,
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ar
+                          ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
+                          : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () => context.go('/login'),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          ar ? 'البدء الآن' : 'Get started',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 32),
-              Text(
-                ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                ar
-                    ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
-                    : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: () => context.go('/login'),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    ar ? 'البدء الآن' : 'Get started',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -226,20 +252,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
-    await ref
-        .read(authControllerProvider)
-        .login(
-          _email.text.trim(),
-          _password.text,
-          preloadHome: () => preloadDriverHome(ref),
-        );
+    await ref.read(authControllerProvider).login(
+      _email.text.trim(),
+      _password.text,
+      preloadHome: () => preloadDriverHome(ref),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final ar = isArabic(context);
-    final busy = auth.state == AuthState.signingIn;
+    final busy = auth.state == AuthState.signingIn ||
+        auth.state == AuthState.preparingHome;
     return Scaffold(
       key: const Key('loginScreen'),
       body: SafeArea(
@@ -260,30 +285,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    Hero(
-                      tag: 'mazraa-logo',
-                      child: SvgPicture.asset(
-                        'assets/branding/mazraa_mark.svg',
-                        height: 104,
-                        alignment: AlignmentDirectional.centerStart,
+                    SizedBox(
+                      height: 145,
+                      child: Image.asset(
+                        ReferenceAssets.loginPhoneOtp,
+                        fit: BoxFit.contain,
+                        cacheWidth: 520,
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    Text(
-                      ar ? 'أهلًا بك يا كابتن' : 'Welcome, driver',
-                      style: Theme.of(context).textTheme.headlineLarge,
+                    const SizedBox(height: 8),
+                    const _ReferenceAssetRow(
+                      paths: [
+                        ReferenceAssets.driverAvatar,
+                        ReferenceAssets.identityScan,
+                        ReferenceAssets.supportHeadset,
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Image.asset(
+                          ReferenceAssets.brandLeaf,
+                          width: 48,
+                          height: 48,
+                          cacheWidth: 160,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            ar ? 'أهلًا بك يا كابتن' : 'Welcome, driver',
+                            style: Theme.of(context).textTheme.headlineLarge,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       ar
-                          ? 'سجّل دخولك بحساب السائق المعتمد للبدء.'
-                          : 'Sign in with your approved driver account.',
+                          ? 'سجّل دخولك بحساب السائق المعتمد للبدء. بعد نجاح الدخول لن ينتقل التطبيق قبل اكتمال بيانات الشاشة التالية.'
+                          : 'Sign in with your approved driver account. The app waits for the next screen data before navigating.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 26),
                     TextFormField(
                       key: const Key('emailField'),
                       controller: _email,
@@ -296,9 +341,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       validator: (value) {
                         if (value == null || !value.contains('@')) {
-                          return ar
-                              ? 'أدخل بريدًا صحيحًا'
-                              : 'Enter a valid email';
+                          return ar ? 'أدخل بريدًا صحيحًا' : 'Enter a valid email';
                         }
                         return null;
                       },
@@ -428,6 +471,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReferenceAssetRow extends StatelessWidget {
+  const _ReferenceAssetRow({required this.paths});
+
+  final List<String> paths;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 66,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var index = 0; index < paths.length; index++) ...[
+            Container(
+              width: 66,
+              height: 66,
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Image.asset(
+                paths[index],
+                fit: BoxFit.contain,
+                cacheWidth: 220,
+              ),
+            ),
+            if (index != paths.length - 1) const SizedBox(width: 9),
+          ],
+        ],
       ),
     );
   }
