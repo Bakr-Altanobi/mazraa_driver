@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mazraa_driver/core/constants/build_flags.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/network/api_exception.dart';
 import 'package:mazraa_driver/core/network/driver_api.dart';
@@ -19,7 +20,27 @@ enum AuthState {
 }
 
 class AuthController extends ChangeNotifier {
-  AuthController(this._api, this._store);
+  AuthController(this._api, this._store) {
+    if (BuildFlags.ciSmokeHome) {
+      state = AuthState.authenticated;
+      profile = const DriverProfile(
+        userId: 77,
+        driverCode: 'DRV-SMOKE-77',
+        name: 'سائق مزرعتي',
+        email: 'driver-smoke@local.invalid',
+        phone: '+967 000 000 000',
+        vehicleType: 'Motorcycle',
+        approvalStatus: 'Approved',
+        operationalStatus: 'Online',
+        isAcceptingOrders: true,
+        isVerified: true,
+        ratingAverage: 4.9,
+        ratingCount: 128,
+        currentLatitude: 15.3621,
+        currentLongitude: 44.1982,
+      );
+    }
+  }
 
   static const _storageTimeout = Duration(seconds: 6);
   static const _requestTimeout = Duration(seconds: 25);
