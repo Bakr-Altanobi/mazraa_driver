@@ -112,11 +112,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     Text(
                       preparingHome
                           ? (ar
-                                ? 'جاري تحميل بيانات الشاشة الرئيسية…'
-                                : 'Loading home data…')
+                              ? 'جاري تحميل بيانات الشاشة الرئيسية…'
+                              : 'Loading home data…')
                           : (ar
-                                ? 'جاري استعادة الجلسة…'
-                                : 'Restoring your session…'),
+                              ? 'جاري استعادة الجلسة…'
+                              : 'Restoring your session…'),
                       key: Key(
                         preparingHome
                             ? 'homeBootstrapProgress'
@@ -147,67 +147,78 @@ class OnboardingScreen extends StatelessWidget {
     return Scaffold(
       key: const Key('onboardingScreen'),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-          child: Column(
-            children: [
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Image.asset(
-                  ReferenceAssets.brandLeaf,
-                  width: 52,
-                  height: 52,
-                  fit: BoxFit.contain,
-                  cacheWidth: 180,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final artworkHeight = constraints.maxHeight < 660 ? 205.0 : 270.0;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - 42).clamp(0, double.infinity),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Image.asset(
+                        ReferenceAssets.brandLeaf,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.contain,
+                        cacheWidth: 180,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: artworkHeight,
+                      width: double.infinity,
+                      child: Image.asset(
+                        ReferenceAssets.onboardingFarm,
+                        fit: BoxFit.contain,
+                        cacheWidth: 900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const _ReferenceAssetRow(
+                      paths: [
+                        ReferenceAssets.driverAvatar,
+                        ReferenceAssets.routeArrow,
+                        ReferenceAssets.deliveryTote,
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ar
+                          ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
+                          : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () => context.go('/login'),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          ar ? 'البدء الآن' : 'Get started',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              SizedBox(
-                height: 270,
-                width: double.infinity,
-                child: Image.asset(
-                  ReferenceAssets.onboardingFarm,
-                  fit: BoxFit.contain,
-                  cacheWidth: 900,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _ReferenceAssetRow(
-                paths: const [
-                  ReferenceAssets.driverAvatar,
-                  ReferenceAssets.routeArrow,
-                  ReferenceAssets.deliveryTote,
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(
-                ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                ar
-                    ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
-                    : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: () => context.go('/login'),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    ar ? 'البدء الآن' : 'Get started',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -241,13 +252,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
-    await ref
-        .read(authControllerProvider)
-        .login(
-          _email.text.trim(),
-          _password.text,
-          preloadHome: () => preloadDriverHome(ref),
-        );
+    await ref.read(authControllerProvider).login(
+      _email.text.trim(),
+      _password.text,
+      preloadHome: () => preloadDriverHome(ref),
+    );
   }
 
   @override
@@ -285,8 +294,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _ReferenceAssetRow(
-                      paths: const [
+                    const _ReferenceAssetRow(
+                      paths: [
                         ReferenceAssets.driverAvatar,
                         ReferenceAssets.identityScan,
                         ReferenceAssets.supportHeadset,
@@ -332,9 +341,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       validator: (value) {
                         if (value == null || !value.contains('@')) {
-                          return ar
-                              ? 'أدخل بريدًا صحيحًا'
-                              : 'Enter a valid email';
+                          return ar ? 'أدخل بريدًا صحيحًا' : 'Enter a valid email';
                         }
                         return null;
                       },
