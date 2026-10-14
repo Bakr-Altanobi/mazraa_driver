@@ -12,7 +12,8 @@ ADB_BIN="$ANDROID_HOME/platform-tools/adb"
 AVDMANAGER_BIN="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
 SDKMANAGER_BIN="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 
-mkdir -p artifacts "$HOME/.android/avd"
+export ANDROID_AVD_HOME="$HOME/.android/avd"
+mkdir -p artifacts "$ANDROID_AVD_HOME"
 
 missing_packages=()
 [[ -x "$EMULATOR_BIN" ]] || missing_packages+=(emulator)
@@ -31,19 +32,40 @@ fi
 
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 
-# Do not assume where avdmanager stores config.ini. Android tooling can choose
-# a different AVD home/path; the emulator's own registry is the source of truth.
-if ! "$EMULATOR_BIN" -list-avds 2>/dev/null | grep -Fxq "$AVD_NAME"; then
-  echo "Creating cached AVD '$AVD_NAME'."
+avd_registered() {
+  "$EMULATOR_BIN" -list-avds 2>/dev/null | tr -d '\r' | grep -Fxq "$AVD_NAME"
+}
+
+# A cache restore can be interrupted after unpacking part of ~/.android/avd.
+# Never reuse a half-restored definition: remove it and create one cleanly in a
+# deterministic ANDROID_AVD_HOME.
+if ! avd_registered; then
+  echo "Cached AVD '$AVD_NAME' is absent or incomplete; recreating it."
+  rm -rf "$ANDROID_AVD_HOME/$AVD_NAME.avd" "$ANDROID_AVD_HOME/$AVD_NAME.ini"
+
   echo no | "$AVDMANAGER_BIN" create avd \
     --force \
     --name "$AVD_NAME" \
     --package "$IMAGE_PACKAGE" \
     --device "pixel_6"
 
-  if ! "$EMULATOR_BIN" -list-avds 2>/dev/null | grep -Fxq "$AVD_NAME"; then
-    echo "AVD '$AVD_NAME' was not registered after creation."
-    "$EMULATOR_BIN" -list-avds || true
+  # Some avdmanager versions create the .avd directory but omit/lose the .ini
+  # registry file when a previous cache extraction was partial. Repair that
+  # tiny registry deterministically rather than downloading the image again.
+  if [[ -d "$ANDROID_AVD_HOME/$AVD_NAME.avd" && ! -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" ]]; then
+    cat > "$ANDROID_AVD_HOME/$AVD_NAME.ini" <<EOF
+avd.ini.encoding=UTF-8
+path=$ANDROID_AVD_HOME/$AVD_NAME.avd
+path.rel=avd/$AVD_NAME.avd
+target=android-35
+EOF
+  fi
+
+  if ! avd_registered; then
+    echo "AVD '$AVD_NAME' is still not registered after recreation."
+    echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+    find "$HOME/.android" -maxdepth 3 -type f -o -type d | sort | head -n 250 || true
+    [[ -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" ]] && cat "$ANDROID_AVD_HOME/$AVD_NAME.ini" || true
     exit 1
   fi
 else
@@ -88,6 +110,13 @@ for attempt in $(seq 1 120); do
       break
     fi
   fi
+
+  if ! kill -0 "$EMU_PID" >/dev/null 2>&1; then
+    echo "Emulator exited before boot completed."
+    tail -n 300 artifacts/emulator.log || true
+    exit 1
+  fi
+
   sleep 2
 done
 
