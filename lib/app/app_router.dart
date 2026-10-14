@@ -19,10 +19,14 @@ String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
 }) {
+  final isJourneyPublic =
+      location == '/journey/01' || location == '/journey/1' ||
+      location == '/journey/02' || location == '/journey/2';
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
-      location == '/onboarding';
+      location == '/onboarding' ||
+      isJourneyPublic;
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
     return location == '/splash' ? null : '/splash';
