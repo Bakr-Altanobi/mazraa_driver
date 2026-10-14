@@ -9,6 +9,11 @@ import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
 
+const _ciSmokeHome = bool.fromEnvironment(
+  'CI_SMOKE_HOME',
+  defaultValue: false,
+);
+
 String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
@@ -35,9 +40,14 @@ String? resolveAuthRedirect({
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: _ciSmokeHome ? '/home' : '/splash',
     refreshListenable: auth,
     redirect: (context, state) {
+      // CI screenshot builds render the real HomeScreen without persisting or
+      // embedding test credentials. Release builds never enable this flag.
+      if (_ciSmokeHome) {
+        return state.matchedLocation == '/home' ? null : '/home';
+      }
       return resolveAuthRedirect(
         authState: auth.state,
         location: state.matchedLocation,
