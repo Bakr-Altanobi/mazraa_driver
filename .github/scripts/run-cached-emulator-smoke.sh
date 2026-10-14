@@ -11,7 +11,6 @@ EMULATOR_BIN="$ANDROID_HOME/emulator/emulator"
 ADB_BIN="$ANDROID_HOME/platform-tools/adb"
 AVDMANAGER_BIN="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
 SDKMANAGER_BIN="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-AVD_DIR="$HOME/.android/avd/$AVD_NAME.avd"
 
 mkdir -p artifacts "$HOME/.android/avd"
 
@@ -32,14 +31,23 @@ fi
 
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 
-if [[ ! -d "$AVD_DIR" ]]; then
+# Do not assume where avdmanager stores config.ini. Android tooling can choose
+# a different AVD home/path; the emulator's own registry is the source of truth.
+if ! "$EMULATOR_BIN" -list-avds 2>/dev/null | grep -Fxq "$AVD_NAME"; then
   echo "Creating cached AVD '$AVD_NAME'."
   echo no | "$AVDMANAGER_BIN" create avd \
     --force \
     --name "$AVD_NAME" \
     --package "$IMAGE_PACKAGE" \
     --device "pixel_6"
-  printf '\nhw.cpu.ncore=2\n' >> "$AVD_DIR/config.ini"
+
+  if ! "$EMULATOR_BIN" -list-avds 2>/dev/null | grep -Fxq "$AVD_NAME"; then
+    echo "AVD '$AVD_NAME' was not registered after creation."
+    "$EMULATOR_BIN" -list-avds || true
+    exit 1
+  fi
+else
+  echo "Cached AVD '$AVD_NAME' is already registered."
 fi
 
 "$ADB_BIN" kill-server >/dev/null 2>&1 || true
