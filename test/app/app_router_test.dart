@@ -14,6 +14,43 @@ void main() {
       );
     });
 
+    test('keeps restored sessions on splash while home data preloads', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.preparingHome,
+          location: '/splash',
+        ),
+        isNull,
+      );
+    });
+
+    test('keeps login mounted while post-login home data preloads', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.preparingHome,
+          location: '/login',
+        ),
+        isNull,
+      );
+    });
+
+    test('moves bootstrap failures to retry UI on splash', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.bootstrapFailed,
+          location: '/login',
+        ),
+        '/splash',
+      );
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.bootstrapFailed,
+          location: '/splash',
+        ),
+        isNull,
+      );
+    });
+
     test('leaves splash for login when no session exists', () {
       expect(
         resolveAuthRedirect(
