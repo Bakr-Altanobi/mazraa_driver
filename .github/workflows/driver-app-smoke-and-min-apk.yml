@@ -34,13 +34,15 @@ concurrency:
 
 env:
   FLUTTER_VERSION: 3.49.0-0.2.pre
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
   APP_ID: com.mazraa.driver
   DEBUG_APK: build/app/outputs/flutter-apk/app-debug.apk
   RELEASE_APK: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 
 jobs:
   android-smoke-and-min-apk:
-    name: Run app, capture screen, then build minimal APK
+    name: Run app, capture HomeScreen, then build minimal APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -130,26 +132,36 @@ jobs:
             echo '::warning::/dev/kvm is unavailable; emulator will use software acceleration.'
           fi
 
-      - name: Resolve Dart packages
-        run: flutter pub get
+      - name: Resolve Dart packages only when needed
+        shell: bash
+        run: |
+          if [[ "${{ steps.flutter-build-cache.outputs.cache-hit }}" == "true" && -f .dart_tool/package_config.json ]]; then
+            echo 'Exact build cache hit; package_config is already restored. Skipping flutter pub get.'
+          else
+            echo 'Trying pub resolution from the restored local cache only.'
+            flutter pub get --offline || flutter pub get
+          fi
 
-      - name: Build x64 debug APK for emulator
-        run: flutter build apk --debug --target-platform android-x64 --no-pub
+      - name: Prepare x64 debug APK for HomeScreen smoke
+        shell: bash
+        run: |
+          if [[ "${{ steps.flutter-build-cache.outputs.cache-hit }}" == "true" && -s "$DEBUG_APK" ]]; then
+            echo 'Exact source build cache hit; reusing cached debug APK.'
+          else
+            flutter build apk \
+              --debug \
+              --target-platform android-x64 \
+              --dart-define=CI_SMOKE_HOME=true \
+              --no-pub
+          fi
+          test -s "$DEBUG_APK"
 
-      - name: Boot emulator, run app and capture main screen
+      - name: Boot cached emulator, run app and capture real HomeScreen
         id: smoke
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_6
-          cores: 2
-          force-avd-creation: false
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash .github/scripts/capture-main-screen.sh
+        shell: bash
+        run: bash .github/scripts/run-cached-emulator-smoke.sh
 
-      - name: Upload captured main screen
+      - name: Upload captured HomeScreen
         uses: actions/upload-artifact@v7
         with:
           name: mazraa-driver-main-screen
@@ -158,17 +170,22 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-      - name: Build smallest practical arm64 release APK
+      - name: Prepare smallest practical arm64 release APK
         shell: bash
         run: |
-          rm -rf build/min-symbols
-          flutter build apk \
-            --release \
-            --no-pub \
-            --target-platform android-arm64 \
-            --split-per-abi \
-            --obfuscate \
-            --split-debug-info=build/min-symbols
+          mkdir -p artifacts
+          if [[ "${{ steps.flutter-build-cache.outputs.cache-hit }}" == "true" && -s "$RELEASE_APK" ]]; then
+            echo 'Exact source build cache hit; reusing cached ARM64 release APK.'
+          else
+            rm -rf build/min-symbols
+            flutter build apk \
+              --release \
+              --no-pub \
+              --target-platform android-arm64 \
+              --split-per-abi \
+              --obfuscate \
+              --split-debug-info=build/min-symbols
+          fi
 
           test -s "$RELEASE_APK"
           cp "$RELEASE_APK" artifacts/mazraa-driver-arm64-release.apk
@@ -193,7 +210,10 @@ jobs:
           path: |
             artifacts/activity-dump.txt
             artifacts/window-dump.txt
+            artifacts/window.xml
+            artifacts/not-ready-screen.png
             artifacts/logcat.txt
+            artifacts/emulator.log
           if-no-files-found: ignore
           compression-level: 6
           retention-days: 7
