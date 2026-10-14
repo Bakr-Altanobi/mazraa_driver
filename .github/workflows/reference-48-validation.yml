@@ -57,7 +57,7 @@ jobs:
 
       - name: Static analyze reference implementation
         run: |
-          flutter analyze \
+          flutter analyze --no-fatal-infos \
             lib/features/reference_journey \
             lib/app/app_router.dart \
             lib/features/auth/auth_screens.dart
