@@ -28,9 +28,6 @@ String? resolveAuthRedirect({
     return location == '/splash' ? null : '/splash';
   }
 
-  // During an explicit login we keep the LoginScreen mounted while its
-  // WidgetRef warms the HomeScreen providers. Session restoration, however,
-  // remains on the splash screen until the same preload is complete.
   if (authState == AuthState.preparingHome) {
     if (location == '/splash' || location == '/login') return null;
     return '/splash';
@@ -41,15 +38,10 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    // A fresh install/session starts at the design's screen 01 instead of
-    // bypassing onboarding. The user can then move to screen 02 (login).
     if (location == '/splash') return '/onboarding';
     return isPublic ? null : '/login';
   }
 
-  // Once authentication and HomeScreen preload are complete, continue the
-  // numbered reference journey at screen 03. Screens 01/02 remain the actual
-  // onboarding/login routes before authentication.
   return isPublic ? '/journey/03' : null;
 }
 
@@ -59,8 +51,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: _ciSmokeHome ? '/home' : '/splash',
     refreshListenable: auth,
     redirect: (context, state) {
-      // CI screenshot builds render the real HomeScreen without persisting or
-      // embedding test credentials. Release builds never enable this flag.
       if (_ciSmokeHome) {
         return state.matchedLocation == '/home' ? null : '/home';
       }
@@ -78,7 +68,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final raw = state.pathParameters['screen'] ?? '1';
           final parsed = int.tryParse(raw) ?? 1;
-          final number = parsed.clamp(1, 48);
+          final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
           return ReferenceJourneyScreen(screenNumber: number);
         },
       ),
