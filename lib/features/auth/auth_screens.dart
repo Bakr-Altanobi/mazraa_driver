@@ -163,7 +163,7 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const Spacer(),
               SizedBox(
-                height: 300,
+                height: 270,
                 width: double.infinity,
                 child: Image.asset(
                   ReferenceAssets.onboardingFarm,
@@ -171,7 +171,15 @@ class OnboardingScreen extends StatelessWidget {
                   cacheWidth: 900,
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
+              _ReferenceAssetRow(
+                paths: const [
+                  ReferenceAssets.driverAvatar,
+                  ReferenceAssets.routeArrow,
+                  ReferenceAssets.deliveryTote,
+                ],
+              ),
+              const SizedBox(height: 20),
               Text(
                 ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
                 textAlign: TextAlign.center,
@@ -269,12 +277,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 150,
+                      height: 145,
                       child: Image.asset(
                         ReferenceAssets.loginPhoneOtp,
                         fit: BoxFit.contain,
                         cacheWidth: 520,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    _ReferenceAssetRow(
+                      paths: const [
+                        ReferenceAssets.driverAvatar,
+                        ReferenceAssets.identityScan,
+                        ReferenceAssets.supportHeadset,
+                      ],
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -448,6 +464,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReferenceAssetRow extends StatelessWidget {
+  const _ReferenceAssetRow({required this.paths});
+
+  final List<String> paths;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 66,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var index = 0; index < paths.length; index++) ...[
+            Container(
+              width: 66,
+              height: 66,
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Image.asset(
+                paths[index],
+                fit: BoxFit.contain,
+                cacheWidth: 220,
+              ),
+            ),
+            if (index != paths.length - 1) const SizedBox(width: 9),
+          ],
+        ],
       ),
     );
   }
