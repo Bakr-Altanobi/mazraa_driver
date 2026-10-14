@@ -38,4 +38,21 @@ flutter:
     - assets/illustrations/
     - assets/maps/
     - assets/decorations/
-
+    # ASSET_INDEX deliberately contains many duplicate PNGs. Package one
+    # canonical source per visual so all 48 screens use the delivered artwork
+    # without multiplying the APK by hundreds of megabytes.
+    - refrinces/assets_primary/common/
+    - refrinces/assets_primary/by_screen/01/01_asset_brand_leaf_mark.png
+    - refrinces/assets_primary/by_screen/01/02_asset_driver_avatar.png
+    - refrinces/assets_primary/by_screen/asset_onboarding_farm_sun.png
+    - refrinces/assets_primary/by_screen/01/04_asset_route_arrow.png
+    - refrinces/assets_primary/by_screen/asset_login_phone_otp.png
+    - refrinces/assets_primary/by_screen/02/05_asset_support_headset.png
+    - refrinces/assets_primary/by_screen/03/02_asset_home_pin.png
+    - refrinces/assets_primary/by_screen/03/05_asset_delivery_scooter.png
+    - refrinces/assets_primary/by_screen/04/02_asset_farm_crate.png
+    - refrinces/assets_primary/by_screen/04/03_asset_delivery_parcel.png
+    - refrinces/assets_primary/by_screen/05/03_asset_fresh_produce_basket.png
+    - refrinces/assets_primary/by_screen/asset_navigation_road_sign.png
+    - refrinces/assets_primary/by_screen/07/04_asset_success_badge.png
+    - refrinces/assets_primary/by_screen/asset_earnings_chart_arrow.png
