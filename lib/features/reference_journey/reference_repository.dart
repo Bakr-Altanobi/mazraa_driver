@@ -43,6 +43,26 @@ class ReferenceLoadKey {
   int get hashCode => Object.hash(screenNumber, userId);
 }
 
+int? selectShipmentIdForAction(
+  Iterable<dynamic> rows,
+  ReferenceAction action,
+) {
+  final allowed = switch (action) {
+    ReferenceAction.pickupShipment => const {'5', 'accepted'},
+    ReferenceAction.deliverShipment => const {'7', 'nearcustomer'},
+    ReferenceAction.failShipment => const {'1', '6', '7', 'intransit', 'pickedup', 'nearcustomer'},
+    ReferenceAction.createIncident => const <String>{},
+  };
+  for (final row in rows) {
+    if (row is! Map || row['id'] == null) continue;
+    final status = row['status']?.toString().replaceAll('_', '').replaceAll(' ', '').toLowerCase();
+    if (status != null && allowed.contains(status)) {
+      return int.tryParse(row['id'].toString());
+    }
+  }
+  return null;
+}
+
 class ReferenceRepository {
   const ReferenceRepository(this._client);
 
@@ -59,8 +79,13 @@ class ReferenceRepository {
           await _client.get<List<dynamic>>('api/Shipments');
     }
 
-    Future<int?> firstShipmentId() async {
+    Future<int?> preferredShipmentId() async {
       final rows = await shipments();
+      for (final action in spec.actions) {
+        if (action == ReferenceAction.createIncident) continue;
+        final eligible = selectShipmentIdForAction(rows, action);
+        if (eligible != null) return eligible;
+      }
       for (final row in rows) {
         if (row is Map && row['id'] != null) {
           return int.tryParse(row['id'].toString());
@@ -80,7 +105,7 @@ class ReferenceRepository {
           case ReferenceDataSource.shipments:
             payload = await shipments();
           case ReferenceDataSource.shipmentDetail:
-            final id = await firstShipmentId();
+            final id = await preferredShipmentId();
             if (id == null) {
               emptyMessage = 'لا توجد شحنة فعلية في حساب السائق لعرض تفاصيلها.';
               endpoint = 'api/Shipments/{shipmentId}';
@@ -89,7 +114,7 @@ class ReferenceRepository {
               payload = await _client.get<dynamic>(endpoint);
             }
           case ReferenceDataSource.tracking:
-            final id = await firstShipmentId();
+            final id = await preferredShipmentId();
             if (id == null) {
               emptyMessage = 'لا توجد شحنة فعلية في حساب السائق لبدء التتبع.';
               endpoint = 'api/Shipments/{shipmentId}/tracking';
@@ -119,8 +144,6 @@ class ReferenceRepository {
             payload = await _client.get<dynamic>(endpoint);
           case ReferenceDataSource.deliveryZones:
             payload = await _client.get<dynamic>(endpoint);
-          case ReferenceDataSource.returns:
-            payload = await _client.get<dynamic>(endpoint);
         }
         return ReferenceSourceResult(
           source: source,
@@ -144,23 +167,16 @@ class ReferenceRepository {
     return ReferenceScreenPayload(results: results);
   }
 
-  Future<int?> firstShipmentId() async {
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    for (final row in rows) {
-      if (row is Map && row['id'] != null) {
-        return int.tryParse(row['id'].toString());
-      }
-    }
-    return null;
-  }
-
   Future<void> runShipmentAction(
     ReferenceAction action, {
     String? reason,
   }) async {
-    final shipmentId = await firstShipmentId();
+    final rows = await _client.get<List<dynamic>>('api/Shipments');
+    final shipmentId = selectShipmentIdForAction(rows, action);
     if (shipmentId == null) {
-      throw StateError('لا توجد شحنة فعلية متاحة لتنفيذ هذه العملية.');
+      throw StateError(
+        'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',
+      );
     }
     final actionName = switch (action) {
       ReferenceAction.pickupShipment => 'pickup',
@@ -204,7 +220,6 @@ class ReferenceRepository {
       ReferenceDataSource.supportTickets => 'api/support/tickets',
       ReferenceDataSource.chats => 'api/chats',
       ReferenceDataSource.deliveryZones => 'api/DeliveryZones',
-      ReferenceDataSource.returns => 'api/returns',
     };
   }
 }
