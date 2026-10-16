@@ -314,7 +314,7 @@ class ReferenceProductionBody extends StatelessWidget {
         const SizedBox(height: 12),
         const _ChecklistCard(
           items: [
-            ('مطابقة رقم الشحنة', true),
+            ('مطابقة رقم الشحنة', null),
             ('فحص الأصناف', null),
             ('إرفاق صورة الاستلام', null),
           ],
@@ -326,7 +326,7 @@ class ReferenceProductionBody extends StatelessWidget {
         const SizedBox(height: 12),
         const _ChecklistCard(
           items: [
-            ('التحقق من الشحنة', true),
+            ('التحقق من الشحنة', null),
             ('توقيع العميل', null),
             ('صورة إثبات التسليم', null),
           ],
@@ -566,7 +566,7 @@ class ReferenceProductionBody extends StatelessWidget {
         const SizedBox(height: 10),
         const _ChecklistCard(
           items: [
-            ('رقم الشحنة', true),
+            ('رقم الشحنة', null),
             ('الأصناف والكميات', null),
             ('درجة الحرارة', null),
             ('النواقص والتلف', null),
@@ -730,10 +730,11 @@ class ReferenceProductionBody extends StatelessWidget {
   List<Widget> _returnOrder(BuildContext context, _ReferenceData data) => [
         ..._shipmentDetail(context, data, title: 'الشحنة'),
         const SizedBox(height: 10),
-        _GenericList(
-          title: 'طلبات الإرجاع التي أعادها السيرفر',
-          items: data.returns,
-          preferredKeys: const ['id', 'status', 'reason', 'createdAt'],
+        const _NoticeCard(
+          icon: Icons.assignment_return_outlined,
+          title: 'استلام المرتجع ينتظر دعم السيرفر',
+          message:
+              'مسار api/returns الحالي يعيد طلبات إرجاع العميل صاحب الحساب، ولا يعيد مهام مرتجع مسندة للسائق. لذلك لا يتم عرض CustomerReturnRequests على أنها مهام سائق.',
         ),
       ];
 
@@ -914,13 +915,6 @@ class _ReferenceData {
   List<Map<String, dynamic>> get tickets => _listOfMaps(result(ReferenceDataSource.supportTickets)?.payload);
   List<Map<String, dynamic>> get chats => _listOfMaps(result(ReferenceDataSource.chats)?.payload);
   List<Map<String, dynamic>> get deliveryZones => _listOfMaps(result(ReferenceDataSource.deliveryZones)?.payload);
-  List<Map<String, dynamic>> get returns {
-    final raw = result(ReferenceDataSource.returns)?.payload;
-    if (raw is List) return _listOfMaps(raw);
-    final root = _map(raw);
-    final candidates = root['items'] ?? root['data'] ?? root['returns'];
-    return _listOfMaps(candidates);
-  }
 }
 
 class _ReferenceHero extends StatelessWidget {

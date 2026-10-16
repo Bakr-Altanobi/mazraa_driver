@@ -109,7 +109,7 @@ class _ReferenceJourneyScreenState
             builder: (dialogContext) => AlertDialog(
               title: Text(_actionTitle(action)),
               content: const Text(
-                'سيتم تنفيذ العملية على أول شحنة حقيقية متاحة في حساب السائق، وسيطبق السيرفر قواعد انتقال الحالة. لا توجد بيانات تجريبية في هذه العملية.',
+                'سيتم تنفيذ العملية فقط على شحنة حقيقية حالتها مؤهلة لهذا الإجراء حسب قواعد السيرفر. إذا لم توجد شحنة مؤهلة فلن يتم إرسال أي تعديل.',
               ),
               actions: [
                 TextButton(

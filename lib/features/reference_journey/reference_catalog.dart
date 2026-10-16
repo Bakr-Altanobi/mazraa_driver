@@ -13,7 +13,6 @@ enum ReferenceDataSource {
   supportTickets,
   chats,
   deliveryZones,
-  returns,
 }
 
 enum ReferenceAction {
@@ -478,13 +477,11 @@ abstract final class ReferenceCatalog {
       number: 39,
       titleAr: 'إرجاع الطلب',
       titleEn: 'Return order',
-      descriptionAr: 'تعرض الشحنة وطلبات الإرجاع المتاحة للحساب من السيرفر.',
-      sources: [
-        ReferenceDataSource.shipmentDetail,
-        ReferenceDataSource.returns,
-      ],
+      descriptionAr: 'تعرض الشحنة الحقيقية وتُبقي مهمة المرتجع كسير عمل غير مدعوم بدلاً من خلط مرتجعات العميل بمهام السائق.',
+      sources: [ReferenceDataSource.shipmentDetail],
       unsupported: [
-        'Returns API الحالي موجّه لطلبات إرجاع العميل؛ لا يوجد workflow خاص بالسائق لاستلام/إعادة مرتجع.',
+        'Returns API الحالي موجّه لطلبات إرجاع العميل صاحب الحساب ولا يمثل قائمة مهام السائق.',
+        'لا يوجد endpoint يعيد مرتجعات مسندة للسائق أو workflow خاص بالسائق لاستلام/إعادة مرتجع.',
       ],
     ),
     ReferenceScreenSpec(
