@@ -29,6 +29,9 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
+if (releaseRequested && !keystorePropertiesFile.exists()) {
+    throw GradleException("Release signing requires Android key.properties and a production keystore.")
+}
 
 android {
     namespace = "com.mazraa.driver"
@@ -71,7 +74,7 @@ android {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                signingConfigs.getByName("debug") // Debug builds only; release requires key.properties above
             }
         }
     }
