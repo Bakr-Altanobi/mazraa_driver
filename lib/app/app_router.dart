@@ -46,7 +46,9 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  // The 48 reference screens stay directly addressable for review; drivers
+  // enter the operational tab shell after the real home bootstrap completes.
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
