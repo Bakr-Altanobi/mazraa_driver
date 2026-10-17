@@ -491,10 +491,12 @@ class ReferenceProductionBody extends StatelessWidget {
         const SizedBox(height: 12),
         _FaqList(faqs: data.faqs),
         const SizedBox(height: 12),
-        const _DisabledActionCard(
-          title: 'SOS طوارئ',
-          buttonLabel: 'إرسال SOS',
-          reason: 'لا يوجد مسار SOS جغرافي مخصص في API الحالي.',
+        const _NoticeCard(
+          icon: Icons.emergency_outlined,
+          title: 'بلاغ عاجل للدعم',
+          message: 'استخدم إجراء «رفع بلاغ» أدناه لإرسال بلاغ عاجل موثّق إلى منصة مزرعتي. '
+              'هذه الخدمة لا تتصل بجهات الإسعاف أو الشرطة؛ في الخطر المباشر اتصل '
+              'بخدمات الطوارئ المحلية بنفسك.',
         ),
       ];
 
