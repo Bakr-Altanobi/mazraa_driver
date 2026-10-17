@@ -16,10 +16,10 @@ abstract final class ApiEndpoints {
 }
 
 abstract final class AppEnvironment {
-  static const mapsEnabled = bool.fromEnvironment(
-    'ENABLE_GOOGLE_MAPS',
-    defaultValue: false,
-  );
+  // Production uses the native Google Maps SDK. CI smoke intentionally uses
+  // the deterministic fallback because test emulators have no Maps key.
+  static const mapsEnabled = !bool.fromEnvironment('CI_SMOKE_HOME') &&
+      bool.fromEnvironment('ENABLE_GOOGLE_MAPS', defaultValue: true);
   static const testDriverEmail = String.fromEnvironment('DRIVER_TEST_EMAIL');
   static const testDriverPassword = String.fromEnvironment(
     'DRIVER_TEST_PASSWORD',
