@@ -304,11 +304,24 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       reason = await _failureReason();
       if (reason == null || !mounted) return;
     }
+    // Contactless orders require a server-validated OTP/QR proof. We never
+    // guess the code or bypass verification; standard deliveries can be
+    // confirmed without a code when permitted by the backend.
+    String? numericCode;
+    if (action == 'deliver') {
+      numericCode = await _deliveryProofCode();
+      if (numericCode == null || !mounted) return;
+    }
     setState(() => _acting = true);
     try {
       await ref
           .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason);
+          .changeShipmentStatus(
+            shipment.id,
+            action,
+            reason: reason,
+            numericCode: numericCode?.isEmpty == true ? null : numericCode,
+          );
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -331,6 +344,46 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     } finally {
       if (mounted) setState(() => _acting = false);
     }
+  }
+
+  Future<String?> _deliveryProofCode() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إثبات تسليم الشحنة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'أدخل رمز الاستلام الذي يظهر للعميل إن كانت الشحنة بدون تلامس. '
+              'اتركه فارغًا فقط إذا كان التسليم عاديًا؛ السيرفر يتحقق من نوع الشحنة.',
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: const Key('deliveryNumericCodeField'),
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز التحقق (إن لزم)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('تأكيد التسليم'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   Future<String?> _failureReason() async {
