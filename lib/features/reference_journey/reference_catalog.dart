@@ -198,13 +198,10 @@ abstract final class ReferenceCatalog {
     ),
     ReferenceScreenSpec(
       number: 13,
-      titleAr: 'تسجيل سائق جديد',
-      titleEn: 'Driver registration',
-      descriptionAr: 'الحقول المرجعية مع حالة حساب السائق الحالية.',
+      titleAr: 'طلب الانضمام كسائق',
+      titleEn: 'Driver application',
+      descriptionAr: 'حالة اعتماد السائق الفعلية؛ التسجيل العام يبدأ من Onboarding ويستخدم Auth/register ثم driver-journey/apply.',
       sources: [ReferenceDataSource.driver],
-      unsupported: [
-        'لا يوجد حتى الآن تسجيل public مستقل لسائق غير مسجل الدخول؛ طلب الانضمام الحالي يبدأ من مستخدم موثق.',
-      ],
     ),
     ReferenceScreenSpec(
       number: 14,
