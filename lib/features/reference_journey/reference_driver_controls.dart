@@ -124,6 +124,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     final api = ref.read(driverApiProvider);
     final wallet = await api.getWallet();
     final rows = await api.getBankAccounts();
+    if (!mounted) return false;
     final accounts = rows.whereType<Map<String, dynamic>>().where(
       (row) => int.tryParse('${row['id']}') != null,
     ).toList(growable: false);
@@ -207,6 +208,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
   Future<bool> _editPreferences() async {
     final api = ref.read(driverApiProvider);
     final existing = await api.getDriverPreferences();
+    if (!mounted) return false;
     var scheduled = existing['acceptScheduledTrips'] == true;
     var private = existing['acceptPrivateDeliveries'] == true;
     var batch = existing['acceptBatchDeliveries'] == true;
