@@ -230,6 +230,8 @@ class ReferenceRepository {
     String? reason,
     int? shipmentId,
     int? offerId,
+    String? numericCode,
+    String? qrToken,
   }) async {
     if (action == ReferenceAction.startShift) {
       await _client.post<dynamic>(
@@ -295,7 +297,18 @@ class ReferenceRepository {
                   ? 'تعذر الوصول للعميل'
                   : reason!.trim(),
             }
-          : null,
+          : action == ReferenceAction.deliverShipment &&
+                  ((numericCode?.trim().isNotEmpty ?? false) ||
+                      (qrToken?.trim().isNotEmpty ?? false))
+              ? {
+                  'numericCode': numericCode?.trim().isEmpty == true
+                      ? null
+                      : numericCode?.trim(),
+                  'qrToken': qrToken?.trim().isEmpty == true
+                      ? null
+                      : qrToken?.trim(),
+                }
+              : null,
     );
   }
 
