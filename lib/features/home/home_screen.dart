@@ -262,6 +262,15 @@ class HomeScreen extends ConsumerWidget {
                       icon: Icons.grid_view_rounded,
                     ),
                     const SizedBox(height: 11),
+                    OutlinedButton.icon(
+                      key: const Key('openAllDriverServices'),
+                      onPressed: () => context.push('/services'),
+                      icon: const Icon(Icons.apps_rounded),
+                      label: Text(
+                        ar ? 'جميع خدمات السائق' : 'All driver services',
+                      ),
+                    ),
+                    const SizedBox(height: 11),
                     Row(
                       children: [
                         Expanded(
