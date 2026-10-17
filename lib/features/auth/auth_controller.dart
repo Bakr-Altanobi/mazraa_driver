@@ -105,9 +105,18 @@ class AuthController extends ChangeNotifier {
       state = AuthState.authenticated;
       notifyListeners();
     } on ApiException catch (error) {
-      if (error.statusCode == 401) {
+      if (error.statusCode == 401 ||
+          error.statusCode == 403 ||
+          error.statusCode == 404) {
+        // Authenticated marketplace users are not automatically drivers.
+        // A missing driver record must not leave a persisted user token in a
+        // splash-screen retry loop. They may apply from registration instead.
         await _clearSessionSafely();
-        _setSignedOut(message: error.message);
+        _setSignedOut(
+          message: error.statusCode == 404
+              ? 'هذا الحساب غير مسجل كسائق بعد. يمكنك تقديم طلب الانضمام.'
+              : error.message,
+        );
         return;
       }
       _failBootstrap(error.message);
@@ -136,11 +145,13 @@ class AuthController extends ChangeNotifier {
       final nextSession = await _api
           .login(email, password)
           .timeout(_requestTimeout);
+      // The network API has already persisted this session. Keep state in
+      // sync so a transient profile/bootstrap failure can be retried safely.
+      session = nextSession;
       final nextProfile = await _api
           .getDriver(nextSession.userId)
           .timeout(_requestTimeout);
 
-      session = nextSession;
       profile = nextProfile;
       state = AuthState.preparingHome;
       notifyListeners();
@@ -154,7 +165,9 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      if (error.statusCode == 401) {
+      if (error.statusCode == 401 ||
+          error.statusCode == 403 ||
+          error.statusCode == 404) {
         await _clearSessionSafely();
         session = null;
         profile = null;
@@ -164,7 +177,9 @@ class AuthController extends ChangeNotifier {
       } else {
         state = AuthState.signedOut;
       }
-      errorMessage = error.message;
+      errorMessage = error.statusCode == 404
+          ? 'حسابك موجود، لكن لم يُنشأ له طلب سائق. استخدم «الانضمام كسائق» ثم «استكمال طلب حساب موجود».'
+          : error.message;
       notifyListeners();
       return false;
     } on TimeoutException {
