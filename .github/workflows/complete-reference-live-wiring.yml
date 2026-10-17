@@ -1,0 +1,603 @@
+name: Complete reference live wiring
+
+on:
+  push:
+    branches:
+      - chatgpt/driver-journey-server-sync-20261017
+    paths:
+      - '.github/workflows/complete-reference-live-wiring.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-reference-body:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: chatgpt/driver-journey-server-sync-20261017
+          fetch-depth: 0
+      - name: Replace stale reference panels with live journey data
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/features/reference_journey/reference_production_body.dart')
+          text = path.read_text()
+
+          def replace_between(start, end, block):
+              global text
+              a = text.index(start)
+              b = text.index(end, a)
+              text = text[:a] + block.rstrip() + '\n\n' + text[b:]
+
+          replace_between(
+              '  List<Widget> _ordersList',
+              '  List<Widget> _shipmentDetail',
+              '''  List<Widget> _ordersList(BuildContext context, _ReferenceData data) {
+            final widgets = <Widget>[_ShipmentList(shipments: data.shipments)];
+            if (data.offers.isNotEmpty) {
+              widgets.add(const SizedBox(height: 12));
+              widgets.add(_GenericList(
+                title: 'عروض التوصيل المتاحة',
+                items: data.offers,
+                preferredKeys: const ['offerId', 'shipmentNumber', 'distanceToPickupKm', 'secondsRemaining', 'round'],
+              ));
+            }
+            return widgets;
+          }''')
+
+          replace_between(
+              '  List<Widget> _walletPayout',
+              '  List<Widget> _notifications',
+              '''  List<Widget> _walletPayout(BuildContext context, _ReferenceData data) {
+            final wallet = data.wallet;
+            return [
+              _ServerFieldCard(
+                title: 'المحفظة',
+                rows: {
+                  'رقم الحساب': _text(wallet['accountNumber']),
+                  'الرصيد': _money(wallet['balance'], wallet['currency']),
+                  'التحويل متاح': _yesNo(_map(wallet['capabilities'])['canTransfer']),
+                },
+              ),
+              const SizedBox(height: 10),
+              _GenericList(
+                title: 'الحسابات البنكية',
+                items: data.bankAccounts,
+                preferredKeys: const ['bankName', 'accountHolderName', 'iban', 'accountNumber', 'isVerified', 'isDefault'],
+              ),
+              const SizedBox(height: 10),
+              _GenericList(
+                title: 'طلبات السحب',
+                items: data.payouts,
+                preferredKeys: const ['amount', 'currency', 'status', 'providerReference', 'requestedAt', 'processedAt'],
+              ),
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _vehicleDocuments',
+              '  List<Widget> _vehicleProfile',
+              '''  List<Widget> _vehicleDocuments(BuildContext context, _ReferenceData data) => [
+            _DriverCard(driver: data.driver),
+            const SizedBox(height: 10),
+            _VehicleCard(vehicle: data.vehicle),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'وثائق السائق والمركبة',
+              items: data.documents,
+              preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _vehicleProfile',
+              '  List<Widget> _availability',
+              '''  List<Widget> _vehicleProfile(BuildContext context, _ReferenceData data) => [
+            _VehicleCard(vehicle: data.vehicle),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'سجل الصيانة',
+              items: data.maintenance,
+              preferredKeys: const ['serviceAt', 'odometerKm', 'nextServiceAt', 'nextServiceOdometerKm', 'notes'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _availability',
+              '  List<Widget> _incentives',
+              '''  List<Widget> _availability(BuildContext context, _ReferenceData data) {
+            final pref = data.preferences;
+            return [
+              _ServerFieldCard(
+                title: 'تفضيلات قبول الرحلات',
+                rows: {
+                  'الرحلات المجدولة': _yesNo(pref['acceptScheduledTrips']),
+                  'التوصيل الخاص': _yesNo(pref['acceptPrivateDeliveries']),
+                  'التوصيل المجمع': _yesNo(pref['acceptBatchDeliveries']),
+                  'متاح للعروض': _yesNo(pref['isAvailableForOffers']),
+                  'نطاق العروض': _km(pref['offerRadiusKm']),
+                },
+              ),
+              const SizedBox(height: 10),
+              _GenericList(
+                title: 'جدول التوفر الأسبوعي',
+                items: data.availability,
+                preferredKeys: const ['dayOfWeek', 'startTime', 'endTime', 'isActive'],
+              ),
+              const SizedBox(height: 10),
+              _GenericList(
+                title: 'الورديات',
+                items: data.shifts,
+                preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments'],
+              ),
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _incentives',
+              '  List<Widget> _orderIssue',
+              '''  List<Widget> _incentives(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'الحوافز والمكافآت',
+              items: data.incentives,
+              preferredKeys: const ['title', 'targetShipments', 'rewardAmount', 'startsAt', 'endsAt'],
+            ),
+            const SizedBox(height: 10),
+            ..._performance(context, data),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _orderIssue',
+              '  List<Widget> _chats',
+              '''  List<Widget> _orderIssue(BuildContext context, _ReferenceData data) => [
+            ..._shipmentDetail(context, data, title: 'الطلب المرتبط بالمشكلة'),
+            const SizedBox(height: 12),
+            _GenericList(
+              title: 'بلاغات السائق',
+              items: data.incidents,
+              preferredKeys: const ['category', 'title', 'description', 'isEmergency', 'status', 'createdAt'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _emergency',
+              '  List<Widget> _support',
+              '''  List<Widget> _emergency(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'البلاغات',
+              items: data.incidents,
+              preferredKeys: const ['category', 'title', 'isEmergency', 'status', 'createdAt'],
+            ),
+            const SizedBox(height: 12),
+            _FaqList(faqs: data.faqs),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _rating(',
+              '  List<Widget> _emptyOrders',
+              '''  List<Widget> _rating(
+            BuildContext context,
+            _ReferenceData data, {
+            required bool breakdown,
+          }) {
+            final performance = data.performance;
+            final avg = _double(performance['ratingAverage']);
+            final count = _int(performance['ratingCount']);
+            return [
+              _RatingSummary(average: avg, count: count),
+              if (breakdown) ...[
+                const SizedBox(height: 12),
+                const _DisabledFormCard(
+                  title: 'توزيع النجوم وتعليقات العملاء',
+                  fields: ['5 نجوم', '4 نجوم', '3 نجوم', '2 نجوم', 'نجمة واحدة', 'تعليقات الرحلات'],
+                  reason: 'performance API يعيد المتوسط والعدد ولا يعيد توزيع النجوم أو التعليقات النصية لكل رحلة.',
+                ),
+              ],
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _referFriend',
+              '  List<Widget> _tripHistory',
+              '''  List<Widget> _referFriend(BuildContext context, _ReferenceData data) => [
+            _ServerFieldCard(
+              title: 'برنامج الإحالة',
+              rows: {'كود الإحالة': _text(data.referral['code'])},
+            ),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'الإحالات',
+              items: data.referralRows,
+              preferredKeys: const ['referredDriverId', 'status', 'rewardAmount', 'createdAt'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _tripHistory',
+              '  List<Widget> _qrScan',
+              '''  List<Widget> _tripHistory(BuildContext context, _ReferenceData data) => [
+            _ShipmentList(shipments: data.shipments, history: true),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'الرحلات الحالية',
+              items: data.currentTrips,
+              preferredKeys: const ['trip', 'stops'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _batchOrders',
+              '  List<Widget> _pickupInventory',
+              '''  List<Widget> _batchOrders(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'الرحلات وتوقفاتها',
+              items: data.currentTrips,
+              preferredKeys: const ['trip', 'stops'],
+            ),
+            const SizedBox(height: 10),
+            _ShipmentList(shipments: data.shipments),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _pickupInventory',
+              '  List<Widget> _deliveryProof',
+              '''  List<Widget> _pickupInventory(BuildContext context, _ReferenceData data) => [
+            ..._shipmentDetail(context, data, title: 'الاستلام والمخزون'),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'إثباتات الشحنة',
+              items: data.proofs,
+              preferredKeys: const ['type', 'mediaUrl', 'recipientName', 'temperatureCelsius', 'notes', 'createdAt'],
+            ),
+            const SizedBox(height: 10),
+            const _ChecklistCard(items: [('الأصناف والكميات', null)]),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _deliveryProof',
+              '  List<Widget> _bankAccount',
+              '''  List<Widget> _deliveryProof(BuildContext context, _ReferenceData data) => [
+            ..._shipmentDetail(context, data, title: 'إثبات التسليم'),
+            const SizedBox(height: 10),
+            ..._navigation(context, data, destination: 'العميل'),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'إثباتات التسليم المسجلة',
+              items: data.proofs,
+              preferredKeys: const ['type', 'mediaUrl', 'signatureData', 'recipientName', 'verificationReference', 'createdAt'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _bankAccount',
+              '  List<Widget> _languagePrivacy',
+              '''  List<Widget> _bankAccount(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'الحسابات البنكية',
+              items: data.bankAccounts,
+              preferredKeys: const ['bankName', 'accountHolderName', 'iban', 'accountNumber', 'isVerified', 'isDefault'],
+            ),
+            const SizedBox(height: 10),
+            _ServerFieldCard(
+              title: 'المحفظة',
+              rows: {
+                'رقم المحفظة': _text(data.wallet['accountNumber']),
+                'الرصيد': _money(data.wallet['balance'], data.wallet['currency']),
+              },
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _performance',
+              '  List<Widget> _notificationPreferences',
+              '''  List<Widget> _performance(BuildContext context, _ReferenceData data) {
+            final p = data.performance;
+            return [
+              Row(
+                children: [
+                  Expanded(child: _MetricCard(label: 'التقييم', value: _double(p['ratingAverage']).toStringAsFixed(1), icon: Icons.star_outline_rounded)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _MetricCard(label: 'مكتملة', value: '${_int(p['completedShipments'])}', icon: Icons.task_alt_rounded)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _MetricCard(label: 'نشطة', value: '${_int(p['activeShipments'])}', icon: Icons.route_outlined)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _ServerFieldCard(
+                title: 'مؤشرات الأداء من السيرفر',
+                rows: {
+                  'فشل التسليم': _text(p['failedShipments']),
+                  'نسبة قبول العروض': '${_double(p['offerAcceptanceRate']).toStringAsFixed(2)}%',
+                  'إجمالي العروض': _text(p['totalOffers']),
+                  'العروض المقبولة': _text(p['acceptedOffers']),
+                },
+              ),
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _serviceArea',
+              '  List<Widget> _systemStatus',
+              '''  List<Widget> _serviceArea(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'مناطق التوصيل من السيرفر',
+              items: data.deliveryZones,
+              preferredKeys: const ['name', 'cityName', 'radiusKm', 'isActive'],
+            ),
+            const SizedBox(height: 10),
+            _ServerFieldCard(
+              title: 'نطاق قبول العروض',
+              rows: {
+                'النطاق': _km(data.preferences['offerRadiusKm']),
+                'متاح للعروض': _yesNo(data.preferences['isAvailableForOffers']),
+              },
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _systemStatus',
+              '  List<Widget> _cashCollection',
+              '''  List<Widget> _systemStatus(BuildContext context, _ReferenceData data) {
+            final source = data.result(ReferenceDataSource.journeyMe);
+            return [
+              _StatusServiceTile(
+                name: 'خدمة رحلة السائق',
+                ok: source?.succeeded == true,
+                detail: source?.succeeded == true
+                    ? 'تم الحصول على استجابة فعلية من api/driver-journey/me.'
+                    : (source?.error ?? 'لا توجد استجابة.'),
+              ),
+              const SizedBox(height: 10),
+              const _NoticeCard(
+                icon: Icons.monitor_heart_outlined,
+                title: 'حالة أعمال حقيقية',
+                message: 'تعكس البطاقة اتصال تطبيق السائق بعقد الرحلة الإنتاجي ولا تنشئ نسبة uptime وهمية.',
+              ),
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _payoutSuccess',
+              '  List<Widget> _returnOrder',
+              '''  List<Widget> _payoutSuccess(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'طلبات السحب والتحويل',
+              items: data.payouts,
+              preferredKeys: const ['amount', 'currency', 'status', 'providerReference', 'requestedAt', 'processedAt'],
+            ),
+            const SizedBox(height: 10),
+            _ServerFieldCard(
+              title: 'الرصيد الحالي',
+              rows: {'الرصيد': _money(data.wallet['balance'], data.wallet['currency'])},
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _returnOrder',
+              '  List<Widget> _customerUnavailable',
+              '''  List<Widget> _returnOrder(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'مهام المرتجعات المسندة',
+              items: data.returns,
+              preferredKeys: const ['returnRequestId', 'status', 'assignedAt', 'acceptedAt', 'pickedUpAt', 'returnedAt'],
+            ),
+            const SizedBox(height: 10),
+            ..._shipmentDetail(context, data, title: 'الشحنة المرتبطة'),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _shiftSummary',
+              '  List<Widget> _vehicleMaintenance',
+              '''  List<Widget> _shiftSummary(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'الورديات',
+              items: data.shifts,
+              preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments', 'startLatitude', 'startLongitude', 'endLatitude', 'endLongitude'],
+            ),
+            const SizedBox(height: 10),
+            ..._performance(context, data),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _vehicleMaintenance',
+              '  List<Widget> _documentExpiry',
+              '''  List<Widget> _vehicleMaintenance(BuildContext context, _ReferenceData data) => [
+            _VehicleCard(vehicle: data.vehicle),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'سجل الصيانة',
+              items: data.maintenance,
+              preferredKeys: const ['serviceAt', 'odometerKm', 'nextServiceAt', 'nextServiceOdometerKm', 'notes'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _documentExpiry',
+              '  List<Widget> _accountPaused',
+              '''  List<Widget> _documentExpiry(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'وثائق السائق والمركبة',
+              items: data.documents,
+              preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+            ),
+            const SizedBox(height: 10),
+            _VehicleCard(vehicle: data.vehicle),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _incidentReport',
+              '  List<Widget> _feeBreakdown',
+              '''  List<Widget> _incidentReport(BuildContext context, _ReferenceData data) => [
+            _GenericList(
+              title: 'بلاغات السائق',
+              items: data.incidents,
+              preferredKeys: const ['category', 'title', 'description', 'isEmergency', 'status', 'createdAt'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _feeBreakdown',
+              '  List<Widget> _identityVerification',
+              '''  List<Widget> _feeBreakdown(BuildContext context, _ReferenceData data) {
+            final shipment = data.shipmentDetail;
+            return [
+              _ServerFieldCard(
+                title: 'تفاصيل الرسوم المتاحة',
+                rows: {
+                  'رسوم التوصيل': _money(shipment['deliveryFee'], null),
+                  'تكلفة النقل': _money(shipment['transportCost'], null),
+                  'صافي الربح': _money(shipment['netProfit'], null),
+                  'رقم الشحنة': _text(shipment['shipmentNumber']),
+                },
+              ),
+              const SizedBox(height: 10),
+              _TransactionList(transactions: data.transactions),
+              const SizedBox(height: 10),
+              _GenericList(
+                title: 'الحوافز',
+                items: data.incentives,
+                preferredKeys: const ['title', 'rewardAmount', 'targetShipments', 'startsAt', 'endsAt'],
+              ),
+            ];
+          }''')
+
+          replace_between(
+              '  List<Widget> _identityVerification',
+              '  List<Widget> _customerFeedback',
+              '''  List<Widget> _identityVerification(BuildContext context, _ReferenceData data) => [
+            _ServerFieldCard(
+              title: 'حالة التحقق',
+              rows: {
+                'موثق': _yesNo(data.driver['isVerified']),
+                'حالة الموافقة': _text(data.driver['approvalStatus']),
+                'تاريخ الموافقة': _date(data.driver['approvedAt']),
+                'كود السائق': _text(data.driver['driverCode']),
+              },
+            ),
+            const SizedBox(height: 10),
+            _GenericList(
+              title: 'الوثائق المرفوعة',
+              items: data.documents,
+              preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+            ),
+          ];''')
+
+          replace_between(
+              '  List<Widget> _customerFeedback',
+              '}\n\nclass _ReferenceData',
+              '''  List<Widget> _customerFeedback(BuildContext context, _ReferenceData data) => [
+            ..._rating(context, data, breakdown: true),
+          ];
+        }''')
+
+          replace_between(
+              'class _ReferenceData {',
+              'class _ReferenceHero',
+              '''class _ReferenceData {
+          const _ReferenceData(this.payload);
+
+          final ReferenceScreenPayload? payload;
+
+          ReferenceSourceResult? result(ReferenceDataSource source) {
+            final rows = payload?.results ?? const <ReferenceSourceResult>[];
+            for (final row in rows) {
+              if (row.source == source) return row;
+            }
+            return null;
+          }
+
+          Map<String, dynamic> get journeyMe => _map(result(ReferenceDataSource.journeyMe)?.payload);
+          Map<String, dynamic> get driver {
+            final fromJourney = _map(journeyMe['driver']);
+            if (fromJourney.isNotEmpty) return fromJourney;
+            return _map(result(ReferenceDataSource.driver)?.payload);
+          }
+          Map<String, dynamic> get preferences => _map(result(ReferenceDataSource.preferences)?.payload);
+          List<Map<String, dynamic>> get availability => _listOfMaps(result(ReferenceDataSource.availability)?.payload);
+          List<Map<String, dynamic>> get offers => _listOfMaps(result(ReferenceDataSource.offers)?.payload);
+          List<Map<String, dynamic>> get scheduledTrips => _listOfMaps(result(ReferenceDataSource.scheduledTrips)?.payload);
+          List<Map<String, dynamic>> get currentTrips => _listOfMaps(result(ReferenceDataSource.currentTrips)?.payload);
+          List<Map<String, dynamic>> get shifts => _listOfMaps(result(ReferenceDataSource.shifts)?.payload);
+          List<Map<String, dynamic>> get shipments => _listOfMaps(result(ReferenceDataSource.shipments)?.payload);
+          Map<String, dynamic> get shipmentDetail => _map(result(ReferenceDataSource.shipmentDetail)?.payload);
+          Map<String, dynamic> get tracking => _map(result(ReferenceDataSource.tracking)?.payload);
+          List<Map<String, dynamic>> get proofs => _listOfMaps(result(ReferenceDataSource.shipmentProofs)?.payload);
+          Map<String, dynamic> get wallet => _map(result(ReferenceDataSource.wallet)?.payload);
+          List<Map<String, dynamic>> get transactions {
+            final value = result(ReferenceDataSource.walletTransactions)?.payload;
+            if (value is List) return _listOfMaps(value);
+            final root = _map(value);
+            return _listOfMaps(root['data'] ?? root['items']);
+          }
+          List<Map<String, dynamic>> get notifications {
+            final value = result(ReferenceDataSource.notifications)?.payload;
+            if (value is List) return _listOfMaps(value);
+            final root = _map(value);
+            return _listOfMaps(root['items'] ?? root['data']);
+          }
+          Map<String, dynamic> get vehicle => _map(result(ReferenceDataSource.vehicle)?.payload ?? journeyMe['vehicle']);
+          List<Map<String, dynamic>> get documents => _listOfMaps(result(ReferenceDataSource.documents)?.payload);
+          List<Map<String, dynamic>> get maintenance => _listOfMaps(result(ReferenceDataSource.vehicleMaintenance)?.payload);
+          List<Map<String, dynamic>> get bankAccounts => _listOfMaps(result(ReferenceDataSource.bankAccounts)?.payload);
+          List<Map<String, dynamic>> get payouts => _listOfMaps(result(ReferenceDataSource.payouts)?.payload);
+          List<Map<String, dynamic>> get incentives => _listOfMaps(result(ReferenceDataSource.incentives)?.payload);
+          Map<String, dynamic> get referral => _map(result(ReferenceDataSource.referral)?.payload);
+          List<Map<String, dynamic>> get referralRows => _listOfMaps(referral['referrals']);
+          List<Map<String, dynamic>> get incidents => _listOfMaps(result(ReferenceDataSource.incidents)?.payload);
+          List<Map<String, dynamic>> get returns => _listOfMaps(result(ReferenceDataSource.returns)?.payload);
+          Map<String, dynamic> get performance => _map(result(ReferenceDataSource.performance)?.payload);
+          List<Map<String, dynamic>> get faqs => _listOfMaps(result(ReferenceDataSource.supportFaqs)?.payload);
+          List<Map<String, dynamic>> get tickets => _listOfMaps(result(ReferenceDataSource.supportTickets)?.payload);
+          List<Map<String, dynamic>> get chats => _listOfMaps(result(ReferenceDataSource.chats)?.payload);
+          List<Map<String, dynamic>> get deliveryZones => _listOfMaps(result(ReferenceDataSource.deliveryZones)?.payload);
+        }
+
+        ''')
+
+          action_start = text.index('IconData _actionIcon')
+          text = text[:action_start] + '''IconData _actionIcon(ReferenceAction action) => switch (action) {
+                ReferenceAction.acceptShipment => Icons.check_circle_outline_rounded,
+                ReferenceAction.pickupShipment => Icons.inventory_2_outlined,
+                ReferenceAction.startTransit => Icons.route_outlined,
+                ReferenceAction.nearCustomer => Icons.location_on_outlined,
+                ReferenceAction.deliverShipment => Icons.task_alt_rounded,
+                ReferenceAction.failShipment => Icons.report_problem_outlined,
+                ReferenceAction.startShift => Icons.play_circle_outline_rounded,
+                ReferenceAction.endShift => Icons.stop_circle_outlined,
+                ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
+                ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
+                ReferenceAction.createIncident => Icons.support_agent_rounded,
+              };
+
+        String _actionTitle(ReferenceAction action) => switch (action) {
+              ReferenceAction.acceptShipment => 'قبول الشحنة على السيرفر',
+              ReferenceAction.pickupShipment => 'تأكيد الاستلام على السيرفر',
+              ReferenceAction.startTransit => 'بدء التوجه للعميل',
+              ReferenceAction.nearCustomer => 'تأكيد الوصول قرب العميل',
+              ReferenceAction.deliverShipment => 'تأكيد التسليم على السيرفر',
+              ReferenceAction.failShipment => 'تسجيل تعذر التسليم',
+              ReferenceAction.startShift => 'بدء الوردية',
+              ReferenceAction.endShift => 'إنهاء الوردية',
+              ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
+              ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
+              ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
+            };
+        '''
+
+          path.write_text(text)
+          PY
+          dart format lib/features/reference_journey/reference_production_body.dart
+          git diff --check
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/reference_journey/reference_production_body.dart
+          git commit -m 'feat: render live driver journey data across reference screens'
+          git push origin HEAD:chatgpt/driver-journey-server-sync-20261017
