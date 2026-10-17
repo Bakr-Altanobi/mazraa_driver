@@ -66,11 +66,12 @@ class HomeScreen extends ConsumerWidget {
     final active = shipmentRows.where((item) => item.status.isActive).toList();
     final completedToday = shipmentRows.where((item) {
       final now = DateTime.now();
-      final date = item.createdAt.toLocal();
+      final deliveredAt = item.deliveredAt?.toLocal();
       return item.status == ShipmentStatus.delivered &&
-          date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day;
+          deliveredAt != null &&
+          deliveredAt.year == now.year &&
+          deliveredAt.month == now.month &&
+          deliveredAt.day == now.day;
     }).length;
     final currentPoint = position.valueOrNull == null
         ? (profile?.currentLatitude != null && profile?.currentLongitude != null
