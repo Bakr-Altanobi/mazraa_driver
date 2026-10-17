@@ -33,7 +33,7 @@ for attempt in $(seq 1 45); do
   adb shell rm -f /sdcard/mazraa-window.xml >/dev/null 2>&1 || true
   if adb shell uiautomator dump --compressed /sdcard/mazraa-window.xml >/dev/null 2>&1 \
       && adb exec-out cat /sdcard/mazraa-window.xml > artifacts/window.xml 2>/dev/null; then
-    if grep -Fq 'ابدأ الآن' artifacts/window.xml \
+    if grep -Fq 'البدء الآن' artifacts/window.xml \
         && grep -Fq 'رحلات أوضح' artifacts/window.xml; then
       ready=true
       break
@@ -49,8 +49,6 @@ if [[ "$ready" != true ]]; then
   exit 1
 fi
 
-# Give Flutter two frames after the semantic tree is ready, then capture the
-# exact emulator output used for screen-01 visual comparison.
 sleep 1
 adb exec-out screencap -p > artifacts/main-screen.png
 test -s artifacts/main-screen.png
