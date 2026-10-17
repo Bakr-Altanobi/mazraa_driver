@@ -21,6 +21,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
   int _vehicleType = 0;
   bool _busy = false;
   bool _obscure = true;
+  bool _resumeExisting = false;
   String? _error;
 
   @override
@@ -37,12 +38,21 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
     if (!_form.currentState!.validate() || _busy) return;
     setState(() { _busy = true; _error = null; });
     try {
-      await ref.read(driverRegistrationApiProvider).registerAndApply(
-        name: _name.text,
-        email: _email.text,
-        password: _password.text,
-        vehicleType: _vehicleType,
-      );
+      final api = ref.read(driverRegistrationApiProvider);
+      if (_resumeExisting) {
+        await api.signInAndApply(
+          email: _email.text,
+          password: _password.text,
+          vehicleType: _vehicleType,
+        );
+      } else {
+        await api.registerAndApply(
+          name: _name.text,
+          email: _email.text,
+          password: _password.text,
+          vehicleType: _vehicleType,
+        );
+      }
       await ref.read(authControllerProvider).initialize(force: true);
       if (!mounted) return;
       final auth = ref.read(authControllerProvider);
@@ -55,7 +65,8 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
         setState(() => _error = auth.errorMessage ?? 'تعذر تحميل ملف السائق بعد إنشاء الحساب.');
       }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() => _error =
+          '$error\nإذا تم إنشاء الحساب بالفعل ولم يكتمل طلب السائق، اختر «استكمال طلب حساب موجود» أدناه.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -102,6 +113,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 22),
+                    if (!_resumeExisting) ...[
                     TextFormField(
                       controller: _name,
                       textInputAction: TextInputAction.next,
@@ -112,6 +124,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
                       validator: (v) => (v?.trim().length ?? 0) < 2 ? 'أدخل الاسم الكامل' : null,
                     ),
                     const SizedBox(height: 12),
+                    ],
                     TextFormField(
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
@@ -140,6 +153,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
                       validator: (v) => (v?.length ?? 0) < 6 ? 'استخدم 6 أحرف على الأقل' : null,
                     ),
                     const SizedBox(height: 12),
+                    if (!_resumeExisting) ...[
                     TextFormField(
                       controller: _confirm,
                       obscureText: _obscure,
@@ -151,6 +165,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
                       validator: (v) => v == _password.text ? null : 'كلمتا المرور غير متطابقتين',
                     ),
                     const SizedBox(height: 12),
+                    ],
                     DropdownButtonFormField<int>(
                       initialValue: _vehicleType,
                       decoration: const InputDecoration(
@@ -185,7 +200,20 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.how_to_reg_rounded),
-                      label: const Text('إنشاء الحساب وإرسال الطلب'),
+                      label: Text(_resumeExisting
+                          ? 'تسجيل الدخول واستكمال الطلب'
+                          : 'إنشاء الحساب وإرسال الطلب'),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('resumeDriverApplicationButton'),
+                      onPressed: _busy ? null : () => setState(() {
+                        _resumeExisting = !_resumeExisting;
+                        _error = null;
+                      }),
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: Text(_resumeExisting
+                          ? 'إنشاء حساب جديد'
+                          : 'استكمال طلب حساب موجود'),
                     ),
                     TextButton(
                       onPressed: _busy ? null : () => context.go('/login'),
