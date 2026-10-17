@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
+import 'package:mazraa_driver/features/reference_journey/weekly_availability_editor.dart';
 
 /// Server-backed controls on the reference services screens. No payouts or
 /// preferences are simulated locally: a successful API response is required.
@@ -495,15 +496,20 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     final preferenceControls = widget.screenNumber == 12 || widget.screenNumber == 16;
     final scheduledControls = widget.screenNumber == 16;
     final returnControls = widget.screenNumber == 39;
-    if (!bankControls && !preferenceControls && !scheduledControls && !returnControls) {
+    final availabilityControls = widget.screenNumber == 16;
+    if (!bankControls && !preferenceControls && !scheduledControls &&
+        !returnControls && !availabilityControls) {
       return const SizedBox.shrink();
     }
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Row(
+              children: [
             if (bankControls) ...[
               Expanded(
                 child: OutlinedButton(
@@ -547,6 +553,15 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
                   label: const Text('تنفيذ خطوة المرتجع'),
                 ),
               ),
+              ],
+            ),
+            if (availabilityControls) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: WeeklyAvailabilityEditor(onSaved: widget.onSaved),
+              ),
+            ],
           ],
         ),
       ),
