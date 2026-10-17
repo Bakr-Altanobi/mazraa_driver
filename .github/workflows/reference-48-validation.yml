@@ -58,7 +58,8 @@ jobs:
             test/features/reference_journey/reference_screens_render_test.dart \
             test/features/reference_journey/reference_production_body_test.dart \
             test/features/shipments/driver_offers_test.dart \
-            test/core/models/driver_profile_backend_enum_test.dart
+            test/core/models/driver_profile_backend_enum_test.dart \
+            test/features/reference_journey/reference_action_selection_test.dart
 
       - name: Static analyze reference implementation
         run: |
