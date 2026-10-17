@@ -5,6 +5,9 @@ on:
     branches: [chatgpt/visual-reference-audit-20261017]
 permissions:
   contents: write
+concurrency:
+  group: visual-audit-screen01-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -19,8 +22,26 @@ jobs:
           channel: beta
           cache: true
       - run: flutter pub get
-      - name: Verify screen 01 pixel match and navigation events
+      - name: Capture screen 01 and verify navigation events
         run: flutter test test/visual/screen01_visual_test.dart
+      - name: Compare captured pixels with canonical reference
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image, ImageChops
+          from pathlib import Path
+          ref = Image.open('refrinces/screens/01_onboarding.png').convert('RGB')
+          actual = Image.open('build/visual/01_onboarding_actual.png').convert('RGB')
+          if ref.size != actual.size:
+              raise SystemExit(f'size mismatch: reference={ref.size} actual={actual.size}')
+          diff = ImageChops.difference(ref, actual)
+          bbox = diff.getbbox()
+          if bbox is not None:
+              Path('build/visual').mkdir(parents=True, exist_ok=True)
+              diff.save('build/visual/01_onboarding_diff.png')
+              raise SystemExit(f'pixel mismatch detected in bounding box {bbox}')
+          print('Screen 01 is pixel-identical to the canonical 1440x2560 reference.')
+          PY
       - name: Verify existing onboarding render contract
         run: flutter test test/features/reference_journey/reference_screens_render_test.dart --plain-name 'reference onboarding screen 01 renders on compact viewport'
       - name: Analyze changed UI
@@ -36,13 +57,15 @@ jobs:
           git add lib/features/auth/auth_screens.dart pubspec.yaml test/visual/screen01_visual_test.dart
           git commit -m 'fix: match driver reference screen 01 exactly'
           git push origin HEAD:chatgpt/visual-reference-audit-20261017
-      - name: Archive canonical reference and exact primary assets
+      - name: Archive visual evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: visual-reference-screen-01
+          name: visual-audit-screen-01
           path: |
             refrinces/screens/01_onboarding.png
             refrinces/assets_primary/by_screen/01/*.png
-          if-no-files-found: error
+            build/visual/01_onboarding_actual.png
+            build/visual/01_onboarding_diff.png
+          if-no-files-found: warn
           retention-days: 7
