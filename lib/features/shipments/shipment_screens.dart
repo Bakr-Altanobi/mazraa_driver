@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -285,6 +286,89 @@ class ShipmentDetailsScreen extends ConsumerStatefulWidget {
 class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
   bool _acting = false;
   bool _sendingLocation = false;
+  StreamSubscription<Position>? _liveLocationSubscription;
+  DateTime? _lastLiveLocationSentAt;
+  bool _uploadingLiveLocation = false;
+
+  @override
+  void dispose() {
+    _liveLocationSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _toggleLiveLocation() async {
+    if (_liveLocationSubscription != null) {
+      await _liveLocationSubscription?.cancel();
+      _liveLocationSubscription = null;
+      if (mounted) setState(() {});
+      return;
+    }
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw StateError('فعّل خدمات الموقع على الجهاز أولًا.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw StateError('إذن الموقع مطلوب للتتبع المباشر.');
+      }
+      final stream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 20,
+        ),
+      );
+      _lastLiveLocationSentAt = null;
+      _liveLocationSubscription = stream.listen(
+        (position) async {
+          if (_uploadingLiveLocation || !mounted) return;
+          final now = DateTime.now();
+          if (_lastLiveLocationSentAt != null &&
+              now.difference(_lastLiveLocationSentAt!).inSeconds < 15) {
+            return;
+          }
+          _lastLiveLocationSentAt = now;
+          _uploadingLiveLocation = true;
+          try {
+            await ref.read(driverApiProvider).updateLocation(
+              widget.shipmentId,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              heading: position.heading,
+              speedKph: position.speed * 3.6,
+              accuracyMeters: position.accuracy,
+            );
+            if (mounted) ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+          } catch (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('تعذر تحديث التتبع: $error')),
+              );
+            }
+          } finally {
+            _uploadingLiveLocation = false;
+          }
+        },
+        onError: (Object error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('تعذر تحديد الموقع: $error')),
+            );
+          }
+        },
+      );
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
+  }
 
   Future<void> _runAction(String action, Shipment shipment) async {
     final ar = isArabic(context);
@@ -597,6 +681,22 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   ),
                 ],
               ),
+              if (!shipment.status.isClosed) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: const Key('foregroundLiveTrackingButton'),
+                    onPressed: _toggleLiveLocation,
+                    icon: Icon(_liveLocationSubscription == null
+                        ? Icons.location_searching_rounded
+                        : Icons.stop_circle_outlined),
+                    label: Text(_liveLocationSubscription == null
+                        ? 'بدء التتبع المباشر أثناء عرض الشاشة'
+                        : 'إيقاف التتبع المباشر'),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               SectionHeader(
                 title: ar ? 'معلومات الرحلة' : 'Trip information',
