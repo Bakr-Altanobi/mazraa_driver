@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/features/reference_journey/weekly_availability_editor.dart';
+import 'package:mazraa_driver/features/reference_journey/vehicle_maintenance_editor.dart';
 
 /// Server-backed controls on the reference services screens. No payouts or
 /// preferences are simulated locally: a successful API response is required.
@@ -497,8 +498,9 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     final scheduledControls = widget.screenNumber == 16;
     final returnControls = widget.screenNumber == 39;
     final availabilityControls = widget.screenNumber == 16;
+    final maintenanceControls = widget.screenNumber == 15 || widget.screenNumber == 42;
     if (!bankControls && !preferenceControls && !scheduledControls &&
-        !returnControls && !availabilityControls) {
+        !returnControls && !availabilityControls && !maintenanceControls) {
       return const SizedBox.shrink();
     }
     return SafeArea(
@@ -560,6 +562,13 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
               SizedBox(
                 width: double.infinity,
                 child: WeeklyAvailabilityEditor(onSaved: widget.onSaved),
+              ),
+            ],
+            if (maintenanceControls) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: VehicleMaintenanceEditor(onSaved: widget.onSaved),
               ),
             ],
           ],
