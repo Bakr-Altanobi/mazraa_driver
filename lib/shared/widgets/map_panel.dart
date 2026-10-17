@@ -4,6 +4,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
+import 'package:mazraa_driver/shared/widgets/shipment_navigation_button.dart';
 
 class MapPanel extends StatelessWidget {
   const MapPanel({
@@ -161,6 +162,35 @@ class MapPanel extends StatelessWidget {
                         : 'Configure Google Maps to show the live map',
                     maxLines: 2,
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ),
+            if (store != null || customer != null)
+              PositionedDirectional(
+                start: 12,
+                end: onLocate == null ? 12 : 66,
+                bottom: AppEnvironment.mapsEnabled ? 10 : 72,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (store != null)
+                        ShipmentNavigationButton(
+                          key: const Key('navigateToPickup'),
+                          destination: store!,
+                          label: 'الاستلام',
+                          icon: Icons.storefront_outlined,
+                        ),
+                      if (store != null && customer != null)
+                        const SizedBox(width: 8),
+                      if (customer != null)
+                        ShipmentNavigationButton(
+                          key: const Key('navigateToCustomer'),
+                          destination: customer!,
+                          label: 'العميل',
+                          icon: Icons.navigation_rounded,
+                        ),
+                    ],
                   ),
                 ),
               ),
