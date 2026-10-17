@@ -242,6 +242,8 @@ class ReferenceRepository {
   Future<void> runShipmentAction(
     ReferenceAction action, {
     String? reason,
+    String? numericCode,
+    String? qrToken,
     int? targetId,
   }) async {
     if (action == ReferenceAction.startShift) {
@@ -309,7 +311,9 @@ class ReferenceRepository {
                   ? 'تعذر الوصول للعميل'
                   : reason!.trim(),
             }
-          : null,
+          : action == ReferenceAction.deliverShipment
+              ? {'numericCode': numericCode, 'qrToken': qrToken}
+              : null,
     );
   }
 
