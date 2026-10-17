@@ -1,0 +1,25 @@
+name: Visual reference screen 02
+on:
+  workflow_dispatch:
+  push:
+    branches: [chatgpt/visual-reference-audit-20261017]
+    paths:
+      - '.github/workflows/visual-reference-screen02.yml'
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          file refrinces/screens/02_login_otp.png
+          for f in refrinces/assets_primary/by_screen/02/*.png; do file "$f"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-reference-screen-02
+          path: |
+            refrinces/screens/02_login_otp.png
+            refrinces/assets_primary/by_screen/02/*.png
+          if-no-files-found: error
+          retention-days: 7
