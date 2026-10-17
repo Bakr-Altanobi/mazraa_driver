@@ -198,6 +198,15 @@ class DriverApi {
   Future<List<dynamic>> getReturnTasks() =>
       _client.get<List<dynamic>>('api/driver-journey/returns');
 
+  Future<void> acceptReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/accept');
+
+  Future<void> pickupReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/pickup');
+
+  Future<void> completeReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/complete');
+
   Future<Map<String, dynamic>> getPerformance() =>
       _client.get<Map<String, dynamic>>('api/driver-journey/performance');
 
