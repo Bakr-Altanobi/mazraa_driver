@@ -21,12 +21,12 @@ class DriverServiceControls extends ConsumerStatefulWidget {
 class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
   bool _busy = false;
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _run(Future<bool> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await action();
-      if (mounted) {
+      final saved = await action();
+      if (saved && mounted) {
         widget.onSaved();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم حفظ العملية في السيرفر.')),
@@ -43,7 +43,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     }
   }
 
-  Future<void> _editBank() async {
+  Future<bool> _editBank() async {
     final bank = TextEditingController();
     final holder = TextEditingController();
     final iban = TextEditingController();
@@ -102,13 +102,14 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
           ],
         ),
       );
-      if (entered != true || !mounted) return;
+      if (entered != true || !mounted) return false;
       await ref.read(driverApiProvider).putBankAccount(
         bankName: bank.text,
         accountHolderName: holder.text,
         iban: iban.text,
         accountNumber: account.text.isEmpty ? null : account.text,
       );
+      return true;
     } finally {
       bank.dispose();
       holder.dispose();
@@ -117,7 +118,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     }
   }
 
-  Future<void> _requestPayout() async {
+  Future<bool> _requestPayout() async {
     final api = ref.read(driverApiProvider);
     final wallet = await api.getWallet();
     final rows = await api.getBankAccounts();
@@ -189,18 +190,19 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
           ),
         ),
       );
-      if (entered != true || selected == null || !mounted) return;
+      if (entered != true || selected == null || !mounted) return false;
       await api.requestPayout(
         bankAccountId: selected!,
         amount: double.parse(amount.text.trim()),
         currency: wallet.currency,
       );
+      return true;
     } finally {
       amount.dispose();
     }
   }
 
-  Future<void> _editPreferences() async {
+  Future<bool> _editPreferences() async {
     final api = ref.read(driverApiProvider);
     final existing = await api.getDriverPreferences();
     var scheduled = existing['acceptScheduledTrips'] == true;
@@ -276,7 +278,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
           ),
         ),
       );
-      if (entered != true || !mounted) return;
+      if (entered != true || !mounted) return false;
       await api.updateDriverPreferences(
         acceptScheduledTrips: scheduled,
         acceptPrivateDeliveries: private,
@@ -285,6 +287,7 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
         offerRadiusKm: double.parse(radius.text.trim()),
         offerTimeoutSeconds: int.parse(timeout.text.trim()),
       );
+      return true;
     } finally {
       radius.dispose();
       timeout.dispose();
