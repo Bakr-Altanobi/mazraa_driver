@@ -36,7 +36,7 @@ class AvailabilityWindow {
   static String parseClock(Object? raw) {
     final value = raw?.toString() ?? '';
     // C# TimeSpan is serialized as HH:mm:ss or HH:mm:ss.fffffff.
-    final match = RegExp(r'^(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,7})?$')
+    final match = RegExp(r'^(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,7})?$')
         .firstMatch(value);
     if (match == null) {
       throw const FormatException('صيغة وقت التوفر من السيرفر غير مفهومة.');
