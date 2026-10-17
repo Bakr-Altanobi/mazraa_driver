@@ -45,11 +45,43 @@ void main() {
       }
     });
 
-    test('known unsupported backend contracts stay visible', () {
-      expect(ReferenceCatalog.screen(10).unsupported, isNotEmpty);
-      expect(ReferenceCatalog.screen(16).unsupported, isNotEmpty);
-      expect(ReferenceCatalog.screen(24).unsupported, isNotEmpty);
-      expect(ReferenceCatalog.screen(30).unsupported, isNotEmpty);
+    test('new driver journey contracts replace the former fake backend gaps', () {
+      expect(
+        ReferenceCatalog.screen(10).sources,
+        containsAll(<ReferenceDataSource>[
+          ReferenceDataSource.bankAccounts,
+          ReferenceDataSource.payouts,
+        ]),
+      );
+      expect(ReferenceCatalog.screen(10).unsupported, isEmpty);
+
+      expect(
+        ReferenceCatalog.screen(16).sources,
+        containsAll(<ReferenceDataSource>[
+          ReferenceDataSource.availability,
+          ReferenceDataSource.preferences,
+          ReferenceDataSource.shifts,
+        ]),
+      );
+      expect(ReferenceCatalog.screen(16).unsupported, isEmpty);
+
+      expect(
+        ReferenceCatalog.screen(24).sources,
+        contains(ReferenceDataSource.referral),
+      );
+      expect(ReferenceCatalog.screen(24).unsupported, isEmpty);
+
+      expect(
+        ReferenceCatalog.screen(30).sources,
+        contains(ReferenceDataSource.bankAccounts),
+      );
+      expect(ReferenceCatalog.screen(30).unsupported, isEmpty);
+    });
+
+    test('genuine backend gaps remain explicit instead of invented', () {
+      expect(ReferenceCatalog.screen(2).unsupported, isNotEmpty);
+      expect(ReferenceCatalog.screen(5).unsupported, isNotEmpty);
+      expect(ReferenceCatalog.screen(33).unsupported, isNotEmpty);
       expect(ReferenceCatalog.screen(48).unsupported, isNotEmpty);
     });
   });

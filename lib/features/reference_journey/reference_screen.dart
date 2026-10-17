@@ -109,7 +109,7 @@ class _ReferenceJourneyScreenState
             builder: (dialogContext) => AlertDialog(
               title: Text(_actionTitle(action)),
               content: const Text(
-                'سيتم تنفيذ العملية فقط على شحنة حقيقية حالتها مؤهلة لهذا الإجراء حسب قواعد السيرفر. إذا لم توجد شحنة مؤهلة فلن يتم إرسال أي تعديل.',
+                'سيتم تنفيذ العملية فقط على بيانات حقيقية مؤهلة حسب قواعد السيرفر. إذا لم توجد شحنة أو وردية أو عرض مؤهل فلن يتم إرسال تعديل غير صالح.',
               ),
               actions: [
                 TextButton(
@@ -240,8 +240,15 @@ class _ReferenceJourneyScreenState
 }
 
 String _actionTitle(ReferenceAction action) => switch (action) {
+      ReferenceAction.acceptShipment => 'قبول الشحنة',
       ReferenceAction.pickupShipment => 'تأكيد استلام الشحنة',
+      ReferenceAction.startTransit => 'بدء التوجه للعميل',
+      ReferenceAction.nearCustomer => 'تأكيد الوصول قرب العميل',
       ReferenceAction.deliverShipment => 'تأكيد تسليم الشحنة',
       ReferenceAction.failShipment => 'تسجيل تعذر التسليم',
+      ReferenceAction.startShift => 'بدء الوردية',
+      ReferenceAction.endShift => 'إنهاء الوردية',
+      ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
+      ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ',
     };
