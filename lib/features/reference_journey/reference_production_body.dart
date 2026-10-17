@@ -898,7 +898,7 @@ class _ReferenceHero extends StatelessWidget {
                 assets.first.path,
                 fit: BoxFit.contain,
                 cacheWidth: 720,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.image_not_supported_outlined,
                   size: 54,
                 ),
@@ -926,7 +926,7 @@ class _ReferenceHero extends StatelessWidget {
                           asset.path,
                           fit: BoxFit.contain,
                           cacheWidth: 180,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                         ),
                       ),
                     ),
@@ -1452,32 +1452,6 @@ class _DisabledFormCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
             ],
-            _InlineUnsupported(reason),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DisabledActionCard extends StatelessWidget {
-  const _DisabledActionCard({required this.title, required this.buttonLabel, required this.reason});
-  final String title;
-  final String buttonLabel;
-  final String reason;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: null, child: Text(buttonLabel)),
-            const SizedBox(height: 10),
             _InlineUnsupported(reason),
           ],
         ),
