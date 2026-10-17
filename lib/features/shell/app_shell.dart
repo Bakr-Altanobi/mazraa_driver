@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mazraa_driver/core/theme/app_theme.dart';
-import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
+import 'package:mazraa_driver/features/shipments/driver_offer_feed.dart';
 
-class AppShell extends StatelessWidget {
+const _forest = Color(0xFF075A35);
+const _orange = Color(0xFFC95A22);
+
+class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
-  static const _visibleBranches = <int>[0, 1, 2, 4];
-
   @override
-  Widget build(BuildContext context) {
-    final ar = isArabic(context);
-    final visibleIndex = _visibleBranches.indexOf(navigationShell.currentIndex);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offers = ref.watch(driverOfferFeedProvider).asData?.value.offers.length ?? 0;
+    final current = navigationShell.currentIndex;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          margin: const EdgeInsets.fromLTRB(18, 4, 18, 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-          decoration: BoxDecoration(
+          padding: const EdgeInsets.fromLTRB(13, 7, 13, 5),
+          decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x13000000),
-                blurRadius: 24,
-                offset: Offset(0, 8),
+                color: Color(0x12000000),
+                blurRadius: 18,
+                offset: Offset(0, -4),
               ),
             ],
           ),
@@ -36,37 +36,38 @@ class AppShell extends StatelessWidget {
             children: [
               Expanded(
                 child: _ReferenceDestination(
-                  selected: visibleIndex == 0,
+                  selected: current == 0,
                   icon: Icons.home_rounded,
                   outlineIcon: Icons.home_outlined,
-                  label: ar ? 'الرئيسية' : 'Home',
+                  label: 'الرئيسية',
                   onTap: () => _go(0),
                 ),
               ),
               Expanded(
                 child: _ReferenceDestination(
-                  selected: visibleIndex == 1,
-                  icon: Icons.assignment_rounded,
-                  outlineIcon: Icons.assignment_outlined,
-                  label: ar ? 'الطلبات' : 'Orders',
-                  onTap: () => _go(1),
-                ),
-              ),
-              Expanded(
-                child: _ReferenceDestination(
-                  selected: visibleIndex == 2,
-                  icon: Icons.bar_chart_rounded,
-                  outlineIcon: Icons.bar_chart_outlined,
-                  label: ar ? 'الأرباح' : 'Earnings',
+                  selected: current == 2,
+                  icon: Icons.map_rounded,
+                  outlineIcon: Icons.map_outlined,
+                  label: 'الخريطة',
                   onTap: () => _go(2),
                 ),
               ),
               Expanded(
                 child: _ReferenceDestination(
-                  selected: visibleIndex == 3,
+                  selected: current == 1,
+                  icon: Icons.assignment_rounded,
+                  outlineIcon: Icons.assignment_outlined,
+                  label: 'الطلبات',
+                  badge: offers,
+                  onTap: () => _go(1),
+                ),
+              ),
+              Expanded(
+                child: _ReferenceDestination(
+                  selected: current == 4,
                   icon: Icons.person_rounded,
                   outlineIcon: Icons.person_outline_rounded,
-                  label: ar ? 'حسابي' : 'Profile',
+                  label: 'حسابي',
                   onTap: () => _go(4),
                 ),
               ),
@@ -92,6 +93,7 @@ class _ReferenceDestination extends StatelessWidget {
     required this.outlineIcon,
     required this.label,
     required this.onTap,
+    this.badge = 0,
   });
 
   final bool selected;
@@ -99,20 +101,53 @@ class _ReferenceDestination extends StatelessWidget {
   final IconData outlineIcon;
   final String label;
   final VoidCallback onTap;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFF075A35) : const Color(0xFF718078);
+    final color = selected ? _forest : const Color(0xFF5E5A56);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+      borderRadius: BorderRadius.circular(30),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFF0F5E9) : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(selected ? icon : outlineIcon, color: color, size: 27),
-            const SizedBox(height: 5),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(selected ? icon : outlineIcon, color: color, size: 28),
+                if (badge > 0)
+                  Positioned(
+                    right: -9,
+                    top: -6,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 19, minHeight: 19),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: _orange,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        badge > 99 ? '99+' : '$badge',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
             Text(
               label,
               maxLines: 1,
@@ -121,16 +156,6 @@ class _ReferenceDestination extends StatelessWidget {
                 color: color,
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: selected ? 24 : 0,
-              height: 3,
-              decoration: BoxDecoration(
-                color: MazraaColors.forest,
-                borderRadius: BorderRadius.circular(99),
               ),
             ),
           ],
