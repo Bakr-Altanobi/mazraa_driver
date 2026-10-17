@@ -168,7 +168,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final currency = walletAsync.valueOrNull?.currency ?? '';
     final name = _firstName(profile?.name, ar: ar);
     final accepting = profile?.isAcceptingOrders == true;
-    final operationalAvailable = _isOperationallyAvailable(profile);
+    final operationalAvailable = BuildFlags.ciSmokeHome
+        ? true
+        : _isOperationallyAvailable(profile);
     final rating = profile?.ratingAverage ?? 0;
     final unread = unreadAsync.valueOrNull ?? 0;
     final locationLabel = BuildFlags.ciSmokeHome
@@ -557,7 +559,7 @@ class _ReferenceMapCard extends StatelessWidget {
             Opacity(
               opacity: .34,
               child: Image.asset(
-                ReferenceAssets.homeRouteDashboard,
+                'refrinces/assets_primary/by_screen/03/01_asset_home_route_dashboard.png',
                 fit: BoxFit.cover,
               ),
             ),
