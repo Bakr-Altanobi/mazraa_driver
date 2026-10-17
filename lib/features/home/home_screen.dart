@@ -263,6 +263,15 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 11),
                     OutlinedButton.icon(
+                      key: const Key('openDriverOffers'),
+                      onPressed: () => context.push('/offers'),
+                      icon: const Icon(Icons.local_offer_outlined),
+                      label: Text(
+                        ar ? 'العروض المتاحة' : 'Available offers',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
                       key: const Key('openAllDriverServices'),
                       onPressed: () => context.push('/services'),
                       icon: const Icon(Icons.apps_rounded),
