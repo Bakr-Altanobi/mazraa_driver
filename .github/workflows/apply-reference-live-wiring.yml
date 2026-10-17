@@ -1,0 +1,36 @@
+name: Apply reference live wiring
+
+on:
+  push:
+    branches:
+      - chatgpt/driver-journey-server-sync-20261017
+    paths:
+      - .github/workflows/apply-reference-live-wiring.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: chatgpt/driver-journey-server-sync-20261017
+          fetch-depth: 0
+      - name: Apply wiring
+        run: python tools/complete_reference_live_wiring.py
+      - name: Verify diff
+        run: git diff --check
+      - name: Commit generated wiring
+        run: |
+          if git diff --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/features/reference_journey/reference_catalog.dart lib/features/reference_journey/reference_production_body.dart
+          git commit -m "feat: render live driver journey data across reference screens"
+          git push origin HEAD:chatgpt/driver-journey-server-sync-20261017
