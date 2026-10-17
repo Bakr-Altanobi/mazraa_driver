@@ -204,6 +204,73 @@ class _ReferenceJourneyScreenState
     }
   }
 
+  Future<void> _editAccountAction(ReferenceAction action) {
+    if (action == ReferenceAction.updatePreferences) return _updatePreferences();
+    if (action == ReferenceAction.saveBankAccount) return _updateBankAccount();
+    return _requestPayout();
+  }
+
+  Future<void> _updatePreferences() async {
+    setState(() => _actionBusy = true);
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final original = await repository.loadPreferences();
+      if (!mounted) return;
+      const fields = [
+        ('acceptScheduledTrips', 'الرحلات المجدولة'),
+        ('acceptPrivateDeliveries', 'التوصيل الخاص'),
+        ('acceptBatchDeliveries', 'التوصيل المجمع'),
+        ('isAvailableForOffers', 'استقبال العروض'),
+      ];
+      if (!fields.every((field) => original[field.$1] is bool) ||
+          original['offerRadiusKm'] == null ||
+          original['offerTimeoutSeconds'] == null) {
+        throw StateError('لم تصل التفضيلات كاملة من السيرفر.');
+      }
+      final values = Map<String, dynamic>.from(original);
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('تفضيلات السائق'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in fields)
+                  SwitchListTile.adaptive(
+                    title: Text(field.$2),
+                    value: values[field.$1] == true,
+                    onChanged: (value) => update(() => values[field.$1] = value),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('حفظ'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.savePreferences(values);
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث تفضيلات العمل على السيرفر.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
   Future<String?> _textDialog({
     required String title,
     required String label,
