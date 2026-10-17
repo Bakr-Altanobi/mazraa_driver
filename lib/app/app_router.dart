@@ -53,11 +53,12 @@ String? resolveAuthRedirect({
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   return GoRouter(
-    initialLocation: _ciSmokeHome ? '/home' : '/splash',
+    // Audit branch only: CI flag opens canonical screen 01 rather than Home.
+    initialLocation: _ciSmokeHome ? '/onboarding' : '/splash',
     refreshListenable: auth,
     redirect: (context, state) {
       if (_ciSmokeHome) {
-        return state.matchedLocation == '/home' ? null : '/home';
+        return state.matchedLocation == '/onboarding' ? null : '/onboarding';
       }
       return resolveAuthRedirect(
         authState: auth.state,
