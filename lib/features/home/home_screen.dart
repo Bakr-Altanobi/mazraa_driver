@@ -66,7 +66,8 @@ class HomeScreen extends ConsumerWidget {
     final active = shipmentRows.where((item) => item.status.isActive).toList();
     final completedToday = shipmentRows.where((item) {
       final now = DateTime.now();
-      final date = item.createdAt.toLocal();
+      final date = item.deliveredAt?.toLocal();
+      if (date == null) return false;
       return item.status == ShipmentStatus.delivered &&
           date.year == now.year &&
           date.month == now.month &&
