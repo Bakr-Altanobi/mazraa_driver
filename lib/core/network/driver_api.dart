@@ -86,6 +86,12 @@ class DriverApi {
         },
       );
 
+  Future<List<dynamic>> getDriverAvailability() =>
+      _client.get<List<dynamic>>('api/driver-journey/me/availability');
+
+  Future<void> updateDriverAvailability(List<Map<String, dynamic>> windows) =>
+      _client.put<Object?>('api/driver-journey/me/availability', data: windows);
+
   Future<List<dynamic>> getOffers() =>
       _client.get<List<dynamic>>('api/driver-journey/offers');
 
