@@ -87,6 +87,12 @@ class _ReferenceJourneyScreenState
     ReferenceLoadKey? key,
   ) async {
     if (_actionBusy) return;
+    if (action == ReferenceAction.updatePreferences ||
+        action == ReferenceAction.saveBankAccount ||
+        action == ReferenceAction.requestPayout) {
+      await _editAccountAction(action);
+      return;
+    }
     int? targetId;
     if (action != ReferenceAction.startShift &&
         action != ReferenceAction.endShift &&
@@ -292,4 +298,7 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ',
+      ReferenceAction.updatePreferences => 'تعديل التفضيلات',
+      ReferenceAction.saveBankAccount => 'تعديل الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب من المحفظة',
     };
