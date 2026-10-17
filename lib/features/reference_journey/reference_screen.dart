@@ -271,6 +271,80 @@ class _ReferenceJourneyScreenState
       if (mounted) setState(() => _actionBusy = false);
     }
   }
+  Future<void> _updateBankAccount() async {
+    setState(() => _actionBusy = true);
+    final input = <TextEditingController>[];
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final accounts = await repository.loadBankAccounts();
+      if (!mounted) return;
+      final rows = accounts.whereType<Map>().toList();
+      final current = rows.where((a) => a['isDefault'] == true).firstOrNull ??
+          (rows.isEmpty ? null : rows.first);
+      TextEditingController field(String name) {
+        final controller = TextEditingController(text: current?[name]?.toString() ?? '');
+        input.add(controller);
+        return controller;
+      }
+      final bank = field('bankName');
+      final holder = field('accountHolderName');
+      final iban = field('iban');
+      final number = field('accountNumber');
+      var invalid = false;
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('الحساب البنكي للسائق'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: bank,
+                    decoration: const InputDecoration(labelText: 'اسم البنك')),
+                TextField(controller: holder,
+                    decoration: const InputDecoration(labelText: 'صاحب الحساب')),
+                TextField(controller: iban, textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(labelText: 'IBAN')),
+                TextField(controller: number, textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(labelText: 'رقم الحساب (اختياري)')),
+                const SizedBox(height: 10),
+                const Text('حفظ التغييرات يتطلب إعادة تحقق البنك من السيرفر.'),
+                if (invalid) const Text('املأ اسم البنك وصاحب الحساب وIBAN.',
+                    style: TextStyle(color: Colors.red)),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('إلغاء')),
+              FilledButton(onPressed: () {
+                if (bank.text.trim().isEmpty || holder.text.trim().isEmpty ||
+                    iban.text.trim().isEmpty) {
+                  update(() => invalid = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              }, child: const Text('حفظ')),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.saveBankAccount(
+        bankName: bank.text, holder: holder.text,
+        iban: iban.text, accountNumber: number.text,
+      );
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الحساب البنكي بانتظار التحقق.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      for (final controller in input) { controller.dispose(); }
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
   Future<String?> _textDialog({
     required String title,
     required String label,
