@@ -56,11 +56,18 @@ jobs:
             test/features/reference_journey/reference_assets_bundle_test.dart \
             test/features/reference_journey/reference_asset_index_contract_test.dart \
             test/features/reference_journey/reference_screens_render_test.dart \
-            test/features/reference_journey/reference_production_body_test.dart
+            test/features/reference_journey/reference_production_body_test.dart \
+            test/features/reference_journey/reference_server_truth_test.dart \
+            test/features/reference_journey/reference_shipment_action_target_test.dart \
+            test/core/models_test.dart
 
       - name: Static analyze reference implementation
         run: |
           flutter analyze --no-fatal-infos \
             lib/features/reference_journey \
             lib/app/app_router.dart \
-            lib/features/auth/auth_screens.dart
+            lib/features/auth/auth_screens.dart \
+            lib/features/home/home_screen.dart \
+            lib/features/shipments/shipment_screens.dart \
+            lib/shared/widgets/map_panel.dart \
+            lib/core/models/app_models.dart
