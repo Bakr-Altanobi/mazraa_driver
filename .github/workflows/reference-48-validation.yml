@@ -63,6 +63,8 @@ jobs:
             test/features/reference_journey/weekly_availability_editor_test.dart \
             test/core/models_test.dart \
             test/features/auth/driver_onboarding_screen_test.dart \
+            test/features/auth/driver_registration_screen_test.dart \
+            test/features/auth/non_driver_session_test.dart \
             test/shared/widgets/shipment_navigation_button_test.dart
 
       - name: Static analyze reference implementation
@@ -72,6 +74,9 @@ jobs:
             lib/app/app_router.dart \
             lib/features/auth/auth_screens.dart \
             lib/features/auth/driver_onboarding_screen.dart \
+            lib/features/auth/driver_registration_screen.dart \
+            lib/features/auth/auth_controller.dart \
+            lib/core/network/driver_registration_api.dart \
             lib/features/shipments \
             lib/features/home \
             lib/shared/widgets/map_panel.dart \
