@@ -230,6 +230,7 @@ class Shipment {
     this.driverLocation,
     this.distanceKm,
     this.etaMinutes,
+    this.deliveredAt,
   });
 
   factory Shipment.fromJson(Map<String, dynamic> json) {
@@ -251,6 +252,7 @@ class Shipment {
       transportCost: _asDouble(shipmentJson['transportCost']),
       netProfit: _asDouble(shipmentJson['netProfit']),
       createdAt: _asDate(shipmentJson['createdAt']) ?? DateTime.now(),
+      deliveredAt: _asDate(shipmentJson['deliveredAt']),
       customerLocation: GeoPoint.fromDynamic(
         shipmentJson['customerLocation'],
         latitude: shipmentJson['customerLatitude'],
@@ -279,6 +281,7 @@ class Shipment {
   final double transportCost;
   final double netProfit;
   final DateTime createdAt;
+  final DateTime? deliveredAt;
   final GeoPoint? customerLocation;
   final GeoPoint? storeLocation;
   final GeoPoint? driverLocation;
