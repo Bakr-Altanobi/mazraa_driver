@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
@@ -68,6 +70,25 @@ class DriverOffersPanel extends ConsumerStatefulWidget {
 
 class _DriverOffersPanelState extends ConsumerState<DriverOffersPanel> {
   int? _busyOfferId;
+  Timer? _poller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll only while the offers page is mounted. Backend remains the source
+    // of truth and rejects expired offers even between polls.
+    _poller = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && _busyOfferId == null) {
+        ref.invalidate(driverOffersProvider);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _poller?.cancel();
+    super.dispose();
+  }
 
   Future<void> _respond(DriverOffer offer, {required bool accept}) async {
     if (_busyOfferId != null) return;
