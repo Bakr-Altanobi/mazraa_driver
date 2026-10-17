@@ -7,9 +7,9 @@ set -euo pipefail
 mkdir -p artifacts
 rm -f artifacts/window.xml artifacts/main-screen.png artifacts/not-ready-screen.png
 
-# Match the canonical design viewport exactly: 1440x2560 = 360x640 at 4x.
-adb shell wm size 1440x2560 >/dev/null
-adb shell wm density 640 >/dev/null
+# Keep the canonical 9:16 ratio while using a lighter emulator framebuffer.
+# 1080x1920 scales losslessly by 4/3 to the 1440x2560 design reference.
+adb shell wm size 1080x1920 >/dev/null
 adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
 
 adb uninstall "$APP_ID" >/dev/null 2>&1 || true
