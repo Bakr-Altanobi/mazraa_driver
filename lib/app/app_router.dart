@@ -6,6 +6,7 @@ import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_directory_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
@@ -69,6 +70,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/driver-services', builder: (_, _) => const DriverServicesDirectoryScreen()),
       GoRoute(
         path: '/journey/:screen',
         builder: (context, state) {
