@@ -155,6 +155,14 @@ class _ReferenceJourneyScreenState
         selectedTargetId = await _selectActionTarget(action, targets);
         if (selectedTargetId == null || !mounted) return;
       }
+      String? numericCode;
+      String? qrToken;
+      if (action == ReferenceAction.deliverShipment) {
+        final proof = await _deliveryProofDialog();
+        if (proof == null || !mounted) return;
+        numericCode = proof.$1;
+        qrToken = proof.$2;
+      }
       if (action == ReferenceAction.createIncident) {
         await repository.createIncident(
           subject: subject!,
@@ -168,6 +176,8 @@ class _ReferenceJourneyScreenState
           reason: reason,
           shipmentId: isOffer ? null : selectedTargetId,
           offerId: isOffer ? selectedTargetId : null,
+          numericCode: numericCode,
+          qrToken: qrToken,
         );
       }
       if (key != null) {
@@ -224,6 +234,91 @@ class _ReferenceJourneyScreenState
         ],
       ),
     );
+  }
+
+  /// Delivery proof is provided by the recipient and verified by the server.
+  /// Standard handoffs may omit it; contactless handoffs cannot be completed
+  /// without a valid code or QR token returned to the customer by the backend.
+  Future<(String?, String?)?> _deliveryProofDialog() async {
+    final controller = TextEditingController();
+    var useQr = false;
+    try {
+      return await showDialog<(String?, String?)>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('إثبات تسليم الشحنة'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'أدخل رمز الاستلام الذي أعطاه العميل. '
+                    'للتسليم العادي فقط يمكنك ترك الحقل فارغًا؛ '
+                    'السيرفر يرفض التسليم بدون إثبات عندما يكون الطلب بدون تلامس.',
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('رمز رقمي'),
+                        selected: !useQr,
+                        onSelected: (_) => update(() {
+                          useQr = false;
+                          controller.clear();
+                        }),
+                      ),
+                      ChoiceChip(
+                        label: const Text('رمز QR'),
+                        selected: useQr,
+                        onSelected: (_) => update(() {
+                          useQr = true;
+                          controller.clear();
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const Key('referenceDeliveryProofField'),
+                    controller: controller,
+                    textDirection: TextDirection.ltr,
+                    keyboardType:
+                        useQr ? TextInputType.text : TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: useQr ? 'الرمز الموجود في QR' : 'رمز الاستلام',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  Navigator.pop(
+                    dialogContext,
+                    (
+                      useQr || value.isEmpty ? null : value,
+                      useQr && value.isNotEmpty ? value : null,
+                    ),
+                  );
+                },
+                child: const Text('تأكيد التسليم'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<String?> _textDialog({
