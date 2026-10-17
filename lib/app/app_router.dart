@@ -7,6 +7,7 @@ import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
+import 'package:mazraa_driver/features/shipments/available_orders_screen.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
 
@@ -91,7 +92,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/shipments',
-                builder: (_, _) => const ShipmentsScreen(),
+                builder: (_, _) => const AvailableOrdersScreen(),
               ),
             ],
           ),
