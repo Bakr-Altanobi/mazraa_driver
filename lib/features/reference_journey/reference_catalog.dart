@@ -233,6 +233,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.journeyMe,
         ReferenceDataSource.availability,
         ReferenceDataSource.preferences,
+        ReferenceDataSource.scheduledTrips,
         ReferenceDataSource.shifts,
       ],
       actions: [ReferenceAction.startShift, ReferenceAction.endShift],
