@@ -52,7 +52,7 @@ class _ReferenceJourneyScreenState
         ],
       ),
       bottomNavigationBar: sessionReady &&
-              const <int>{10, 12, 16, 30}.contains(widget.screenNumber)
+              const <int>{10, 12, 16, 30, 39}.contains(widget.screenNumber)
           ? DriverServiceControls(
               screenNumber: widget.screenNumber,
               onSaved: () {
