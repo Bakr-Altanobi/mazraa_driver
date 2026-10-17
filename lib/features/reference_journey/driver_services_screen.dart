@@ -77,7 +77,13 @@ class DriverServicesScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: const Icon(Icons.chevron_left_rounded),
-                  onTap: () => context.push(spec.number == 4 ? '/offers' : spec.route),
+                  onTap: () => context.push(
+                    {10, 30, 38}.contains(spec.number)
+                        ? '/finances'
+                        : spec.number == 4
+                            ? '/offers'
+                            : spec.route,
+                  ),
                 ),
               ),
           ],
