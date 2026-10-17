@@ -205,9 +205,38 @@ class ReferenceRepository {
     return ReferenceScreenPayload(results: results);
   }
 
+  /// The UI must select a concrete offer/shipment; never mutate the first row
+  /// returned by the server implicitly.
+  Future<List<Map<String, dynamic>>> actionTargets(ReferenceAction action) async {
+    if (action == ReferenceAction.startShift ||
+        action == ReferenceAction.endShift ||
+        action == ReferenceAction.createIncident) {
+      return const [];
+    }
+    final isOffer = action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer;
+    final endpoint = isOffer ? 'api/driver-journey/offers' : 'api/Shipments';
+    final rows = await _client.get<List<dynamic>>(endpoint);
+    final targets = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      if (row is! Map) continue;
+      final identifier = isOffer ? row['offerId'] ?? row['id'] : row['id'];
+      final id = int.tryParse(identifier?.toString() ?? '');
+      if (id == null) continue;
+      if (!isOffer && selectShipmentIdForAction([row], action) == null) continue;
+      targets.add({
+        'id': id,
+        'label': (row['shipmentNumber'] ?? row['tripNumber'] ??
+            row['offerNumber'] ?? row['id'] ?? id).toString(),
+        'status': (row['status'] ?? '').toString(),
+      });
+    }
+    return targets;
+  }
   Future<void> runShipmentAction(
     ReferenceAction action, {
     String? reason,
+    int? targetId,
   }) async {
     if (action == ReferenceAction.startShift) {
       await _client.post<dynamic>(
@@ -225,20 +254,12 @@ class ReferenceRepository {
     }
     if (action == ReferenceAction.acceptOffer ||
         action == ReferenceAction.rejectOffer) {
-      final offers =
-          await _client.get<List<dynamic>>('api/driver-journey/offers');
-      int? offerId;
-      for (final row in offers) {
-        if (row is! Map) continue;
-        offerId = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
-        if (offerId != null) break;
-      }
-      if (offerId == null) {
-        throw StateError('لا يوجد عرض توصيل فعلي متاح للسائق الآن.');
+      if (targetId == null) {
+        throw StateError('اختر عرض التوصيل الذي تريد تنفيذه أولاً.');
       }
       final verb = action == ReferenceAction.acceptOffer ? 'accept' : 'reject';
       await _client.post<dynamic>(
-        'api/driver-journey/offers/$offerId/$verb',
+        'api/driver-journey/offers/' + targetId.toString() + '/' + verb,
       );
       return;
     }
@@ -246,12 +267,17 @@ class ReferenceRepository {
       throw ArgumentError.value(action);
     }
 
+    if (targetId == null) {
+      throw StateError('اختر الشحنة المقصودة قبل تنفيذ أي تعديل.');
+    }
+    // Revalidate eligibility immediately before making a lifecycle request.
     final rows = await _client.get<List<dynamic>>('api/Shipments');
-    final shipmentId = selectShipmentIdForAction(rows, action);
-    if (shipmentId == null) {
-      throw StateError(
-        'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',
-      );
+    final stillEligible = rows.any((row) =>
+        row is Map &&
+        int.tryParse(row['id']?.toString() ?? '') == targetId &&
+        selectShipmentIdForAction([row], action) == targetId);
+    if (!stillEligible) {
+      throw StateError('تغيرت حالة الشحنة. حدّث القائمة ثم أعد المحاولة.');
     }
     final actionName = switch (action) {
       ReferenceAction.acceptShipment => 'accept',
@@ -267,7 +293,7 @@ class ReferenceRepository {
       ReferenceAction.createIncident => throw ArgumentError.value(action),
     };
     await _client.post<dynamic>(
-      'api/Shipments/$shipmentId/$actionName',
+      'api/Shipments/' + targetId.toString() + '/' + actionName,
       data: action == ReferenceAction.failShipment
           ? {
               'reason': reason?.trim().isEmpty ?? true
@@ -282,14 +308,6 @@ class ReferenceRepository {
     required String subject,
     required String message,
   }) async {
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    int? shipmentId;
-    for (final row in rows) {
-      if (row is Map && row['id'] != null) {
-        shipmentId = int.tryParse(row['id'].toString());
-        if (shipmentId != null) break;
-      }
-    }
     await _client.post<dynamic>(
       'api/driver-journey/incidents',
       data: {
@@ -297,7 +315,6 @@ class ReferenceRepository {
         'title': subject.trim(),
         'description': message.trim(),
         'isEmergency': false,
-        if (shipmentId != null) 'shipmentId': shipmentId,
       },
     );
   }
