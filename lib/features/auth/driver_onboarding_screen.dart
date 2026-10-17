@@ -174,6 +174,12 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                       onPressed: () => context.go('/login'),
                       child: const Text('لدي حساب بالفعل'),
                     ),
+                    OutlinedButton.icon(
+                      key: const Key('onboardingRegisterButton'),
+                      onPressed: () => context.go('/register-driver'),
+                      icon: const Icon(Icons.person_add_alt_1_outlined),
+                      label: const Text('انضم كسائق جديد'),
+                    ),
                   ],
                 ),
               ),
