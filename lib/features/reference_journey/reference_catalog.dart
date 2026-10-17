@@ -8,6 +8,7 @@ enum ReferenceDataSource {
   offers,
   scheduledTrips,
   currentTrips,
+  shifts,
   shipments,
   shipmentDetail,
   tracking,

@@ -360,25 +360,27 @@ class ReferenceProductionBody extends StatelessWidget {
     ];
   }
 
-  List<Widget> _walletPayout(BuildContext context, _ReferenceData data) {
-    final wallet = data.wallet;
-    return [
-      _ServerFieldCard(
-        title: 'المحفظة',
-        rows: {
-          'رقم الحساب': _text(wallet['accountNumber']),
-          'الرصيد': _money(wallet['balance'], wallet['currency']),
-          'التحويل متاح': _yesNo(_map(wallet['capabilities'])['canTransfer']),
-        },
-      ),
-      const SizedBox(height: 10),
-      const _DisabledActionCard(
-        title: 'تحويل الأرباح إلى البنك',
-        buttonLabel: 'طلب تحويل',
-        reason: 'لا يوجد endpoint لإنشاء payout لسائق في السيرفر الحالي.',
-      ),
-    ];
-  }
+  List<Widget> _walletPayout(BuildContext context, _ReferenceData data) => [
+    _ServerFieldCard(
+      title: 'المحفظة',
+      rows: {
+        'رقم الحساب': _text(data.wallet['accountNumber']),
+        'الرصيد': _money(data.wallet['balance'], data.wallet['currency']),
+      },
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'الحسابات البنكية',
+      items: data.bankAccounts,
+      preferredKeys: const ['bankName', 'accountHolderName', 'iban', 'accountNumber', 'isVerified', 'isDefault'],
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'طلبات السحب',
+      items: data.payouts,
+      preferredKeys: const ['amount', 'currency', 'status', 'providerReference', 'requestedAt', 'processedAt'],
+    ),
+  ];
 
   List<Widget> _notifications(BuildContext context, _ReferenceData data) => [
         _NotificationList(items: data.notifications),
@@ -411,56 +413,62 @@ class ReferenceProductionBody extends StatelessWidget {
         ),
       ];
 
-  List<Widget> _vehicleDocuments(BuildContext context, _ReferenceData data) {
-    final vehicle = data.vehicle;
-    final driver = data.driver;
-    return [
-      _ServerFieldCard(
-        title: 'حالة الوثائق المتاحة',
-        rows: {
-          'السائق موثق': _yesNo(driver['isVerified']),
-          'رقم التسجيل': _text(vehicle['registrationNumber']),
-          'انتهاء التسجيل': _date(vehicle['registrationExpiryDate']),
-          'رقم التأمين': _text(vehicle['insuranceNumber']),
-          'انتهاء التأمين': _date(vehicle['insuranceExpiryDate']),
-        },
-      ),
-    ];
-  }
+  List<Widget> _vehicleDocuments(BuildContext context, _ReferenceData data) => [
+    _DriverCard(driver: data.driver),
+    const SizedBox(height: 10),
+    _VehicleCard(vehicle: data.vehicle),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'وثائق السائق والمركبة',
+      items: data.documents,
+      preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+    ),
+  ];
 
   List<Widget> _vehicleProfile(BuildContext context, _ReferenceData data) => [
-        _VehicleCard(vehicle: data.vehicle),
-      ];
+    _VehicleCard(vehicle: data.vehicle),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'سجل الصيانة',
+      items: data.maintenance,
+      preferredKeys: const ['serviceAt', 'odometerKm', 'nextServiceAt', 'nextServiceOdometerKm', 'notes'],
+    ),
+  ];
 
-  List<Widget> _availability(BuildContext context, _ReferenceData data) {
-    final driver = data.driver;
-    return [
-      _ServerFieldCard(
-        title: 'حالة السائق الحالية',
-        rows: {
-          'التشغيل': _text(driver['operationalStatus']),
-          'يقبل الطلبات': _yesNo(driver['isAcceptingOrders']),
-          'أقصى شحنات نشطة': _text(driver['maxActiveShipments']),
-        },
-      ),
-      const SizedBox(height: 10),
-      const _DisabledFormCard(
-        title: 'الجدول الأسبوعي',
-        fields: ['أيام العمل', 'وقت البداية', 'وقت النهاية'],
-        reason: 'السيرفر لا يحفظ جدول توفر أسبوعي للسائق حالياً.',
-      ),
-    ];
-  }
+  List<Widget> _availability(BuildContext context, _ReferenceData data) => [
+    _ServerFieldCard(
+      title: 'تفضيلات قبول الرحلات',
+      rows: {
+        'الرحلات المجدولة': _yesNo(data.preferences['acceptScheduledTrips']),
+        'التوصيل الخاص': _yesNo(data.preferences['acceptPrivateDeliveries']),
+        'التوصيل المجمع': _yesNo(data.preferences['acceptBatchDeliveries']),
+        'متاح للعروض': _yesNo(data.preferences['isAvailableForOffers']),
+        'نطاق العروض': _km(data.preferences['offerRadiusKm']),
+      },
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'جدول التوفر الأسبوعي',
+      items: data.availability,
+      preferredKeys: const ['dayOfWeek', 'startTime', 'endTime', 'isActive'],
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'الورديات',
+      items: data.shifts,
+      preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments'],
+    ),
+  ];
 
   List<Widget> _incentives(BuildContext context, _ReferenceData data) => [
-        ..._performance(context, data),
-        const SizedBox(height: 10),
-        const _DisabledActionCard(
-          title: 'هدف الحافز',
-          buttonLabel: 'عرض المكافآت',
-          reason: 'لا يوجد برنامج Incentives محفوظ في السيرفر.',
-        ),
-      ];
+    _GenericList(
+      title: 'الحوافز والمكافآت',
+      items: data.incentives,
+      preferredKeys: const ['title', 'targetShipments', 'rewardAmount', 'startsAt', 'endsAt'],
+    ),
+    const SizedBox(height: 10),
+    ..._performance(context, data),
+  ];
 
   List<Widget> _orderIssue(BuildContext context, _ReferenceData data) => [
         ..._shipmentDetail(context, data, title: 'الطلب المرتبط بالمشكلة'),
@@ -531,14 +539,14 @@ class ReferenceProductionBody extends StatelessWidget {
   }
 
   List<Widget> _referFriend(BuildContext context, _ReferenceData data) => [
-        _DriverCard(driver: data.driver),
-        const SizedBox(height: 10),
-        const _DisabledFormCard(
-          title: 'دعوة صديق',
-          fields: ['كود الإحالة', 'رابط الدعوة', 'قيمة المكافأة'],
-          reason: 'لا توجد حقول أو endpoints للإحالات في حساب السائق.',
-        ),
-      ];
+    _ServerFieldCard(title: 'برنامج الإحالة', rows: {'كود الإحالة': _text(data.referral['code'])}),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'الإحالات',
+      items: data.referralRows,
+      preferredKeys: const ['referredDriverId', 'status', 'rewardAmount', 'createdAt'],
+    ),
+  ];
 
   List<Widget> _tripHistory(BuildContext context, _ReferenceData data) => [
         _ShipmentList(shipments: data.shipments, history: true),
@@ -551,15 +559,10 @@ class ReferenceProductionBody extends StatelessWidget {
       ];
 
   List<Widget> _batchOrders(BuildContext context, _ReferenceData data) => [
-        _ShipmentList(shipments: data.shipments),
-        const SizedBox(height: 10),
-        const _NoticeCard(
-          icon: Icons.layers_outlined,
-          title: 'العرض متعدد الطلبات جاهز',
-          message:
-              'تعرض الواجهة الشحنات الفعلية. ربطها كحزمة Batch واحدة يحتاج كياناً وترتيب مسار من السيرفر.',
-        ),
-      ];
+    _GenericList(title: 'الرحلات وتوقفاتها', items: data.currentTrips, preferredKeys: const ['trip', 'stops']),
+    const SizedBox(height: 10),
+    _ShipmentList(shipments: data.shipments),
+  ];
 
   List<Widget> _pickupInventory(BuildContext context, _ReferenceData data) => [
         ..._shipmentDetail(context, data, title: 'الاستلام والمخزون'),
@@ -575,35 +578,29 @@ class ReferenceProductionBody extends StatelessWidget {
       ];
 
   List<Widget> _deliveryProof(BuildContext context, _ReferenceData data) => [
-        ..._shipmentDetail(context, data, title: 'إثبات التسليم'),
-        const SizedBox(height: 10),
-        ..._navigation(context, data, destination: 'العميل'),
-        const SizedBox(height: 10),
-        const _DisabledFormCard(
-          title: 'إثبات الاستلام',
-          fields: ['صورة التسليم', 'توقيع العميل', 'اسم المستلم', 'مرجع POD'],
-          reason: 'endpoint التسليم الحالي لا يستقبل هذه الحقول.',
-        ),
-      ];
+    ..._shipmentDetail(context, data, title: 'إثبات التسليم'),
+    const SizedBox(height: 10),
+    ..._navigation(context, data, destination: 'العميل'),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'إثباتات التسليم المسجلة',
+      items: data.proofs,
+      preferredKeys: const ['type', 'mediaUrl', 'signatureData', 'recipientName', 'verificationReference', 'createdAt'],
+    ),
+  ];
 
-  List<Widget> _bankAccount(BuildContext context, _ReferenceData data) {
-    final wallet = data.wallet;
-    return [
-      _ServerFieldCard(
-        title: 'الحساب المالي المتاح',
-        rows: {
-          'رقم المحفظة': _text(wallet['accountNumber']),
-          'الرصيد': _money(wallet['balance'], wallet['currency']),
-        },
-      ),
-      const SizedBox(height: 10),
-      const _DisabledFormCard(
-        title: 'الحساب البنكي',
-        fields: ['اسم البنك', 'صاحب الحساب', 'IBAN', 'رقم الحساب'],
-        reason: 'السيرفر لا يحتوي BankAccount للسائق حالياً.',
-      ),
-    ];
-  }
+  List<Widget> _bankAccount(BuildContext context, _ReferenceData data) => [
+    _GenericList(
+      title: 'الحسابات البنكية',
+      items: data.bankAccounts,
+      preferredKeys: const ['bankName', 'accountHolderName', 'iban', 'accountNumber', 'isVerified', 'isDefault'],
+    ),
+    const SizedBox(height: 10),
+    _ServerFieldCard(
+      title: 'المحفظة',
+      rows: {'رقم المحفظة': _text(data.wallet['accountNumber']), 'الرصيد': _money(data.wallet['balance'], data.wallet['currency'])},
+    ),
+  ];
 
   List<Widget> _languagePrivacy(BuildContext context, _ReferenceData data) => [
         _ServerFieldCard(
@@ -622,45 +619,22 @@ class ReferenceProductionBody extends StatelessWidget {
       ];
 
   List<Widget> _performance(BuildContext context, _ReferenceData data) {
-    final driver = data.driver;
-    final shipments = data.shipments;
-    final delivered = shipments.where((s) => _status(s).toLowerCase().contains('deliver')).length;
-    final active = shipments.where((s) => !_closedStatus(_status(s))).length;
+    final p = data.performance;
     return [
-      Row(
-        children: [
-          Expanded(
-            child: _MetricCard(
-              label: 'التقييم',
-              value: _double(driver['ratingAverage']).toStringAsFixed(1),
-              icon: Icons.star_outline_rounded,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MetricCard(
-              label: 'مكتملة',
-              value: '$delivered',
-              icon: Icons.task_alt_rounded,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MetricCard(
-              label: 'نشطة',
-              value: '$active',
-              icon: Icons.route_outlined,
-            ),
-          ),
-        ],
-      ),
+      Row(children: [
+        Expanded(child: _MetricCard(label: 'التقييم', value: _double(p['ratingAverage']).toStringAsFixed(1), icon: Icons.star_outline_rounded)),
+        const SizedBox(width: 8),
+        Expanded(child: _MetricCard(label: 'مكتملة', value: '${_int(p['completedShipments'])}', icon: Icons.task_alt_rounded)),
+        const SizedBox(width: 8),
+        Expanded(child: _MetricCard(label: 'نشطة', value: '${_int(p['activeShipments'])}', icon: Icons.route_outlined)),
+      ]),
       const SizedBox(height: 10),
-      const _NoticeCard(
-        icon: Icons.calculate_outlined,
-        title: 'المؤشرات أعلاه محسوبة من بيانات السيرفر الحالية',
-        message:
-            'لا يتم حفظها كلوحة أداء مستقلة، لذلك لا تُعرض نسب قبول أو التزام زمني غير موجودة في API.',
-      ),
+      _ServerFieldCard(title: 'مؤشرات الأداء من السيرفر', rows: {
+        'فشل التسليم': _text(p['failedShipments']),
+        'نسبة قبول العروض': '${_double(p['offerAcceptanceRate']).toStringAsFixed(2)}%',
+        'إجمالي العروض': _text(p['totalOffers']),
+        'العروض المقبولة': _text(p['acceptedOffers']),
+      }),
     ];
   }
 
@@ -711,32 +685,24 @@ class ReferenceProductionBody extends StatelessWidget {
       ];
 
   List<Widget> _payoutSuccess(BuildContext context, _ReferenceData data) => [
-        _ServerFieldCard(
-          title: 'حالة المحفظة الفعلية',
-          rows: {
-            'الرصيد': _money(data.wallet['balance'], data.wallet['currency']),
-            'رقم المحفظة': _text(data.wallet['accountNumber']),
-          },
-        ),
-        const SizedBox(height: 10),
-        const _NoticeCard(
-          icon: Icons.hourglass_disabled_rounded,
-          title: 'لا توجد عملية Payout حقيقية',
-          message:
-              'التصميم مكتمل، لكن لن تُعرض رسالة نجاح تحويل مزيفة قبل إضافة payoutId وحالة التحويل إلى السيرفر.',
-        ),
-      ];
+    _GenericList(
+      title: 'طلبات السحب والتحويل',
+      items: data.payouts,
+      preferredKeys: const ['amount', 'currency', 'status', 'providerReference', 'requestedAt', 'processedAt'],
+    ),
+    const SizedBox(height: 10),
+    _ServerFieldCard(title: 'الرصيد الحالي', rows: {'الرصيد': _money(data.wallet['balance'], data.wallet['currency'])}),
+  ];
 
   List<Widget> _returnOrder(BuildContext context, _ReferenceData data) => [
-        ..._shipmentDetail(context, data, title: 'الشحنة'),
-        const SizedBox(height: 10),
-        const _NoticeCard(
-          icon: Icons.assignment_return_outlined,
-          title: 'استلام المرتجع ينتظر دعم السيرفر',
-          message:
-              'مسار api/returns الحالي يعيد طلبات إرجاع العميل صاحب الحساب، ولا يعيد مهام مرتجع مسندة للسائق. لذلك لا يتم عرض CustomerReturnRequests على أنها مهام سائق.',
-        ),
-      ];
+    _GenericList(
+      title: 'مهام المرتجعات المسندة',
+      items: data.returns,
+      preferredKeys: const ['returnRequestId', 'status', 'assignedAt', 'acceptedAt', 'pickedUpAt', 'returnedAt'],
+    ),
+    const SizedBox(height: 10),
+    ..._shipmentDetail(context, data, title: 'الشحنة المرتبطة'),
+  ];
 
   List<Widget> _customerUnavailable(BuildContext context, _ReferenceData data) => [
         ..._navigation(context, data, destination: 'العميل'),
@@ -744,76 +710,35 @@ class ReferenceProductionBody extends StatelessWidget {
         ..._shipmentDetail(context, data, title: 'محاولة التسليم'),
       ];
 
-  List<Widget> _shiftSummary(BuildContext context, _ReferenceData data) {
-    final shipments = data.shipments;
-    final completed = shipments.where((s) => _status(s).toLowerCase().contains('deliver')).length;
-    return [
-      Row(
-        children: [
-          Expanded(
-            child: _MetricCard(
-              label: 'الشحنات',
-              value: '${shipments.length}',
-              icon: Icons.inventory_2_outlined,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MetricCard(
-              label: 'مكتملة',
-              value: '$completed',
-              icon: Icons.done_all_rounded,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MetricCard(
-              label: 'الرصيد',
-              value: _compactMoney(data.wallet['balance']),
-              icon: Icons.wallet_outlined,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 10),
-      const _NoticeCard(
-        icon: Icons.info_outline_rounded,
-        title: 'ملخص محسوب وليس وردية مخزنة',
-        message:
-            'الأرقام مشتقة من بيانات الحساب الحالية. لا يوجد Shift entity أو endpoint لبدء/إغلاق وردية.',
-      ),
-    ];
-  }
+  List<Widget> _shiftSummary(BuildContext context, _ReferenceData data) => [
+    _GenericList(
+      title: 'الورديات',
+      items: data.shifts,
+      preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments', 'startLatitude', 'startLongitude', 'endLatitude', 'endLongitude'],
+    ),
+    const SizedBox(height: 10),
+    ..._performance(context, data),
+  ];
 
   List<Widget> _vehicleMaintenance(BuildContext context, _ReferenceData data) => [
-        _VehicleCard(vehicle: data.vehicle),
-        const SizedBox(height: 10),
-        const _DisabledFormCard(
-          title: 'سجل الصيانة',
-          fields: ['آخر صيانة', 'العداد', 'موعد الخدمة القادمة', 'ملاحظات الفني'],
-          reason: 'Vehicles API لا يحتوي سجل صيانة للسائق.',
-        ),
-      ];
+    _VehicleCard(vehicle: data.vehicle),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'سجل الصيانة',
+      items: data.maintenance,
+      preferredKeys: const ['serviceAt', 'odometerKm', 'nextServiceAt', 'nextServiceOdometerKm', 'notes'],
+    ),
+  ];
 
-  List<Widget> _documentExpiry(BuildContext context, _ReferenceData data) {
-    final vehicle = data.vehicle;
-    return [
-      _ServerFieldCard(
-        title: 'الانتهاء من بيانات المركبة',
-        rows: {
-          'انتهاء التسجيل': _date(vehicle['registrationExpiryDate']),
-          'انتهاء التأمين': _date(vehicle['insuranceExpiryDate']),
-          'الحساب موثق': _yesNo(data.driver['isVerified']),
-        },
-      ),
-      const SizedBox(height: 10),
-      const _DisabledActionCard(
-        title: 'تجديد الوثيقة',
-        buttonLabel: 'رفع وثيقة جديدة',
-        reason: 'لا يوجد self-service لرفع وثائق السائق أو المركبة.',
-      ),
-    ];
-  }
+  List<Widget> _documentExpiry(BuildContext context, _ReferenceData data) => [
+    _GenericList(
+      title: 'وثائق السائق والمركبة',
+      items: data.documents,
+      preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+    ),
+    const SizedBox(height: 10),
+    _VehicleCard(vehicle: data.vehicle),
+  ];
 
   List<Widget> _accountPaused(BuildContext context, _ReferenceData data) {
     final driver = data.driver;
@@ -836,8 +761,12 @@ class ReferenceProductionBody extends StatelessWidget {
   }
 
   List<Widget> _incidentReport(BuildContext context, _ReferenceData data) => [
-        _TicketList(tickets: data.tickets),
-      ];
+    _GenericList(
+      title: 'بلاغات السائق',
+      items: data.incidents,
+      preferredKeys: const ['category', 'title', 'description', 'isEmergency', 'status', 'createdAt'],
+    ),
+  ];
 
   List<Widget> _feeBreakdown(BuildContext context, _ReferenceData data) {
     final shipment = data.shipmentDetail;
@@ -856,26 +785,20 @@ class ReferenceProductionBody extends StatelessWidget {
     ];
   }
 
-  List<Widget> _identityVerification(BuildContext context, _ReferenceData data) {
-    final driver = data.driver;
-    return [
-      _ServerFieldCard(
-        title: 'حالة التحقق',
-        rows: {
-          'موثق': _yesNo(driver['isVerified']),
-          'حالة الموافقة': _text(driver['approvalStatus']),
-          'تاريخ الموافقة': _date(driver['approvedAt']),
-          'كود السائق': _text(driver['driverCode']),
-        },
-      ),
-      const SizedBox(height: 10),
-      const _DisabledActionCard(
-        title: 'رفع الهوية',
-        buttonLabel: 'رفع صور الهوية',
-        reason: 'لا يوجد KYC upload self-service للسائق في السيرفر الحالي.',
-      ),
-    ];
-  }
+  List<Widget> _identityVerification(BuildContext context, _ReferenceData data) => [
+    _ServerFieldCard(title: 'حالة التحقق', rows: {
+      'موثق': _yesNo(data.driver['isVerified']),
+      'حالة الموافقة': _text(data.driver['approvalStatus']),
+      'تاريخ الموافقة': _date(data.driver['approvedAt']),
+      'كود السائق': _text(data.driver['driverCode']),
+    }),
+    const SizedBox(height: 10),
+    _GenericList(
+      title: 'الوثائق المرفوعة',
+      items: data.documents,
+      preferredKeys: const ['type', 'status', 'documentNumber', 'expiresAt', 'reviewNotes'],
+    ),
+  ];
 
   List<Widget> _customerFeedback(BuildContext context, _ReferenceData data) => [
         ..._rating(context, data, breakdown: true),
@@ -884,33 +807,53 @@ class ReferenceProductionBody extends StatelessWidget {
 
 class _ReferenceData {
   const _ReferenceData(this.payload);
-
   final ReferenceScreenPayload? payload;
 
   ReferenceSourceResult? result(ReferenceDataSource source) {
-    final rows = payload?.results ?? const <ReferenceSourceResult>[];
-    for (final row in rows) {
+    for (final row in payload?.results ?? const <ReferenceSourceResult>[]) {
       if (row.source == source) return row;
     }
     return null;
   }
 
-  Map<String, dynamic> get driver => _map(result(ReferenceDataSource.driver)?.payload);
+  Map<String, dynamic> get journeyMe => _map(result(ReferenceDataSource.journeyMe)?.payload);
+  Map<String, dynamic> get driver {
+    final nested = _map(journeyMe['driver']);
+    return nested.isNotEmpty ? nested : _map(result(ReferenceDataSource.driver)?.payload);
+  }
+  Map<String, dynamic> get preferences => _map(result(ReferenceDataSource.preferences)?.payload);
+  List<Map<String, dynamic>> get availability => _listOfMaps(result(ReferenceDataSource.availability)?.payload);
+  List<Map<String, dynamic>> get offers => _listOfMaps(result(ReferenceDataSource.offers)?.payload);
+  List<Map<String, dynamic>> get currentTrips => _listOfMaps(result(ReferenceDataSource.currentTrips)?.payload);
+  List<Map<String, dynamic>> get shifts => _listOfMaps(result(ReferenceDataSource.shifts)?.payload);
   List<Map<String, dynamic>> get shipments => _listOfMaps(result(ReferenceDataSource.shipments)?.payload);
   Map<String, dynamic> get shipmentDetail => _map(result(ReferenceDataSource.shipmentDetail)?.payload);
   Map<String, dynamic> get tracking => _map(result(ReferenceDataSource.tracking)?.payload);
+  List<Map<String, dynamic>> get proofs => _listOfMaps(result(ReferenceDataSource.shipmentProofs)?.payload);
   Map<String, dynamic> get wallet => _map(result(ReferenceDataSource.wallet)?.payload);
   List<Map<String, dynamic>> get transactions {
-    final root = _map(result(ReferenceDataSource.walletTransactions)?.payload);
-    return _listOfMaps(root['data']);
+    final value = result(ReferenceDataSource.walletTransactions)?.payload;
+    if (value is List) return _listOfMaps(value);
+    final root = _map(value);
+    return _listOfMaps(root['data'] ?? root['items']);
   }
-
   List<Map<String, dynamic>> get notifications {
-    final root = _map(result(ReferenceDataSource.notifications)?.payload);
-    return _listOfMaps(root['items']);
+    final value = result(ReferenceDataSource.notifications)?.payload;
+    if (value is List) return _listOfMaps(value);
+    final root = _map(value);
+    return _listOfMaps(root['items'] ?? root['data']);
   }
-
-  Map<String, dynamic> get vehicle => _map(result(ReferenceDataSource.vehicle)?.payload);
+  Map<String, dynamic> get vehicle => _map(result(ReferenceDataSource.vehicle)?.payload ?? journeyMe['vehicle']);
+  List<Map<String, dynamic>> get documents => _listOfMaps(result(ReferenceDataSource.documents)?.payload);
+  List<Map<String, dynamic>> get maintenance => _listOfMaps(result(ReferenceDataSource.vehicleMaintenance)?.payload);
+  List<Map<String, dynamic>> get bankAccounts => _listOfMaps(result(ReferenceDataSource.bankAccounts)?.payload);
+  List<Map<String, dynamic>> get payouts => _listOfMaps(result(ReferenceDataSource.payouts)?.payload);
+  List<Map<String, dynamic>> get incentives => _listOfMaps(result(ReferenceDataSource.incentives)?.payload);
+  Map<String, dynamic> get referral => _map(result(ReferenceDataSource.referral)?.payload);
+  List<Map<String, dynamic>> get referralRows => _listOfMaps(referral['referrals']);
+  List<Map<String, dynamic>> get incidents => _listOfMaps(result(ReferenceDataSource.incidents)?.payload);
+  List<Map<String, dynamic>> get returns => _listOfMaps(result(ReferenceDataSource.returns)?.payload);
+  Map<String, dynamic> get performance => _map(result(ReferenceDataSource.performance)?.payload);
   List<Map<String, dynamic>> get faqs => _listOfMaps(result(ReferenceDataSource.supportFaqs)?.payload);
   List<Map<String, dynamic>> get tickets => _listOfMaps(result(ReferenceDataSource.supportTickets)?.payload);
   List<Map<String, dynamic>> get chats => _listOfMaps(result(ReferenceDataSource.chats)?.payload);
@@ -1899,15 +1842,29 @@ String _humanKey(String key) {
 }
 
 IconData _actionIcon(ReferenceAction action) => switch (action) {
+      ReferenceAction.acceptShipment => Icons.check_circle_outline_rounded,
       ReferenceAction.pickupShipment => Icons.inventory_2_outlined,
+      ReferenceAction.startTransit => Icons.route_outlined,
+      ReferenceAction.nearCustomer => Icons.location_on_outlined,
       ReferenceAction.deliverShipment => Icons.task_alt_rounded,
       ReferenceAction.failShipment => Icons.report_problem_outlined,
+      ReferenceAction.startShift => Icons.play_circle_outline_rounded,
+      ReferenceAction.endShift => Icons.stop_circle_outlined,
+      ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
+      ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
       ReferenceAction.createIncident => Icons.support_agent_rounded,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
+      ReferenceAction.acceptShipment => 'قبول الشحنة على السيرفر',
       ReferenceAction.pickupShipment => 'تأكيد الاستلام على السيرفر',
+      ReferenceAction.startTransit => 'بدء التوجه للعميل',
+      ReferenceAction.nearCustomer => 'تأكيد الوصول قرب العميل',
       ReferenceAction.deliverShipment => 'تأكيد التسليم على السيرفر',
       ReferenceAction.failShipment => 'تسجيل تعذر التسليم',
+      ReferenceAction.startShift => 'بدء الوردية',
+      ReferenceAction.endShift => 'إنهاء الوردية',
+      ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
+      ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
     };
