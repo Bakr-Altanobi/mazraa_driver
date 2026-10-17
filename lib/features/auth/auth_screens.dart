@@ -141,81 +141,76 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
+  void _openLogin(BuildContext context) => context.go('/login');
+
   @override
   Widget build(BuildContext context) {
-    final ar = isArabic(context);
     return Scaffold(
       key: const Key('onboardingScreen'),
-      body: SafeArea(
+      body: RepaintBoundary(
+        key: const Key('onboardingVisual'),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final artworkHeight = constraints.maxHeight < 660 ? 205.0 : 270.0;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: (constraints.maxHeight - 42).clamp(0, double.infinity),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Image.asset(
-                        ReferenceAssets.brandLeaf,
-                        width: 52,
-                        height: 52,
-                        fit: BoxFit.contain,
-                        cacheWidth: 180,
+            final width = constraints.maxWidth;
+            final height = constraints.maxHeight;
+            return Semantics(
+              container: true,
+              label: 'خلك شريك التوصيل الأفضل. وصل الخير واربح أكثر.',
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'refrinces/screens/01_onboarding.png',
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.none,
+                    excludeFromSemantics: true,
+                  ),
+                  Positioned(
+                    left: width * .76,
+                    top: height * .018,
+                    width: width * .21,
+                    height: height * .065,
+                    child: Semantics(
+                      button: true,
+                      label: 'تخطي',
+                      child: GestureDetector(
+                        key: const Key('onboardingSkip'),
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _openLogin(context),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: artworkHeight,
-                      width: double.infinity,
-                      child: Image.asset(
-                        ReferenceAssets.onboardingFarm,
-                        fit: BoxFit.contain,
-                        cacheWidth: 900,
+                  ),
+                  Positioned(
+                    left: width * .075,
+                    top: height * .802,
+                    width: width * .85,
+                    height: height * .085,
+                    child: Semantics(
+                      button: true,
+                      label: 'ابدأ الآن',
+                      child: GestureDetector(
+                        key: const Key('onboardingStart'),
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _openLogin(context),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const _ReferenceAssetRow(
-                      paths: [
-                        ReferenceAssets.driverAvatar,
-                        ReferenceAssets.routeArrow,
-                        ReferenceAssets.deliveryTote,
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      ar ? 'رحلات أوضح، يوم أسهل' : 'Clear trips. Easier days.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      ar
-                          ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
-                          : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  Positioned(
+                    left: width * .20,
+                    top: height * .885,
+                    width: width * .60,
+                    height: height * .06,
+                    child: Semantics(
+                      button: true,
+                      label: 'لدي حساب بالفعل',
+                      child: GestureDetector(
+                        key: const Key('onboardingLogin'),
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _openLogin(context),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: () => context.go('/login'),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Text(
-                          ar ? 'البدء الآن' : 'Get started',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },

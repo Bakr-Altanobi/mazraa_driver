@@ -41,3 +41,4 @@ flutter:
     # Runtime-sized derivatives of the exact ASSET_INDEX artwork. Original
     # reference PNG files remain untouched under refrinces/assets_primary/.
     - assets/reference_runtime/
+    - refrinces/screens/01_onboarding.png
