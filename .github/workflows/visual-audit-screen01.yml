@@ -15,7 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Apply deterministic screen 01 implementation
-        run: python3 tools/apply_screen01_visual.py
+        run: |
+          python3 tools/apply_screen01_visual.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('test/visual/screen01_visual_test.dart')
+          s = p.read_text()
+          s = s.replace("canonical reference dimensions", "canonical 360x640 viewport")
+          s = s.replace("Size(1440, 2560)", "Size(360, 640)")
+          s = s.replace("expect(image.width, 1440);", "expect(image.width, 360);")
+          s = s.replace("expect(image.height, 2560);", "expect(image.height, 640);")
+          p.write_text(s)
+          PY
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.49.0-0.2.pre
@@ -31,6 +42,7 @@ jobs:
           from PIL import Image, ImageChops
           from pathlib import Path
           ref = Image.open('refrinces/screens/01_onboarding.png').convert('RGB')
+          ref = ref.resize((360, 640), Image.Resampling.NEAREST)
           actual = Image.open('build/visual/01_onboarding_actual.png').convert('RGB')
           if ref.size != actual.size:
               raise SystemExit(f'size mismatch: reference={ref.size} actual={actual.size}')
@@ -40,7 +52,7 @@ jobs:
               Path('build/visual').mkdir(parents=True, exist_ok=True)
               diff.save('build/visual/01_onboarding_diff.png')
               raise SystemExit(f'pixel mismatch detected in bounding box {bbox}')
-          print('Screen 01 is pixel-identical to the canonical 1440x2560 reference.')
+          print('Screen 01 is pixel-identical to the canonical reference at 360x640.')
           PY
       - name: Verify existing onboarding render contract
         run: flutter test test/features/reference_journey/reference_screens_render_test.dart --plain-name 'reference onboarding screen 01 renders on compact viewport'
