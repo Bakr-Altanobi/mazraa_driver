@@ -406,11 +406,23 @@ class ReferenceProductionBody extends StatelessWidget {
   }
 
   List<Widget> _registration(BuildContext context, _ReferenceData data) => [
-        const _DisabledFormCard(
-          title: 'طلب الانضمام كسائق',
-          fields: ['الاسم الكامل', 'البريد', 'الهاتف', 'نوع المركبة', 'كلمة المرور'],
-          reason:
-              'إنشاء السائق موجود إدارياً فقط ويتطلب users.create؛ لا يوجد تسجيل ذاتي public للسائق.',
+        _DriverCard(driver: data.driver),
+        const SizedBox(height: 12),
+        _ServerFieldCard(
+          title: 'حالة طلب الانضمام من السيرفر',
+          rows: {
+            'رقم السائق': _text(data.driver['driverCode']),
+            'حالة الاعتماد': _text(data.driver['approvalStatus']),
+            'التحقق من الهوية': _yesNo(data.driver['isVerified']),
+            'وسيلة التوصيل': _text(data.driver['vehicleType']),
+          },
+        ),
+        const SizedBox(height: 12),
+        const _NoticeCard(
+          icon: Icons.verified_user_outlined,
+          title: 'تسجيل السائق الجديد متاح',
+          message:
+              'يمكن تقديم طلب سائق جديد من شاشة البداية أو تسجيل الدخول عبر Auth/register ثم driver-journey/apply. يظهر الطلب قيد مراجعة الإدارة ولا يسمح باستقبال الشحنات حتى الاعتماد.',
         ),
       ];
 
