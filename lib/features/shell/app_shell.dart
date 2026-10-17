@@ -93,9 +93,9 @@ class ReferenceBottomNavigation extends StatelessWidget {
             Expanded(
               child: _ReferenceDestination(
                 selected: currentBranch == 4,
-                icon: Icons.person_rounded,
-                outlineIcon: Icons.person_outline_rounded,
-                label: 'حسابي',
+                icon: Icons.grid_view_rounded,
+                outlineIcon: Icons.grid_view_outlined,
+                label: 'المزيد',
                 onTap: () => onTap(4),
               ),
             ),
