@@ -6,6 +6,7 @@ import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/services/driver_compliance_screens.dart';
 import 'package:mazraa_driver/features/services/driver_services_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/available_orders_screen.dart';
@@ -76,6 +77,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final raw = state.pathParameters['screen'] ?? '1';
           final parsed = int.tryParse(raw) ?? 1;
           final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
+          if (number == 14) return const DriverDocumentsScreen();
+          if (number == 42) return const VehicleMaintenanceScreen();
           return ReferenceJourneyScreen(screenNumber: number);
         },
       ),
@@ -147,6 +150,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/returns',
         builder: (_, _) => const ReturnTasksScreen(),
+      ),
+      GoRoute(
+        path: '/documents',
+        builder: (_, _) => const DriverDocumentsScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance',
+        builder: (_, _) => const VehicleMaintenanceScreen(),
       ),
       GoRoute(
         path: '/shipments/:id',
