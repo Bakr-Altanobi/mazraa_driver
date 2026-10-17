@@ -134,6 +134,29 @@ class DriverApi {
   Future<List<dynamic>> getVehicleMaintenance() =>
       _client.get<List<dynamic>>('api/driver-journey/vehicle-maintenance');
 
+  Future<Map<String, dynamic>> getMyCurrentVehicle() =>
+      _client.get<Map<String, dynamic>>('api/Vehicles/my-current');
+
+  Future<Map<String, dynamic>> addVehicleMaintenance({
+    required int vehicleId,
+    required DateTime serviceAt,
+    double? odometerKm,
+    DateTime? nextServiceAt,
+    double? nextServiceOdometerKm,
+    String? notes,
+  }) =>
+      _client.post<Map<String, dynamic>>(
+        'api/driver-journey/vehicle-maintenance',
+        data: {
+          'vehicleId': vehicleId,
+          'serviceAt': serviceAt.toUtc().toIso8601String(),
+          'odometerKm': odometerKm,
+          'nextServiceAt': nextServiceAt?.toUtc().toIso8601String(),
+          'nextServiceOdometerKm': nextServiceOdometerKm,
+          'notes': notes?.trim(),
+        },
+      );
+
   Future<List<dynamic>> getBankAccounts() =>
       _client.get<List<dynamic>>('api/driver-journey/bank-accounts');
 
