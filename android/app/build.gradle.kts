@@ -25,6 +25,35 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
+// The CI arm64 release APK is a debug-signed *staging* artifact. Store
+// distribution must never silently fall back to that signature. Flutter's
+// appbundle release path is a publication build even without an extra flag.
+val publishingDriver = System.getenv("DRIVER_PUBLISH_RELEASE")
+    ?.equals("true", ignoreCase = true) == true ||
+    gradle.startParameter.taskNames.any {
+        it.endsWith("bundleRelease", ignoreCase = true)
+    }
+if (publishingDriver) {
+    if (mapsApiKey.isBlank()) {
+        throw GradleException(
+            "Driver publication requires MAPS_API_KEY in android/local.properties or the environment."
+        )
+    }
+    if (!keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Driver publication requires android/key.properties with a production keystore."
+        )
+    }
+    val missing = listOf("keyAlias", "keyPassword", "storeFile", "storePassword")
+        .filter { keystoreProperties.getProperty(it).isNullOrBlank() }
+    if (missing.isNotEmpty()) {
+        throw GradleException("Incomplete release signing configuration: ${missing.joinToString()}")
+    }
+    if (!file(keystoreProperties.getProperty("storeFile")).isFile) {
+        throw GradleException("The configured driver release keystore file does not exist.")
+    }
+}
+
 android {
     namespace = "com.mazraa.driver"
     compileSdk = flutter.compileSdkVersion
