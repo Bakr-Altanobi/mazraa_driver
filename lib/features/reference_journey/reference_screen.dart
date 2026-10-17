@@ -5,6 +5,7 @@ import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_production_body.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_repository.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_driver_controls.dart';
 
 class ReferenceJourneyScreen extends ConsumerStatefulWidget {
   const ReferenceJourneyScreen({required this.screenNumber, super.key});
@@ -50,6 +51,17 @@ class _ReferenceJourneyScreenState
             ),
         ],
       ),
+      bottomNavigationBar: sessionReady &&
+              const <int>{10, 12, 16, 30}.contains(widget.screenNumber)
+          ? DriverServiceControls(
+              screenNumber: widget.screenNumber,
+              onSaved: () {
+                if (key != null) {
+                  ref.invalidate(referenceScreenPayloadProvider(key));
+                }
+              },
+            )
+          : null,
       body: ReferenceProductionBody(
         spec: spec,
         payload: asyncPayload?.valueOrNull,
