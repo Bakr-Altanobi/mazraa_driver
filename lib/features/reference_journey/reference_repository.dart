@@ -315,16 +315,20 @@ class ReferenceRepository {
   Future<void> createIncident({
     required String subject,
     required String message,
+    bool isEmergency = false,
   }) async {
     // A general incident must not be falsely linked to the first shipment.
     // The server accepts ShipmentId=null for driver-wide reports.
+    if (subject.trim().isEmpty || message.trim().isEmpty) {
+      throw ArgumentError('عنوان البلاغ والتفاصيل مطلوبان.');
+    }
     await _client.post<dynamic>(
       'api/driver-journey/incidents',
       data: {
-        'category': 'driver-report',
+        'category': isEmergency ? 'emergency' : 'driver-report',
         'title': subject.trim(),
         'description': message.trim(),
-        'isEmergency': false,
+        'isEmergency': isEmergency,
       },
     );
   }
