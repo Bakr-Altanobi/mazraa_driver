@@ -205,9 +205,31 @@ class ReferenceRepository {
     return ReferenceScreenPayload(results: results);
   }
 
+  /// A reference action must have a user-selected, server-issued target. Never
+  /// silently mutate the first eligible order or offer in an account.
+  Future<List<Map<String, dynamic>>> eligibleActionTargets(
+    ReferenceAction action,
+  ) async {
+    if (action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/offers');
+      return rows.whereType<Map<String, dynamic>>().where((row) {
+        final id = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
+        final expiry = DateTime.tryParse('${row['expiresAt'] ?? ''}');
+        return id != null && expiry != null && expiry.isAfter(DateTime.now());
+      }).toList(growable: false);
+    }
+    final rows = await _client.get<List<dynamic>>('api/Shipments');
+    return rows.whereType<Map<String, dynamic>>().where(
+      (row) => selectShipmentIdForAction([row], action) != null,
+    ).toList(growable: false);
+  }
+
   Future<void> runShipmentAction(
     ReferenceAction action, {
     String? reason,
+    int? shipmentId,
+    int? offerId,
   }) async {
     if (action == ReferenceAction.startShift) {
       await _client.post<dynamic>(
@@ -225,16 +247,14 @@ class ReferenceRepository {
     }
     if (action == ReferenceAction.acceptOffer ||
         action == ReferenceAction.rejectOffer) {
-      final offers =
-          await _client.get<List<dynamic>>('api/driver-journey/offers');
-      int? offerId;
-      for (final row in offers) {
-        if (row is! Map) continue;
-        offerId = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
-        if (offerId != null) break;
+      if (offerId == null || offerId <= 0) {
+        throw StateError('اختر عرض توصيل حقيقيًا قبل إرسال هذا القرار.');
       }
-      if (offerId == null) {
-        throw StateError('لا يوجد عرض توصيل فعلي متاح للسائق الآن.');
+      final eligible = await eligibleActionTargets(action);
+      if (!eligible.any(
+        (row) => int.tryParse('${row['offerId'] ?? row['id']}') == offerId,
+      )) {
+        throw StateError('العرض المحدد لم يعد متاحًا على السيرفر.');
       }
       final verb = action == ReferenceAction.acceptOffer ? 'accept' : 'reject';
       await _client.post<dynamic>(
@@ -245,13 +265,14 @@ class ReferenceRepository {
     if (action == ReferenceAction.createIncident) {
       throw ArgumentError.value(action);
     }
-
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    final shipmentId = selectShipmentIdForAction(rows, action);
-    if (shipmentId == null) {
-      throw StateError(
-        'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',
-      );
+    if (shipmentId == null || shipmentId <= 0) {
+      throw StateError('اختر الشحنة المقصودة قبل تغيير حالتها.');
+    }
+    final rows = await eligibleActionTargets(action);
+    if (!rows.any(
+      (row) => int.tryParse('${row['id']}') == shipmentId,
+    )) {
+      throw StateError('حالة الشحنة المحددة لم تعد تسمح بتنفيذ العملية.');
     }
     final actionName = switch (action) {
       ReferenceAction.acceptShipment => 'accept',
