@@ -78,6 +78,23 @@ void main() {
       );
     });
 
+    test('allows a signed-out user to apply as a driver but guards private screens', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.signedOut,
+          location: '/register-driver',
+        ),
+        isNull,
+      );
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.authenticated,
+          location: '/register-driver',
+        ),
+        '/home',
+      );
+    });
+
     test('protects private pages for signed-out drivers', () {
       expect(
         resolveAuthRedirect(
