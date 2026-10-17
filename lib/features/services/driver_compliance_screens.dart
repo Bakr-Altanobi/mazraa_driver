@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/network/driver_media_api.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
-import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class DriverDocumentsScreen extends ConsumerStatefulWidget {
   const DriverDocumentsScreen({super.key});
@@ -48,11 +48,71 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
   Future<void> _addDocument() async {
     final driverId = ref.read(authControllerProvider).profile?.userId;
     if (driverId == null) return;
+    final meta = await _documentDialog();
+    if (meta == null || !mounted) return;
 
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('التقاط صورة بالكاميرا'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('اختيار من الصور'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final photo = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 88,
+      maxWidth: 2000,
+    );
+    if (photo == null) return;
+
+    setState(() => _busy = true);
+    try {
+      final mediaUrl = await ref
+          .read(driverMediaApiProvider)
+          .uploadDriverDocument(filePath: photo.path, driverId: driverId);
+      await ref.read(driverApiProvider).addDriverDocument(
+            type: meta.type,
+            mediaUrl: mediaUrl,
+            documentNumber: meta.number,
+            expiresAt: meta.expiresAt,
+          );
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم رفع الصورة وحفظ الوثيقة على السيرفر.'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) _showError(context, error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<_DocumentDraft?> _documentDialog() async {
     var type = 0;
-    final number = TextEditingController();
     DateTime? expiresAt;
-    final metadata = await showDialog<(int, String?, DateTime?)>(
+    final number = TextEditingController();
+    final result = await showDialog<_DocumentDraft>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
@@ -80,15 +140,13 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
                     labelText: 'رقم الوثيقة (اختياري)',
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.event_outlined),
                   title: const Text('تاريخ الانتهاء'),
                   subtitle: Text(
-                    expiresAt == null
-                        ? 'غير محدد'
-                        : '${expiresAt!.year}-${expiresAt!.month.toString().padLeft(2, '0')}-${expiresAt!.day.toString().padLeft(2, '0')}',
+                    expiresAt == null ? 'غير محدد' : _date(expiresAt!),
                   ),
                   onTap: () async {
                     final picked = await showDatePicker(
@@ -110,7 +168,7 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
             FilledButton(
               onPressed: () => Navigator.pop(
                 dialogContext,
-                (
+                _DocumentDraft(
                   type,
                   number.text.trim().isEmpty ? null : number.text.trim(),
                   expiresAt,
@@ -123,66 +181,7 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
       ),
     );
     number.dispose();
-    if (metadata == null || !mounted) return;
-
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('التقاط صورة بالكاميرا'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('اختيار من الصور'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (source == null) return;
-
-    final picked = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 88,
-      maxWidth: 2000,
-    );
-    if (picked == null) return;
-
-    setState(() => _busy = true);
-    try {
-      final url = await ref.read(driverMediaApiProvider).uploadDriverDocument(
-            filePath: picked.path,
-            driverId: driverId,
-          );
-      await ref.read(driverApiProvider).addDriverDocument(
-            type: metadata.$1,
-            mediaUrl: url,
-            documentNumber: metadata.$2,
-            expiresAt: metadata.$3,
-          );
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم رفع الصورة وحفظ الوثيقة على السيرفر.'),
-          ),
-        );
-      }
-    } catch (error) {
-      if (mounted) _showError(context, error);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    return result;
   }
 
   @override
@@ -202,7 +201,7 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _RetryState(message: _error!, onRetry: _load)
+              ? _Retry(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
@@ -219,7 +218,7 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
                       ),
                       const SizedBox(height: 12),
                       if (_documents.isEmpty)
-                        const _EmptyCard(
+                        const _Empty(
                           'لا توجد وثائق محفوظة. ارفع الهوية أو الرخصة أو وثيقة المركبة.',
                         ),
                       for (final row in _documents) _documentCard(row),
@@ -230,7 +229,7 @@ class _DriverDocumentsScreenState extends ConsumerState<DriverDocumentsScreen> {
   }
 
   Widget _documentCard(Map<String, dynamic> row) {
-    final url = '${row['mediaUrl'] ?? ''}';
+    final url = _absoluteUrl('${row['mediaUrl'] ?? ''}');
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -307,17 +306,14 @@ class _VehicleMaintenanceScreenState
   Future<void> _load() async {
     try {
       final api = ref.read(driverApiProvider);
-      final values = await Future.wait<Object?>([
-        api.getJourneyMe(),
-        api.getVehicleMaintenance(),
-      ]);
-      final me = _map(values[0]);
+      final me = await api.getJourneyMe();
+      final rows = await api.getVehicleMaintenance();
       final vehicle = _map(me['vehicle']);
       if (!mounted) return;
       setState(() {
         _vehicle = vehicle;
         _vehicleId = _nullableInt(vehicle['id']);
-        _rows = _maps(values[1] as List<dynamic>);
+        _rows = _maps(rows);
         _loading = false;
         _error = null;
       });
@@ -336,18 +332,38 @@ class _VehicleMaintenanceScreenState
       _showError(context, 'لا توجد مركبة نشطة مسندة إلى حساب السائق.');
       return;
     }
+    final draft = await _maintenanceDialog();
+    if (draft == null) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(driverApiProvider).addVehicleMaintenance(
+            vehicleId: vehicleId,
+            serviceAt: draft.serviceAt,
+            odometerKm: draft.odometerKm,
+            nextServiceAt: draft.nextServiceAt,
+            nextServiceOdometerKm: draft.nextOdometerKm,
+            notes: draft.notes,
+          );
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حفظ سجل الصيانة على السيرفر.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) _showError(context, error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<_MaintenanceDraft?> _maintenanceDialog() async {
     final odometer = TextEditingController();
     final nextOdometer = TextEditingController();
     final notes = TextEditingController();
     var serviceAt = DateTime.now();
     DateTime? nextServiceAt;
-    final result = await showDialog<({
-      DateTime serviceAt,
-      double? odometer,
-      DateTime? nextServiceAt,
-      double? nextOdometer,
-      String? notes,
-    })>(
+    final result = await showDialog<_MaintenanceDraft>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
@@ -373,17 +389,22 @@ class _VehicleMaintenanceScreenState
                 TextField(
                   controller: odometer,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'عداد المركبة كم (اختياري)'),
+                  decoration: const InputDecoration(
+                    labelText: 'عداد المركبة كم (اختياري)',
+                  ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('موعد الصيانة التالية'),
-                  subtitle: Text(nextServiceAt == null ? 'غير محدد' : _date(nextServiceAt!)),
+                  subtitle: Text(
+                    nextServiceAt == null ? 'غير محدد' : _date(nextServiceAt!),
+                  ),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: nextServiceAt ?? DateTime.now().add(const Duration(days: 90)),
+                      initialDate: nextServiceAt ??
+                          DateTime.now().add(const Duration(days: 90)),
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 3650)),
                     );
@@ -393,7 +414,9 @@ class _VehicleMaintenanceScreenState
                 TextField(
                   controller: nextOdometer,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'عداد الصيانة التالية (اختياري)'),
+                  decoration: const InputDecoration(
+                    labelText: 'عداد الصيانة التالية (اختياري)',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -406,15 +429,21 @@ class _VehicleMaintenanceScreenState
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, (
-                serviceAt: serviceAt,
-                odometer: double.tryParse(odometer.text.trim()),
-                nextServiceAt: nextServiceAt,
-                nextOdometer: double.tryParse(nextOdometer.text.trim()),
-                notes: notes.text.trim().isEmpty ? null : notes.text.trim(),
-              )),
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                _MaintenanceDraft(
+                  serviceAt: serviceAt,
+                  odometerKm: double.tryParse(odometer.text.trim()),
+                  nextServiceAt: nextServiceAt,
+                  nextOdometerKm: double.tryParse(nextOdometer.text.trim()),
+                  notes: notes.text.trim().isEmpty ? null : notes.text.trim(),
+                ),
+              ),
               child: const Text('حفظ'),
             ),
           ],
@@ -424,29 +453,7 @@ class _VehicleMaintenanceScreenState
     odometer.dispose();
     nextOdometer.dispose();
     notes.dispose();
-    if (result == null) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref.read(driverApiProvider).addVehicleMaintenance(
-            vehicleId: vehicleId,
-            serviceAt: result.serviceAt,
-            odometerKm: result.odometer,
-            nextServiceAt: result.nextServiceAt,
-            nextServiceOdometerKm: result.nextOdometer,
-            notes: result.notes,
-          );
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ سجل الصيانة على السيرفر.')),
-        );
-      }
-    } catch (error) {
-      if (mounted) _showError(context, error);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    return result;
   }
 
   @override
@@ -454,7 +461,9 @@ class _VehicleMaintenanceScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('صيانة المركبة'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+        actions: [
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _busy || _vehicleId == null ? null : _add,
@@ -464,7 +473,7 @@ class _VehicleMaintenanceScreenState
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _RetryState(message: _error!, onRetry: _load)
+              ? _Retry(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
@@ -474,7 +483,7 @@ class _VehicleMaintenanceScreenState
                       SizedBox(
                         height: 130,
                         child: Image.asset(
-                          ReferenceAssets.vehicleVan,
+                          ReferenceAssets.carMaintenance,
                           fit: BoxFit.contain,
                           cacheWidth: 620,
                         ),
@@ -496,7 +505,7 @@ class _VehicleMaintenanceScreenState
                       ),
                       const SizedBox(height: 12),
                       if (_rows.isEmpty)
-                        const _EmptyCard('لا توجد سجلات صيانة سابقة.'),
+                        const _Empty('لا توجد سجلات صيانة سابقة.'),
                       for (final row in _rows)
                         Card(
                           child: ListTile(
@@ -517,52 +526,30 @@ class _VehicleMaintenanceScreenState
   }
 }
 
-String _documentType(Object? value) => switch (_int(value, -1)) {
-      0 => 'الهوية',
-      1 => 'رخصة القيادة',
-      2 => 'استمارة المركبة',
-      3 => 'تأمين المركبة',
-      4 => 'وثيقة أخرى',
-      _ => 'وثيقة',
-    };
-
-String _documentStatus(Object? value) => switch (_int(value, -1)) {
-      0 => 'قيد المراجعة',
-      1 => 'معتمدة',
-      2 => 'مرفوضة',
-      3 => 'منتهية',
-      _ => '$value',
-    };
-
-String _date(DateTime value) =>
-    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-
-Map<String, dynamic> _map(Object? value) {
-  if (value is Map<String, dynamic>) return value;
-  if (value is Map) return value.map((key, value) => MapEntry('$key', value));
-  return const {};
+class _DocumentDraft {
+  const _DocumentDraft(this.type, this.number, this.expiresAt);
+  final int type;
+  final String? number;
+  final DateTime? expiresAt;
 }
 
-List<Map<String, dynamic>> _maps(List<dynamic> values) =>
-    values.map(_map).where((item) => item.isNotEmpty).toList();
-
-int _int(Object? value, int fallback) =>
-    value is num ? value.toInt() : int.tryParse('$value') ?? fallback;
-
-int? _nullableInt(Object? value) {
-  if (value == null) return null;
-  final parsed = _int(value, 0);
-  return parsed == 0 ? null : parsed;
+class _MaintenanceDraft {
+  const _MaintenanceDraft({
+    required this.serviceAt,
+    this.odometerKm,
+    this.nextServiceAt,
+    this.nextOdometerKm,
+    this.notes,
+  });
+  final DateTime serviceAt;
+  final double? odometerKm;
+  final DateTime? nextServiceAt;
+  final double? nextOdometerKm;
+  final String? notes;
 }
 
-void _showError(BuildContext context, Object error) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(error.toString())),
-  );
-}
-
-class _RetryState extends StatelessWidget {
-  const _RetryState({required this.message, required this.onRetry});
+class _Retry extends StatelessWidget {
+  const _Retry({required this.message, required this.onRetry});
   final String message;
   final Future<void> Function() onRetry;
 
@@ -588,8 +575,8 @@ class _RetryState extends StatelessWidget {
       );
 }
 
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard(this.message);
+class _Empty extends StatelessWidget {
+  const _Empty(this.message);
   final String message;
 
   @override
@@ -605,4 +592,55 @@ class _EmptyCard extends StatelessWidget {
           ),
         ),
       );
+}
+
+Map<String, dynamic> _map(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return value.map((key, value) => MapEntry('$key', value));
+  return const {};
+}
+
+List<Map<String, dynamic>> _maps(List<dynamic> values) =>
+    values.map(_map).where((item) => item.isNotEmpty).toList();
+
+int _int(Object? value, int fallback) =>
+    value is num ? value.toInt() : int.tryParse('$value') ?? fallback;
+
+int? _nullableInt(Object? value) {
+  if (value == null) return null;
+  final parsed = _int(value, 0);
+  return parsed == 0 ? null : parsed;
+}
+
+String _documentType(Object? value) => switch (_int(value, -1)) {
+      0 => 'الهوية',
+      1 => 'رخصة القيادة',
+      2 => 'استمارة المركبة',
+      3 => 'تأمين المركبة',
+      4 => 'وثيقة أخرى',
+      _ => 'وثيقة',
+    };
+
+String _documentStatus(Object? value) => switch (_int(value, -1)) {
+      0 => 'قيد المراجعة',
+      1 => 'معتمدة',
+      2 => 'مرفوضة',
+      3 => 'منتهية',
+      _ => '$value',
+    };
+
+String _date(DateTime value) =>
+    '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String _absoluteUrl(String value) {
+  if (value.isEmpty) return '';
+  final uri = Uri.tryParse(value);
+  if (uri?.hasScheme == true) return value;
+  return Uri.parse(ApiEndpoints.baseUrl).resolve(value).toString();
+}
+
+void _showError(BuildContext context, Object error) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(error.toString())),
+  );
 }
