@@ -46,7 +46,9 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  // The numbered reference gallery is available from driver services, not the
+  // landing screen after login. The working dashboard is the primary journey.
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
