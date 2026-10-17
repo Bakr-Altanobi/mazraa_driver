@@ -71,7 +71,10 @@ int? selectShipmentIdForAction(
     ReferenceAction.endShift ||
     ReferenceAction.acceptOffer ||
     ReferenceAction.rejectOffer ||
-    ReferenceAction.createIncident => const <String>{},
+    ReferenceAction.createIncident ||
+    ReferenceAction.updatePreferences ||
+    ReferenceAction.saveBankAccount ||
+    ReferenceAction.requestPayout => const <String>{},
   };
   for (final row in rows) {
     if (row is! Map || row['id'] == null) continue;
@@ -210,7 +213,10 @@ class ReferenceRepository {
   Future<List<Map<String, dynamic>>> actionTargets(ReferenceAction action) async {
     if (action == ReferenceAction.startShift ||
         action == ReferenceAction.endShift ||
-        action == ReferenceAction.createIncident) {
+        action == ReferenceAction.createIncident ||
+        action == ReferenceAction.updatePreferences ||
+        action == ReferenceAction.saveBankAccount ||
+        action == ReferenceAction.requestPayout) {
       return const [];
     }
     final isOffer = action == ReferenceAction.acceptOffer ||
@@ -290,7 +296,10 @@ class ReferenceRepository {
       ReferenceAction.endShift ||
       ReferenceAction.acceptOffer ||
       ReferenceAction.rejectOffer ||
-      ReferenceAction.createIncident => throw ArgumentError.value(action),
+      ReferenceAction.createIncident ||
+      ReferenceAction.updatePreferences ||
+      ReferenceAction.saveBankAccount ||
+      ReferenceAction.requestPayout => throw ArgumentError.value(action),
     };
     await _client.post<dynamic>(
       'api/Shipments/' + targetId.toString() + '/' + actionName,
@@ -304,6 +313,54 @@ class ReferenceRepository {
     );
   }
 
+  Future<Map<String, dynamic>> loadPreferences() =>
+      _client.get<Map<String, dynamic>>('api/driver-journey/me/preferences');
+
+  Future<void> savePreferences(Map<String, dynamic> values) async {
+    await _client.put<dynamic>('api/driver-journey/me/preferences', data: {
+      'acceptScheduledTrips': values['acceptScheduledTrips'],
+      'acceptPrivateDeliveries': values['acceptPrivateDeliveries'],
+      'acceptBatchDeliveries': values['acceptBatchDeliveries'],
+      'isAvailableForOffers': values['isAvailableForOffers'],
+      'offerRadiusKm': values['offerRadiusKm'],
+      'offerTimeoutSeconds': values['offerTimeoutSeconds'],
+    });
+  }
+
+  Future<List<dynamic>> loadBankAccounts() =>
+      _client.get<List<dynamic>>('api/driver-journey/bank-accounts');
+
+  Future<Map<String, dynamic>> loadWallet() =>
+      _client.get<Map<String, dynamic>>('api/wallets/me');
+
+  Future<void> saveBankAccount({
+    required String bankName,
+    required String holder,
+    required String iban,
+    String? accountNumber,
+  }) async {
+    await _client.put<dynamic>('api/driver-journey/bank-account', data: {
+      'bankName': bankName.trim(),
+      'accountHolderName': holder.trim(),
+      'iban': iban.replaceAll(' ', '').toUpperCase(),
+      'accountNumber': accountNumber?.trim(),
+    });
+  }
+
+  Future<void> requestPayout({
+    required int bankAccountId,
+    required double amount,
+    required String currency,
+  }) async {
+    if (!amount.isFinite || amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'Enter a positive finite amount.');
+    }
+    await _client.post<dynamic>('api/driver-journey/payouts', data: {
+      'bankAccountId': bankAccountId,
+      'amount': amount,
+      'currency': currency,
+    });
+  }
   Future<void> createIncident({
     required String subject,
     required String message,
