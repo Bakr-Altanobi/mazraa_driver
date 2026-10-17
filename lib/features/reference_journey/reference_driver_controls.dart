@@ -394,12 +394,110 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     return true;
   }
 
+  Future<bool> _manageReturnTasks() async {
+    final api = ref.read(driverApiProvider);
+    final rows = await api.getReturnTasks();
+    if (!mounted) return false;
+    final tasks = rows.whereType<Map<String, dynamic>>().toList(growable: false);
+    final eligible = <(int, String, Map<String, dynamic>)>[];
+    for (final task in tasks) {
+      final id = int.tryParse('${task['id'] ?? ''}');
+      final status = '${task['status'] ?? ''}'.replaceAll('_', '').toLowerCase();
+      if (id == null || id <= 0) continue;
+      final action = switch (status) {
+        'assigned' || '0' => 'accept',
+        'accepted' || '1' => 'pickup',
+        'pickedup' || '2' => 'complete',
+        _ => null,
+      };
+      if (action != null) eligible.add((id, action, task));
+    }
+    if (eligible.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('المهام المرتجعة'),
+          content: const Text('لا توجد مهمة مرتجع تسمح حالتها بتنفيذ خطوة جديدة.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+    final chosen = await showDialog<(int, String)>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حدد مهمة المرتجع'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final task in eligible)
+                ListTile(
+                  title: Text('مرتجع #${task.$3['returnRequestId'] ?? task.$1}'),
+                  subtitle: Text(switch (task.$2) {
+                    'accept' => 'قبول مهمة المرتجع',
+                    'pickup' => 'تأكيد الاستلام من العميل',
+                    _ => 'تأكيد إرجاع المرتجع للمتجر',
+                  }),
+                  onTap: () => Navigator.pop(ctx, (task.$1, task.$2)),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted) return false;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('تأكيد إجراء المرتجع'),
+            content: Text('سيتم إرسال العملية لمهمة المرتجع #${chosen.$1} إلى السيرفر.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('تأكيد'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return false;
+    switch (chosen.$2) {
+      case 'accept':
+        await api.acceptReturnTask(chosen.$1);
+      case 'pickup':
+        await api.pickupReturnTask(chosen.$1);
+      case 'complete':
+        await api.completeReturnTask(chosen.$1);
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bankControls = widget.screenNumber == 10 || widget.screenNumber == 30;
     final preferenceControls = widget.screenNumber == 12 || widget.screenNumber == 16;
     final scheduledControls = widget.screenNumber == 16;
-    if (!bankControls && !preferenceControls && !scheduledControls) return const SizedBox.shrink();
+    final returnControls = widget.screenNumber == 39;
+    if (!bankControls && !preferenceControls && !scheduledControls && !returnControls) {
+      return const SizedBox.shrink();
+    }
     return SafeArea(
       top: false,
       child: Padding(
@@ -440,6 +538,15 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
                 ),
               ),
             ],
+            if (returnControls)
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('manageReturnTasksButton'),
+                  onPressed: _busy ? null : () => _run(_manageReturnTasks),
+                  icon: const Icon(Icons.assignment_return_outlined),
+                  label: const Text('تنفيذ خطوة المرتجع'),
+                ),
+              ),
           ],
         ),
       ),
