@@ -454,6 +454,12 @@ class ReferenceProductionBody extends StatelessWidget {
     ),
     const SizedBox(height: 10),
     _GenericList(
+      title: 'الرحلات المجدولة المتاحة',
+      items: data.scheduledTrips,
+      preferredKeys: const ['trip', 'participation'],
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
       title: 'الورديات',
       items: data.shifts,
       preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments'],
@@ -824,6 +830,7 @@ class _ReferenceData {
   Map<String, dynamic> get preferences => _map(result(ReferenceDataSource.preferences)?.payload);
   List<Map<String, dynamic>> get availability => _listOfMaps(result(ReferenceDataSource.availability)?.payload);
   List<Map<String, dynamic>> get offers => _listOfMaps(result(ReferenceDataSource.offers)?.payload);
+  List<Map<String, dynamic>> get scheduledTrips => _listOfMaps(result(ReferenceDataSource.scheduledTrips)?.payload);
   List<Map<String, dynamic>> get currentTrips => _listOfMaps(result(ReferenceDataSource.currentTrips)?.payload);
   List<Map<String, dynamic>> get shifts => _listOfMaps(result(ReferenceDataSource.shifts)?.payload);
   List<Map<String, dynamic>> get shipments => _listOfMaps(result(ReferenceDataSource.shipments)?.payload);
