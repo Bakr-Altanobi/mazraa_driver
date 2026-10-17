@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mazraa_driver/core/constants/build_flags.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
@@ -63,7 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       try {
         position = await ref.read(currentPositionProvider.future);
       } catch (_) {
-        // Status updates are valid without coordinates; location is optional.
+        // Coordinates are optional for a status change.
       }
       final nextAccepting = !profile.isAcceptingOrders;
       await ref.read(driverApiProvider).updateDriverStatus(
@@ -86,45 +88,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) setState(() => _statusBusy = false);
     }
   }
 
-  Future<void> _sendCurrentLocation(Shipment? shipment) async {
-    if (_locationBusy) return;
-    if (shipment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا توجد شحنة نشطة لتحديث موقعها الآن.')),
-      );
-      return;
-    }
+  Future<void> _syncCurrentLocation(
+    DriverProfile? profile,
+    Shipment? shipment,
+  ) async {
+    if (_locationBusy || profile == null) return;
     setState(() => _locationBusy = true);
     try {
       ref.invalidate(currentPositionProvider);
       final position = await ref.read(currentPositionProvider.future);
-      await ref.read(driverApiProvider).updateLocation(
-            shipment.id,
+      await ref.read(driverApiProvider).updateDriverStatus(
+            operationalStatus: _operationalStatusCode(profile.operationalStatus),
+            isAcceptingOrders: profile.isAcceptingOrders,
             latitude: position.latitude,
             longitude: position.longitude,
-            heading: position.heading.isFinite ? position.heading : null,
-            speedKph: position.speed.isFinite ? position.speed * 3.6 : null,
-            accuracyMeters: position.accuracy.isFinite ? position.accuracy : null,
           );
+      if (shipment != null) {
+        await ref.read(driverApiProvider).updateLocation(
+              shipment.id,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              heading: position.heading.isFinite ? position.heading : null,
+              speedKph: position.speed.isFinite ? position.speed * 3.6 : null,
+              accuracyMeters:
+                  position.accuracy.isFinite ? position.accuracy : null,
+            );
+      }
+      await ref.read(authControllerProvider).refreshProfile();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تحديث موقع الشحنة على السيرفر.')),
+          SnackBar(
+            content: Text(
+              shipment == null
+                  ? 'تم تحديث موقعك على السيرفر.'
+                  : 'تم تحديث موقعك وموقع الشحنة على السيرفر.',
+            ),
+          ),
         );
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) setState(() => _locationBusy = false);
@@ -145,7 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final now = DateTime.now();
     final today = shipments.where((item) {
       final date = item.createdAt.toLocal();
-      return date.year == now.year && date.month == now.month && date.day == now.day;
+      return date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
     }).toList();
     final todayIncome = today
         .where((item) => item.status == ShipmentStatus.delivered)
@@ -153,8 +168,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final currency = walletAsync.valueOrNull?.currency ?? '';
     final name = _firstName(profile?.name, ar: ar);
     final accepting = profile?.isAcceptingOrders == true;
+    final operationalAvailable = _isOperationallyAvailable(profile);
     final rating = profile?.ratingAverage ?? 0;
     final unread = unreadAsync.valueOrNull ?? 0;
+    final locationLabel = BuildFlags.ciSmokeHome
+        ? (ar ? 'الرياض' : 'Riyadh')
+        : (ar ? 'موقعي' : 'My location');
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFCF5),
@@ -164,57 +183,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onRefresh: _refresh,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 26),
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
             children: [
               _ReferenceHeader(
                 unread: unread,
+                locationLabel: locationLabel,
+                locating: _locationBusy,
+                onLocation: () => _syncCurrentLocation(profile, activeShipment),
                 onNotifications: () => context.go('/notifications'),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 4),
               Text(
                 ar ? 'صباح الخير، $name' : 'Good morning, $name',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: const Color(0xFF073C28),
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -.6,
-                    ),
+                style: const TextStyle(
+                  color: Color(0xFF073C28),
+                  fontSize: 25,
+                  height: 1.12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -.5,
+                ),
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 9),
               Align(
                 alignment: Alignment.center,
-                child: _AvailabilityPill(accepting: accepting),
+                child: _AvailabilityPill(available: operationalAvailable),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 11),
               Text(
                 ar ? 'جاهز لطلبك التالي؟' : 'Ready for your next order?',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: const Color(0xFF073C28),
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: const TextStyle(
+                  color: Color(0xFF073C28),
+                  fontSize: 25,
+                  height: 1.12,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Center(
                 child: Container(
-                  width: 52,
-                  height: 4,
+                  width: 40,
+                  height: 3,
                   decoration: BoxDecoration(
                     color: MazraaColors.orange,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 9),
               _ReferenceMapCard(
+                locationLabel: locationLabel,
                 shipment: activeShipment,
                 locating: _locationBusy,
-                onLocate: () => _sendCurrentLocation(activeShipment),
-                onDirections: activeShipment == null
-                    ? null
-                    : () => context.push('/shipments/${activeShipment.id}'),
+                onLocate: () => _syncCurrentLocation(profile, activeShipment),
+                onDirections: () {
+                  if (activeShipment == null) {
+                    context.go('/shipments');
+                  } else {
+                    context.push('/shipments/${activeShipment.id}');
+                  }
+                },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 9),
               Row(
                 children: [
                   Expanded(
@@ -225,7 +256,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       value: '${today.length}',
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _ReferenceMetricCard(
                       icon: Icons.toll_rounded,
@@ -234,7 +265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       value: _incomeLabel(todayIncome, currency, ar: ar),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _ReferenceMetricCard(
                       icon: Icons.star_rounded,
@@ -245,9 +276,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 9),
               SizedBox(
-                height: 68,
+                height: 54,
                 child: FilledButton.icon(
                   onPressed: profile == null || _statusBusy
                       ? null
@@ -256,25 +287,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     backgroundColor: const Color(0xFF075A35),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(17),
                     ),
-                    elevation: 3,
+                    elevation: 2,
                   ),
                   icon: _statusBusy
                       ? const SizedBox.square(
-                          dimension: 22,
+                          dimension: 19,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
+                            strokeWidth: 2.2,
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.near_me_rounded, size: 29),
+                      : const Icon(Icons.near_me_rounded, size: 24),
                   label: Text(
                     accepting
                         ? (ar ? 'إيقاف استقبال الطلبات' : 'Stop receiving orders')
                         : (ar ? 'ابدأ استقبال الطلبات' : 'Start receiving orders'),
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -289,68 +320,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _ReferenceHeader extends StatelessWidget {
-  const _ReferenceHeader({required this.unread, required this.onNotifications});
+  const _ReferenceHeader({
+    required this.unread,
+    required this.locationLabel,
+    required this.locating,
+    required this.onLocation,
+    required this.onNotifications,
+  });
 
   final int unread;
+  final String locationLabel;
+  final bool locating;
+  final VoidCallback onLocation;
   final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
     return SizedBox(
-      height: 78,
+      height: 64,
       child: Stack(
         alignment: Alignment.center,
         children: [
           Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.location_on_rounded, color: Color(0xFF075A35), size: 28),
-                const SizedBox(width: 4),
-                Text(
-                  ar ? 'موقعي' : 'My location',
-                  style: const TextStyle(
-                    color: Color(0xFF174D39),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: locating ? null : onLocation,
+              borderRadius: BorderRadius.circular(18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Icon(
+                      locating ? Icons.sync_rounded : Icons.location_on_rounded,
+                      color: const Color(0xFF075A35),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      locationLabel,
+                      style: const TextStyle(
+                        color: Color(0xFF174D39),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 1),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF075A35),
+                      size: 22,
+                    ),
+                  ],
                 ),
-                const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF075A35)),
-              ],
+              ),
             ),
           ),
-          Image.asset(
-            ReferenceAssets.brandLeaf,
-            width: 66,
-            height: 66,
+          SvgPicture.asset(
+            'assets/branding/mazraa_mark.svg',
+            width: 48,
+            height: 55,
             fit: BoxFit.contain,
           ),
           Align(
-            alignment: AlignmentDirectional.centerEnd,
+            alignment: Alignment.centerRight,
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              textDirection: TextDirection.ltr,
               children: [
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
+                      visualDensity: VisualDensity.compact,
                       tooltip: ar ? 'الإشعارات' : 'Notifications',
                       onPressed: onNotifications,
                       icon: const Icon(
                         Icons.notifications_none_rounded,
                         color: Color(0xFF075A35),
-                        size: 31,
+                        size: 28,
                       ),
                     ),
                     if (unread > 0)
-                      PositionedDirectional(
+                      Positioned(
                         top: 0,
-                        end: 0,
+                        right: 0,
                         child: Container(
-                          constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          constraints:
+                              const BoxConstraints(minWidth: 20, minHeight: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           alignment: Alignment.center,
                           decoration: const BoxDecoration(
                             color: MazraaColors.orange,
@@ -360,7 +420,7 @@ class _ReferenceHeader extends StatelessWidget {
                             unread > 99 ? '99+' : '$unread',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -368,23 +428,23 @@ class _ReferenceHeader extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: 58,
-                      height: 58,
-                      padding: const EdgeInsets.all(3),
+                      width: 50,
+                      height: 50,
+                      padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE7E6DE)),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x16000000),
-                            blurRadius: 13,
-                            offset: Offset(0, 5),
+                            color: Color(0x13000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
@@ -392,20 +452,20 @@ class _ReferenceHeader extends StatelessWidget {
                         child: Image.asset(
                           ReferenceAssets.driverAvatar,
                           fit: BoxFit.cover,
-                          alignment: const Alignment(0, -.45),
+                          alignment: const Alignment(0, -.48),
                         ),
                       ),
                     ),
-                    PositionedDirectional(
-                      end: -1,
+                    Positioned(
+                      right: -1,
                       bottom: 2,
                       child: Container(
-                        width: 15,
-                        height: 15,
+                        width: 13,
+                        height: 13,
                         decoration: BoxDecoration(
                           color: const Color(0xFF14C975),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
+                          border: Border.all(color: Colors.white, width: 2.2),
                         ),
                       ),
                     ),
@@ -421,37 +481,39 @@ class _ReferenceHeader extends StatelessWidget {
 }
 
 class _AvailabilityPill extends StatelessWidget {
-  const _AvailabilityPill({required this.accepting});
-  final bool accepting;
+  const _AvailabilityPill({required this.available});
+  final bool available;
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: accepting ? const Color(0xFFE8F6E4) : const Color(0xFFF3EFE6),
+        color: available ? const Color(0xFFE8F6E4) : const Color(0xFFF3EFE6),
         borderRadius: BorderRadius.circular(40),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 12,
-            height: 12,
+            width: 10,
+            height: 10,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: accepting ? const Color(0xFF11B965) : const Color(0xFF8E948F),
+              color: available
+                  ? const Color(0xFF11B965)
+                  : const Color(0xFF8E948F),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
-            accepting
+            available
                 ? (ar ? 'متاح لاستلام الطلبات' : 'Available for orders')
                 : (ar ? 'غير متاح لاستلام الطلبات' : 'Unavailable for orders'),
             style: const TextStyle(
               color: Color(0xFF145439),
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -463,173 +525,152 @@ class _AvailabilityPill extends StatelessWidget {
 
 class _ReferenceMapCard extends StatelessWidget {
   const _ReferenceMapCard({
+    required this.locationLabel,
     required this.shipment,
     required this.locating,
     required this.onLocate,
     required this.onDirections,
   });
 
+  final String locationLabel;
   final Shipment? shipment;
   final bool locating;
   final VoidCallback onLocate;
-  final VoidCallback? onDirections;
+  final VoidCallback onDirections;
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    return Container(
-      height: 310,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2EFE2),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE7E3D5)),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const _MapRoadBackdrop(),
-          Opacity(
-            opacity: .20,
-            child: Image.asset(
-              ReferenceAssets.homeRouteDashboard,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Opacity(
-            opacity: .18,
-            child: Image.asset(
-              ReferenceAssets.routeMap,
-              fit: BoxFit.cover,
-            ),
-          ),
-          PositionedDirectional(
-            start: 22,
-            top: 22,
-            child: _MapActionButton(
-              icon: Icons.near_me_rounded,
-              label: ar ? 'توجيه' : 'Directions',
-              onPressed: onDirections,
-            ),
-          ),
-          PositionedDirectional(
-            end: 20,
-            top: 22,
-            child: _SquareMapButton(
-              icon: locating ? Icons.sync_rounded : Icons.my_location_rounded,
-              onPressed: locating ? null : onLocate,
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 54,
-                  height: 54,
-                  child: Image.asset(ReferenceAssets.homePin, fit: BoxFit.contain),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  shipment == null
-                      ? (ar ? 'منطقة التشغيل' : 'Service area')
-                      : (ar ? 'رحلتك الحالية' : 'Current trip'),
-                  style: const TextStyle(
-                    color: Color(0xFF5C5C58),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (shipment != null)
-            PositionedDirectional(
-              start: 36,
-              bottom: 30,
-              child: SizedBox(
-                width: 58,
-                height: 58,
-                child: Image.asset(
-                  ReferenceAssets.deliveryScooter,
-                  fit: BoxFit.contain,
-                ),
+    return AspectRatio(
+      aspectRatio: 1.72,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EFE2),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFE7E3D5)),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const _ReferenceRoadBackdrop(),
+            Opacity(
+              opacity: .34,
+              child: Image.asset(
+                ReferenceAssets.homeRouteDashboard,
+                fit: BoxFit.cover,
               ),
             ),
-        ],
+            Positioned(
+              left: 12,
+              top: 12,
+              child: _MapActionButton(
+                label: ar ? 'توجيه' : 'Directions',
+                onPressed: onDirections,
+              ),
+            ),
+            Positioned(
+              right: 12,
+              top: 12,
+              child: _SquareMapButton(
+                icon: locating ? Icons.sync_rounded : Icons.my_location_rounded,
+                onPressed: locating ? null : onLocate,
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A673F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x33000000), blurRadius: 8),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    locationLabel,
+                    style: const TextStyle(
+                      color: Color(0xFF5C5C58),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (shipment != null)
+              Positioned(
+                left: 24,
+                bottom: 18,
+                child: SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: Image.asset(
+                    ReferenceAssets.deliveryScooter,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MapRoadBackdrop extends StatelessWidget {
-  const _MapRoadBackdrop();
+class _ReferenceRoadBackdrop extends StatelessWidget {
+  const _ReferenceRoadBackdrop();
 
   @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _MapRoadPainter());
-  }
+  Widget build(BuildContext context) => CustomPaint(painter: _RoadPainter());
 }
 
-class _MapRoadPainter extends CustomPainter {
+class _RoadPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final green = Paint()
-      ..color = const Color(0xFFDCEACC)
-      ..style = PaintingStyle.fill;
-    final road = Paint()
-      ..color = Colors.white.withValues(alpha: .92)
-      ..strokeWidth = 14
+    final park = Paint()..color = const Color(0xFFDCEACC);
+    final street = Paint()
+      ..color = Colors.white.withValues(alpha: .88)
+      ..strokeWidth = 7
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    final secondary = Paint()
-      ..color = const Color(0xFFFFE8A4)
-      ..strokeWidth = 3
+    final artery = Paint()
+      ..color = const Color(0xFFFFD878)
+      ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * .08, size.height * .04, size.width * .24, size.height * .25),
-        const Radius.circular(18),
-      ),
-      green,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * .58, size.height * .12, size.width * .30, size.height * .28),
-        const Radius.circular(18),
-      ),
-      green,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * .12, size.height * .63, size.width * .28, size.height * .25),
-        const Radius.circular(18),
-      ),
-      green,
-    );
-    final p1 = Path()
-      ..moveTo(-20, size.height * .72)
-      ..cubicTo(
-        size.width * .26,
-        size.height * .53,
-        size.width * .52,
-        size.height * .70,
-        size.width + 20,
-        size.height * .32,
+    for (final rect in <Rect>[
+      Rect.fromLTWH(size.width * .07, size.height * .10, size.width * .22,
+          size.height * .24),
+      Rect.fromLTWH(size.width * .59, size.height * .08, size.width * .25,
+          size.height * .28),
+      Rect.fromLTWH(size.width * .12, size.height * .65, size.width * .28,
+          size.height * .24),
+    ]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+        park,
       );
-    canvas.drawPath(p1, road);
-    final p2 = Path()
-      ..moveTo(size.width * .15, -20)
-      ..lineTo(size.width * .43, size.height + 20);
-    canvas.drawPath(p2, secondary);
-    final p3 = Path()
-      ..moveTo(size.width * .63, -20)
-      ..lineTo(size.width * .83, size.height + 20);
-    canvas.drawPath(p3, secondary);
-    final p4 = Path()
-      ..moveTo(-20, size.height * .37)
-      ..lineTo(size.width + 20, size.height * .86);
-    canvas.drawPath(p4, secondary);
+    }
+    for (var i = 1; i < 7; i++) {
+      final x = size.width * i / 7;
+      canvas.drawLine(Offset(x, 0), Offset(x * .88, size.height), artery);
+    }
+    for (var i = 1; i < 5; i++) {
+      final y = size.height * i / 5;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y * .92), artery);
+    }
+    final route = Path()
+      ..moveTo(-10, size.height * .73)
+      ..cubicTo(size.width * .28, size.height * .56, size.width * .62,
+          size.height * .72, size.width + 10, size.height * .37);
+    canvas.drawPath(route, street);
   }
 
   @override
@@ -637,32 +678,33 @@ class _MapRoadPainter extends CustomPainter {
 }
 
 class _MapActionButton extends StatelessWidget {
-  const _MapActionButton({required this.icon, required this.label, required this.onPressed});
-  final IconData icon;
+  const _MapActionButton({required this.label, required this.onPressed});
   final String label;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 5,
+      borderRadius: BorderRadius.circular(13),
+      elevation: 4,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(13),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.near_me_rounded, color: Color(0xFF075A35), size: 22),
-              const SizedBox(width: 7),
+              const Icon(Icons.near_me_rounded,
+                  color: Color(0xFF075A35), size: 20),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: const TextStyle(
                   color: Color(0xFF174D39),
                   fontWeight: FontWeight.w800,
+                  fontSize: 13,
                 ),
               ),
             ],
@@ -682,11 +724,16 @@ class _SquareMapButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 5,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, color: const Color(0xFF075A35)),
+      borderRadius: BorderRadius.circular(13),
+      elevation: 4,
+      child: SizedBox(
+        width: 43,
+        height: 43,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          icon: Icon(icon, color: const Color(0xFF075A35), size: 23),
+        ),
       ),
     );
   }
@@ -707,41 +754,43 @@ class _ReferenceMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 135,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
+      height: 92,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            color: Color(0x10000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: iconColor, size: 31),
-          const SizedBox(height: 8),
+          Icon(icon, color: iconColor, size: 23),
+          const SizedBox(height: 3),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF265B48),
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               value,
               style: const TextStyle(
                 color: Color(0xFF071B13),
-                fontSize: 27,
+                fontSize: 22,
+                height: 1,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -750,6 +799,20 @@ class _ReferenceMetricCard extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _isOperationallyAvailable(DriverProfile? profile) {
+  final status = profile?.operationalStatus.trim().toLowerCase() ?? '';
+  return status == 'available' || status == 'online';
+}
+
+int _operationalStatusCode(String raw) {
+  return switch (raw.trim().toLowerCase()) {
+    'online' => 2,
+    'available' => 3,
+    'busy' => 4,
+    _ => 1,
+  };
 }
 
 String _firstName(String? raw, {required bool ar}) {
