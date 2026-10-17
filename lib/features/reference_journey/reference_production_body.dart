@@ -1935,6 +1935,9 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
       ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
       ReferenceAction.createIncident => Icons.support_agent_rounded,
+      ReferenceAction.updatePreferences => Icons.tune_rounded,
+      ReferenceAction.saveBankAccount => Icons.account_balance_outlined,
+      ReferenceAction.requestPayout => Icons.payments_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1949,4 +1952,7 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
+      ReferenceAction.updatePreferences => 'تعديل تفضيلات العمل',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب من المحفظة',
     };
