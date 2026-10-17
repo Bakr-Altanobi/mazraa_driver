@@ -12,7 +12,12 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey = localProperties.getProperty("MAPS_API_KEY", "")
+// Use the developer's existing trial key without checking a credential into Git.
+// CI/release signing may instead inject MAPS_API_KEY through the environment.
+val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+    ?.takeIf { it.isNotBlank() }
+    ?: System.getenv("MAPS_API_KEY")?.takeIf { it.isNotBlank() }
+    ?: ""
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
