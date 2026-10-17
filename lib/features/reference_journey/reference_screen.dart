@@ -138,6 +138,8 @@ class _ReferenceJourneyScreenState
     String? reason;
     String? subject;
     String? message;
+    String? numericCode;
+    String? qrToken;
     if (action == ReferenceAction.failShipment) {
       reason = await _textDialog(
         title: 'سبب تعذر التسليم',
@@ -145,6 +147,11 @@ class _ReferenceJourneyScreenState
         initialValue: 'تعذر الوصول للعميل',
       );
       if (reason == null) return;
+    } else if (action == ReferenceAction.deliverShipment) {
+      final proof = await _deliveryProofDialog();
+      if (proof == null) return;
+      numericCode = proof.$1;
+      qrToken = proof.$2;
     } else if (action == ReferenceAction.createIncident) {
       final incident = await _incidentDialog();
       if (incident == null) return;
@@ -183,7 +190,9 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason, targetId: targetId);
+        await repository.runShipmentAction(action,
+            reason: reason, numericCode: numericCode, qrToken: qrToken,
+            targetId: targetId);
       }
       if (key != null) {
         ref.invalidate(referenceScreenPayloadProvider);
@@ -427,6 +436,37 @@ class _ReferenceJourneyScreenState
     } finally {
       amount.dispose();
       if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+  Future<(String?, String?)?> _deliveryProofDialog() async {
+    final numeric = TextEditingController();
+    final qr = TextEditingController();
+    try {
+      return await showDialog<(String?, String?)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('تأكيد التسليم من السيرفر'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('للشحنات بدون تلامس أدخل رمز العميل الرقمي أو QR. الطلبات العادية لا تحتاج الرمز.'),
+            TextField(controller: numeric, keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز التحقق الرقمي')),
+            TextField(controller: qr, textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز QR (إن وجد)')),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, (
+              numeric.text.trim().isEmpty ? null : numeric.text.trim(),
+              qr.text.trim().isEmpty ? null : qr.text.trim(),
+            )), child: const Text('تأكيد التسليم')),
+          ],
+        ),
+      );
+    } finally {
+      numeric.dispose();
+      qr.dispose();
     }
   }
   Future<String?> _textDialog({
