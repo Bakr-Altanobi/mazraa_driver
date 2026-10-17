@@ -67,7 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       final nextAccepting = !profile.isAcceptingOrders;
       await ref.read(driverApiProvider).updateDriverStatus(
-            operationalStatus: nextAccepting ? 1 : 0,
+            operationalStatus: nextAccepting ? 3 : 1,
             isAcceptingOrders: nextAccepting,
             latitude: position?.latitude,
             longitude: position?.longitude,
