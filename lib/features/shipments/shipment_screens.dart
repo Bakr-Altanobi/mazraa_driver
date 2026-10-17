@@ -7,6 +7,7 @@ import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
+import 'package:mazraa_driver/features/shipments/driver_offers_panel.dart';
 import 'package:mazraa_driver/shared/widgets/map_panel.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -40,7 +41,10 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
         actions: [
           IconButton(
             tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(shipmentsProvider),
+            onPressed: () {
+              ref.invalidate(shipmentsProvider);
+              ref.invalidate(driverOffersProvider);
+            },
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -99,23 +103,15 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: state.when(
+            child: _filter == _ShipmentFilter.available
+                ? const DriverOffersPanel()
+                : state.when(
               loading: LoadingList.new,
               error: (error, _) => ErrorState(
                 error: error,
                 onRetry: () => ref.invalidate(shipmentsProvider),
               ),
               data: (items) {
-                if (_filter == _ShipmentFilter.available) {
-                  return EmptyState(
-                    title: ar
-                        ? 'لا توجد واجهة عروض متاحة'
-                        : 'No offers feed available',
-                    message: ar
-                        ? 'السيرفر الحالي يعيد الشحنات المسندة إليك فقط، ولا يوفّر Endpoint مستقلًا للعروض غير المسندة.'
-                        : 'The server currently returns only shipments assigned to you and has no endpoint for unassigned offers.',
-                  );
-                }
                 final query = _search.text.trim().toLowerCase();
                 final filtered = items.where((item) {
                   final matchesFilter = switch (_filter) {
@@ -613,33 +609,6 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               ),
               const SizedBox(height: 10),
               _ShipmentTimeline(status: shipment.status),
-              if (shipment.status == ShipmentStatus.pickedUp) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: MazraaColors.warning.withValues(alpha: .13),
-                    borderRadius: BorderRadius.circular(17),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: MazraaColors.warning,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          ar
-                              ? 'السيرفر يتطلب الانتقال إلى InTransit قبل الاقتراب من العميل، لكنه لا يوفّر Endpoint لهذه الخطوة حاليًا.'
-                              : 'The server requires InTransit before NearCustomer, but exposes no endpoint for that transition.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
@@ -667,8 +636,10 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       case ShipmentStatus.nearCustomer:
         actions.addAll(['deliver', 'fail']);
         break;
-      case ShipmentStatus.pending:
       case ShipmentStatus.pickedUp:
+        actions.addAll(['depart', 'fail']);
+        break;
+      case ShipmentStatus.pending:
       case ShipmentStatus.delivered:
       case ShipmentStatus.cancelled:
       case ShipmentStatus.failed:
@@ -858,6 +829,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
   'accept' => ar ? 'قبول الشحنة' : 'Accept shipment',
   'reject' => ar ? 'رفض الشحنة' : 'Reject shipment',
   'pickup' => ar ? 'تأكيد الاستلام' : 'Confirm pickup',
+  'depart' => ar ? 'بدأت التوصيل' : 'Depart for customer',
   'near-customer' => ar ? 'أنا قريب من العميل' : 'Near customer',
   'deliver' => ar ? 'تأكيد التسليم' : 'Confirm delivery',
   'fail' => ar ? 'تعذر التسليم' : 'Report failure',
@@ -867,6 +839,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
 IconData _actionIcon(String action) => switch (action) {
   'accept' => Icons.check_circle_outline_rounded,
   'pickup' => Icons.inventory_2_outlined,
+  'depart' => Icons.route_rounded,
   'near-customer' => Icons.near_me_outlined,
   'deliver' => Icons.task_alt_rounded,
   _ => Icons.arrow_forward_rounded,
