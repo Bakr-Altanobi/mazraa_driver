@@ -1,0 +1,20 @@
+name: Visual audit screen 01
+on:
+  workflow_dispatch:
+  push:
+    branches: [chatgpt/visual-reference-audit-20261017]
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Inspect reference dimensions
+        run: file refrinces/screens/01_onboarding.png && identify refrinces/screens/01_onboarding.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reference-screen-01
+          path: refrinces/screens/01_onboarding.png
+          if-no-files-found: error
+          retention-days: 7
