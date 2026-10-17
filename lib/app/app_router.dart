@@ -8,6 +8,7 @@ import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/available_orders_screen.dart';
+import 'package:mazraa_driver/features/shipments/driver_map_overview_screen.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
 
@@ -47,8 +48,6 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  // The authenticated production landing page is the real HomeScreen.
-  // /journey/03 remains an explicit internal reference/audit route only.
   return isPublic ? '/home' : null;
 }
 
@@ -98,7 +97,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/wallet', builder: (_, _) => const WalletScreen()),
+              GoRoute(
+                path: '/map',
+                builder: (_, _) => const DriverMapOverviewScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -118,6 +120,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/wallet',
+        builder: (_, _) => const WalletScreen(),
       ),
       GoRoute(
         path: '/shipments/:id',
