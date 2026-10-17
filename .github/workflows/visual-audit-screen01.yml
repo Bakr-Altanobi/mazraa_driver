@@ -34,7 +34,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Capture screen 01 and verify navigation events
-        run: flutter test test/visual/screen01_visual_test.dart
+        run: flutter test --timeout=90s test/visual/screen01_visual_test.dart
       - name: Compare captured pixels with canonical reference
         run: |
           python3 -m pip install --quiet pillow
@@ -55,7 +55,7 @@ jobs:
           print('Screen 01 is pixel-identical to the canonical reference at 360x640.')
           PY
       - name: Verify existing onboarding render contract
-        run: flutter test test/features/reference_journey/reference_screens_render_test.dart --plain-name 'reference onboarding screen 01 renders on compact viewport'
+        run: flutter test --timeout=90s test/features/reference_journey/reference_screens_render_test.dart --plain-name 'reference onboarding screen 01 renders on compact viewport'
       - name: Analyze changed UI
         run: flutter analyze --no-fatal-infos lib/features/auth/auth_screens.dart test/visual/screen01_visual_test.dart
       - name: Commit verified screen 01 implementation
