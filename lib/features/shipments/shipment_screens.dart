@@ -304,6 +304,11 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     );
     if (!confirmed || !mounted) return;
     String? reason;
+    (String?, String?)? proof;
+    if (action == 'deliver') {
+      proof = await _deliveryProof();
+      if (proof == null || !mounted) return;
+    }
     if (action == 'fail') {
       reason = await _failureReason();
       if (reason == null || !mounted) return;
@@ -312,7 +317,13 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     try {
       await ref
           .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason);
+          .changeShipmentStatus(
+            shipment.id,
+            action,
+            reason: reason,
+            numericCode: proof?.$1,
+            qrToken: proof?.$2,
+          );
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -335,6 +346,78 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     } finally {
       if (mounted) setState(() => _acting = false);
     }
+  }
+
+  /// Proof is verified on the server for contactless orders.
+  /// Non-contactless deliveries may be confirmed without a code.
+  Future<(String?, String?)?> _deliveryProof() async {
+    final code = TextEditingController();
+    final qr = TextEditingController();
+    final result = await showModalBottomSheet<(String?, String?)>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          22,
+          8,
+          22,
+          MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'إثبات التسليم',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'أدخل الرمز الذي يقدمه العميل للتسليم بدون تلامس. '
+              'يُراجع السيرفر الرمز قبل إغلاق الشحنة.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: code,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'رمز التحقق الرقمي',
+                prefixIcon: Icon(Icons.pin_outlined),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: qr,
+              decoration: const InputDecoration(
+                labelText: 'رمز QR (إذا كان متاحًا)',
+                prefixIcon: Icon(Icons.qr_code_rounded),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton(
+              onPressed: () {
+                final numeric = code.text.trim();
+                final token = qr.text.trim();
+                if (numeric.isEmpty && token.isEmpty) return;
+                Navigator.pop(
+                  sheetContext,
+                  (numeric.isEmpty ? null : numeric, token.isEmpty ? null : token),
+                );
+              },
+              child: const Text('التحقق والتسليم'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(sheetContext, (null, null)),
+              child: const Text('تسليم عادي دون رمز (إذا سمح السيرفر)'),
+            ),
+          ],
+        ),
+      ),
+    );
+    code.dispose();
+    qr.dispose();
+    return result;
   }
 
   Future<String?> _failureReason() async {
@@ -661,6 +744,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       case ShipmentStatus.accepted:
         actions.addAll(['pickup', 'reject']);
         break;
+      case ShipmentStatus.pickedUp:
+        actions.addAll(['depart', 'fail']);
+        break;
       case ShipmentStatus.inTransit:
         actions.addAll(['near-customer', 'fail']);
         break;
@@ -668,7 +754,6 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         actions.addAll(['deliver', 'fail']);
         break;
       case ShipmentStatus.pending:
-      case ShipmentStatus.pickedUp:
       case ShipmentStatus.delivered:
       case ShipmentStatus.cancelled:
       case ShipmentStatus.failed:
