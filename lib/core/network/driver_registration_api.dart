@@ -50,6 +50,32 @@ class DriverRegistrationApi {
     return session;
   }
 
+
+  /// Resume a pending application after account creation succeeded but the
+  /// subsequent /apply request failed (for example because the device lost
+  /// connectivity). Never register the same email a second time.
+  Future<AuthSession> signInAndApply({
+    required String email,
+    required String password,
+    required int vehicleType,
+  }) async {
+    final json = await _client.post<Map<String, dynamic>>(
+      'api/Auth/login',
+      data: {
+        'email': email.trim(),
+        'password': password,
+        'deviceName': 'mazraa-driver-mobile',
+      },
+    );
+    final session = AuthSession.fromJson(json);
+    if (!session.isUsable) {
+      throw const FormatException('تعذر استعادة جلسة الحساب الموجود.');
+    }
+    await _store.write(session);
+    await applyCurrentAccount(vehicleType: vehicleType);
+    return session;
+  }
+
   Future<void> applyCurrentAccount({
     required int vehicleType,
     int maxActiveShipments = 3,
