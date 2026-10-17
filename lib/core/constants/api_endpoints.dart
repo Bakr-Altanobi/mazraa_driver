@@ -18,7 +18,9 @@ abstract final class ApiEndpoints {
 abstract final class AppEnvironment {
   static const mapsEnabled = bool.fromEnvironment(
     'ENABLE_GOOGLE_MAPS',
-    defaultValue: false,
+    // Native map key is provided through Android local.properties / MAPS_API_KEY,
+    // or GMSApiKey on iOS. Disable the platform view in CI smoke renders.
+    defaultValue: !bool.fromEnvironment('CI_SMOKE_HOME'),
   );
   static const testDriverEmail = String.fromEnvironment('DRIVER_TEST_EMAIL');
   static const testDriverPassword = String.fromEnvironment(
