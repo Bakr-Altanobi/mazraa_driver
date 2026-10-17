@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
 import 'package:mazraa_driver/features/auth/driver_onboarding_screen.dart';
+import 'package:mazraa_driver/features/auth/driver_registration_screen.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
@@ -28,6 +29,7 @@ String? resolveAuthRedirect({
       location == '/login' ||
       location == '/splash' ||
       location == '/onboarding' ||
+      location == '/register-driver' ||
       isJourneyPublic;
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
@@ -71,6 +73,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const DriverOnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register-driver', builder: (_, _) => const DriverRegistrationScreen()),
       GoRoute(path: '/driver-services', builder: (_, _) => const DriverServicesDirectoryScreen()),
       GoRoute(
         path: '/journey/:screen',
