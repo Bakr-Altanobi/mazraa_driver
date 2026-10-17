@@ -16,9 +16,12 @@ abstract final class ApiEndpoints {
 }
 
 abstract final class AppEnvironment {
+  /// Google Maps is part of the production driver journey, so it is enabled by
+  /// default. CI or offline visual tests can still disable it explicitly with
+  /// `--dart-define=ENABLE_GOOGLE_MAPS=false`.
   static const mapsEnabled = bool.fromEnvironment(
     'ENABLE_GOOGLE_MAPS',
-    defaultValue: false,
+    defaultValue: true,
   );
   static const testDriverEmail = String.fromEnvironment('DRIVER_TEST_EMAIL');
   static const testDriverPassword = String.fromEnvironment(
