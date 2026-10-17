@@ -50,6 +50,9 @@ class HomeScreen extends ConsumerWidget {
     await Future.wait([
       ref.read(shipmentsProvider.future),
       ref.read(walletSummaryProvider.future),
+      // A newly approved driver must be able to go online without signing
+      // out and in again. The backend remains authoritative.
+      ref.read(authControllerProvider).refreshProfile(),
     ]);
   }
 
