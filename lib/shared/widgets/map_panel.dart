@@ -21,11 +21,46 @@ class MapPanel extends StatelessWidget {
   final double height;
   final VoidCallback? onLocate;
 
-  GeoPoint get _center =>
-      driver ?? store ?? customer ?? const GeoPoint(24.7136, 46.6753);
+  GeoPoint? get _center => driver ?? store ?? customer;
 
   @override
   Widget build(BuildContext context) {
+    final center = _center;
+    if (center == null) {
+      // No fabricated Riyadh coordinate or simulated route is presented to
+      // drivers when neither their device nor the backend provides a location.
+      return SizedBox(
+        height: height,
+        child: Card(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_off_outlined, size: 40),
+                  const SizedBox(height: 12),
+                  Text(
+                    isArabic(context)
+                        ? 'الموقع غير متاح، فعّل إذن الموقع أو افتح شحنة ذات إحداثيات.'
+                        : 'Location unavailable. Enable location permission or open a shipment with coordinates.',
+                    textAlign: TextAlign.center,
+                  ),
+                  if (onLocate != null) ...[
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: onLocate,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(isArabic(context) ? 'تحديث الموقع' : 'Refresh location'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
@@ -36,7 +71,7 @@ class MapPanel extends StatelessWidget {
               child: AppEnvironment.mapsEnabled
                   ? GoogleMap(
                       initialCameraPosition: CameraPosition(
-                        target: LatLng(_center.latitude, _center.longitude),
+                        target: LatLng(center.latitude, center.longitude),
                         zoom: 13.4,
                       ),
                       myLocationButtonEnabled: false,
