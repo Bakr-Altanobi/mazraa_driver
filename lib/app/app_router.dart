@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/auth/driver_registration_screen.dart';
 import 'package:mazraa_driver/features/communication/driver_communication_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
@@ -25,12 +26,16 @@ String? resolveAuthRedirect({
   required String location,
 }) {
   final isJourneyPublic =
-      location == '/journey/01' || location == '/journey/1' ||
-      location == '/journey/02' || location == '/journey/2';
+      location == '/journey/01' ||
+      location == '/journey/1' ||
+      location == '/journey/02' ||
+      location == '/journey/2' ||
+      location == '/journey/13';
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
       location == '/onboarding' ||
+      location == '/register-driver' ||
       isJourneyPublic;
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
@@ -73,14 +78,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(
+        path: '/register-driver',
+        builder: (_, _) => const DriverRegistrationScreen(),
+      ),
+      GoRoute(
         path: '/journey/:screen',
         builder: (context, state) {
           final raw = state.pathParameters['screen'] ?? '1';
           final parsed = int.tryParse(raw) ?? 1;
           final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
-          if (number == 14) return const DriverDocumentsScreen();
+          if (number == 13) return const DriverRegistrationScreen();
+          if (number == 14 || number == 43 || number == 47) {
+            return const DriverDocumentsScreen();
+          }
           if (number == 19) return const DriverChatsScreen();
           if (number == 21) return const DriverSupportCenterScreen();
+          if (number == 30 || number == 38) return const BankPayoutScreen();
+          if (number == 39) return const ReturnTasksScreen();
           if (number == 42) return const VehicleMaintenanceScreen();
           return ReferenceJourneyScreen(screenNumber: number);
         },
