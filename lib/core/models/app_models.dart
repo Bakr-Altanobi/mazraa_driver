@@ -76,25 +76,9 @@ class DriverProfile {
     name: (json['name'] ?? '').toString(),
     email: (json['email'] ?? '').toString(),
     phone: (json['phone'] ?? '').toString(),
-    vehicleType: _enumLabel(json['vehicleType'], const [
-      'None',
-      'Motorcycle',
-      'Car',
-      'Van',
-      'Truck',
-    ]),
-    approvalStatus: _enumLabel(json['approvalStatus'], const [
-      'Pending',
-      'Approved',
-      'Rejected',
-      'Suspended',
-    ]),
-    operationalStatus: _enumLabel(json['operationalStatus'], const [
-      'Offline',
-      'Online',
-      'Busy',
-      'OnBreak',
-    ]),
+    vehicleType: _driverVehicleLabel(json['vehicleType']),
+    approvalStatus: _driverApprovalLabel(json['approvalStatus']),
+    operationalStatus: _driverOperationalLabel(json['operationalStatus']),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
     ratingAverage: _asDouble(json['ratingAverage']),
@@ -405,9 +389,43 @@ double? _asNullableDouble(Object? value) => value == null
     : (value is num ? value.toDouble() : double.tryParse('$value'));
 DateTime? _asDate(Object? value) =>
     value == null ? null : DateTime.tryParse(value.toString());
-String _enumLabel(Object? value, List<String> labels) {
-  if (value is num && value.toInt() >= 0 && value.toInt() < labels.length) {
-    return labels[value.toInt()];
+// Values are explicit C# enum values, not zero-based indexes.
+// Never show an unapproved driver as approved or Offline as Online.
+String _driverVehicleLabel(Object? value) {
+  if (value is num) {
+    return switch (value.toInt()) {
+      0 => 'Car',
+      1 => 'Bike',
+      2 => 'Van',
+      3 => 'Truck',
+      _ => 'Unknown',
+    };
   }
-  return value?.toString() ?? labels.first;
+  return value?.toString() ?? 'Unknown';
+}
+
+String _driverApprovalLabel(Object? value) {
+  if (value is num) {
+    return switch (value.toInt()) {
+      1 => 'Pending',
+      2 => 'Approved',
+      3 => 'Rejected',
+      4 => 'Suspended',
+      _ => 'Unknown',
+    };
+  }
+  return value?.toString() ?? 'Unknown';
+}
+
+String _driverOperationalLabel(Object? value) {
+  if (value is num) {
+    return switch (value.toInt()) {
+      1 => 'Offline',
+      2 => 'Online',
+      3 => 'Available',
+      4 => 'Busy',
+      _ => 'Unknown',
+    };
+  }
+  return value?.toString() ?? 'Unknown';
 }
