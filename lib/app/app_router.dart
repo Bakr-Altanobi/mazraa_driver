@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/communication/driver_communication_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
@@ -78,6 +79,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final parsed = int.tryParse(raw) ?? 1;
           final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
           if (number == 14) return const DriverDocumentsScreen();
+          if (number == 19) return const DriverChatsScreen();
+          if (number == 21) return const DriverSupportCenterScreen();
           if (number == 42) return const VehicleMaintenanceScreen();
           return ReferenceJourneyScreen(screenNumber: number);
         },
@@ -159,6 +162,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/maintenance',
         builder: (_, _) => const VehicleMaintenanceScreen(),
       ),
+      GoRoute(path: '/chats', builder: (_, _) => const DriverChatsScreen()),
+      GoRoute(
+        path: '/chats/:id',
+        builder: (context, state) => DriverChatThreadScreen(
+          chatId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
       GoRoute(
         path: '/shipments/:id',
         builder: (context, state) => ShipmentDetailsScreen(
@@ -168,7 +178,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
         path: '/support',
-        builder: (_, _) => const ReferenceJourneyScreen(screenNumber: 21),
+        builder: (_, _) => const DriverSupportCenterScreen(),
+      ),
+      GoRoute(
+        path: '/support/tickets/:id',
+        builder: (context, state) => SupportTicketThreadScreen(
+          ticketId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
       ),
     ],
   );
