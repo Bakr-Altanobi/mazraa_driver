@@ -6,6 +6,7 @@ import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/services/driver_services_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/available_orders_screen.dart';
 import 'package:mazraa_driver/features/shipments/driver_map_overview_screen.dart';
@@ -114,16 +115,38 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/profile',
-                builder: (_, _) => const ProfileScreen(),
+                path: '/more',
+                builder: (_, _) => const DriverServicesScreen(),
               ),
             ],
           ),
         ],
       ),
+      GoRoute(path: '/profile', redirect: (_, _) => '/more'),
       GoRoute(
-        path: '/wallet',
-        builder: (_, _) => const WalletScreen(),
+        path: '/profile-details',
+        builder: (_, _) => const ProfileScreen(),
+      ),
+      GoRoute(path: '/wallet', builder: (_, _) => const WalletScreen()),
+      GoRoute(
+        path: '/preferences',
+        builder: (_, _) => const DriverPreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/availability',
+        builder: (_, _) => const DriverAvailabilityScreen(),
+      ),
+      GoRoute(
+        path: '/scheduled-trips',
+        builder: (_, _) => const ScheduledTripsScreen(),
+      ),
+      GoRoute(
+        path: '/bank-payout',
+        builder: (_, _) => const BankPayoutScreen(),
+      ),
+      GoRoute(
+        path: '/returns',
+        builder: (_, _) => const ReturnTasksScreen(),
       ),
       GoRoute(
         path: '/shipments/:id',
@@ -132,7 +155,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-      GoRoute(path: '/support', builder: (_, _) => const SupportScreen()),
+      GoRoute(
+        path: '/support',
+        builder: (_, _) => const ReferenceJourneyScreen(screenNumber: 21),
+      ),
     ],
   );
 });
