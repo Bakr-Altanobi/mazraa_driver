@@ -76,19 +76,8 @@ class DriverProfile {
     name: (json['name'] ?? '').toString(),
     email: (json['email'] ?? '').toString(),
     phone: (json['phone'] ?? '').toString(),
-    vehicleType: _enumLabel(json['vehicleType'], const [
-      'None',
-      'Motorcycle',
-      'Car',
-      'Van',
-      'Truck',
-    ]),
-    approvalStatus: _enumLabel(json['approvalStatus'], const [
-      'Pending',
-      'Approved',
-      'Rejected',
-      'Suspended',
-    ]),
+    vehicleType: _driverVehicleType(json['vehicleType']),
+    approvalStatus: _driverApprovalStatus(json['approvalStatus']),
     operationalStatus: _driverOperationalStatus(json['operationalStatus']),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
@@ -402,6 +391,32 @@ DateTime? _asDate(Object? value) =>
     value == null ? null : DateTime.tryParse(value.toString());
 /// Backend DriverOperationalStatus uses values Offline=1, Online=2,
 /// Available=3, Busy=4, not zero-based enum indexes.
+// Explicit server enum contracts: DriverApprovalStatus starts at 1, while
+// VehicleType is Car=0/Bike=1/Van=2/Truck=3. Do not use a UI-only list index.
+String _driverApprovalStatus(Object? raw) {
+  const labels = <int, String>{
+    1: 'Pending',
+    2: 'Approved',
+    3: 'Rejected',
+    4: 'Suspended',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Pending';
+}
+
+String _driverVehicleType(Object? raw) {
+  const labels = <int, String>{
+    0: 'Car',
+    1: 'Bike',
+    2: 'Van',
+    3: 'Truck',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Unknown';
+}
+
 String _driverOperationalStatus(Object? raw) {
   const labels = <int, String>{
     1: 'Offline',
