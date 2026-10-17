@@ -294,11 +294,112 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
     }
   }
 
+  Future<bool> _manageScheduledTrips() async {
+    final api = ref.read(driverApiProvider);
+    final rows = await api.getScheduledTrips();
+    if (!mounted) return false;
+    final tripRows = rows.whereType<Map<String, dynamic>>().toList(growable: false);
+    if (tripRows.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('الرحلات المجدولة'),
+          content: const Text('لا توجد رحلات مجدولة متاحة من السيرفر حاليًا.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق')),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    final selection = await showDialog<(int, bool)>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('الرحلات المجدولة'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final row in tripRows)
+                Builder(
+                  builder: (context) {
+                    final trip = row['trip'] is Map
+                        ? Map<String, dynamic>.from(row['trip'] as Map)
+                        : <String, dynamic>{};
+                    final participation = row['participation'] is Map
+                        ? Map<String, dynamic>.from(row['participation'] as Map)
+                        : <String, dynamic>{};
+                    final tripId = int.tryParse('${trip['id'] ?? ''}');
+                    if (tripId == null || tripId <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    final status = '${participation['status'] ?? ''}'.toLowerCase();
+                    final approved = status == 'approved' || status == '1';
+                    final requested = status == 'requested' || status == '0';
+                    final departure = trip['plannedDepartureAt']?.toString() ?? '';
+                    return ListTile(
+                      title: Text('${trip['tripCode'] ?? 'رحلة #$tripId'}'),
+                      subtitle: Text(approved
+                          ? 'مُعتمدة من العمليات · $departure'
+                          : requested
+                              ? 'بانتظار الموافقة · $departure'
+                              : 'يمكن طلب الانضمام · $departure'),
+                      trailing: approved
+                          ? const Icon(Icons.verified_outlined)
+                          : Icon(requested ? Icons.exit_to_app_rounded : Icons.add_circle_outline_rounded),
+                      onTap: approved
+                          ? null
+                          : () => Navigator.pop(ctx, (tripId, !requested)),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+    if (selection == null || !mounted) return false;
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(selection.$2 ? 'طلب الانضمام إلى الرحلة' : 'الانسحاب من الرحلة'),
+            content: Text('سيتم إرسال القرار إلى السيرفر للرحلة #${selection.$1}.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('تأكيد'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirm || !mounted) return false;
+    if (selection.$2) {
+      await api.joinScheduledTrip(selection.$1);
+    } else {
+      await api.withdrawScheduledTrip(selection.$1);
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bankControls = widget.screenNumber == 10 || widget.screenNumber == 30;
     final preferenceControls = widget.screenNumber == 12 || widget.screenNumber == 16;
-    if (!bankControls && !preferenceControls) return const SizedBox.shrink();
+    final scheduledControls = widget.screenNumber == 16;
+    if (!bankControls && !preferenceControls && !scheduledControls) return const SizedBox.shrink();
     return SafeArea(
       top: false,
       child: Padding(
@@ -325,9 +426,20 @@ class _DriverServiceControlsState extends ConsumerState<DriverServiceControls> {
                 child: FilledButton.icon(
                   onPressed: _busy ? null : () => _run(_editPreferences),
                   icon: const Icon(Icons.tune_rounded),
-                  label: const Text('تعديل تفضيلات الرحلات'),
+                  label: const Text('تفضيلات الرحلات'),
                 ),
               ),
+            if (scheduledControls) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('manageScheduledTripsButton'),
+                  onPressed: _busy ? null : () => _run(_manageScheduledTrips),
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: const Text('الرحلات المجدولة'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
