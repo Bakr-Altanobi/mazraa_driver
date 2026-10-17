@@ -1789,12 +1789,6 @@ String _money(Object? amount, Object? currency) {
   return code.isEmpty || code == 'غير متوفر' ? value : '$value $code';
 }
 
-String _compactMoney(Object? amount) {
-  final number = _double(amount);
-  if (number.abs() >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
-  if (number.abs() >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
-  return number.toStringAsFixed(0);
-}
 
 double _double(Object? value) {
   if (value is num) return value.toDouble();
@@ -1811,10 +1805,6 @@ String _shipmentNumber(Map<String, dynamic> shipment) =>
 
 String _status(Map<String, dynamic> shipment) => _text(shipment['status']);
 
-bool _closedStatus(String status) {
-  final value = status.toLowerCase();
-  return value.contains('deliver') || value.contains('cancel') || value.contains('fail');
-}
 
 String _coordinates(Map<String, dynamic> point) {
   if (point.isEmpty) return 'غير متوفر';
