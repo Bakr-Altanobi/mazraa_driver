@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
+import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
@@ -12,6 +13,8 @@ import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
 import 'package:mazraa_driver/features/wallet/wallet_providers.dart';
 import 'package:mazraa_driver/shared/widgets/map_panel.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
+
+final driverStatusBusyProvider = StateProvider<bool>((ref) => false);
 
 final connectionProvider = FutureProvider<bool>((ref) async {
   final result = await Connectivity().checkConnectivity();
@@ -41,9 +44,53 @@ final currentPositionProvider = FutureProvider<Position>((ref) async {
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  Future<void> _changeAvailability(
+    BuildContext context,
+    WidgetRef ref,
+    DriverProfile profile,
+  ) async {
+    if (ref.read(driverStatusBusyProvider)) return;
+    if (!profile.isApproved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن استقبال الطلبات قبل اعتماد حساب السائق.')),
+      );
+      return;
+    }
+    final isOnline = profile.operationalStatus.toLowerCase() != 'offline';
+    final position = ref.read(currentPositionProvider).valueOrNull;
+    ref.read(driverStatusBusyProvider.notifier).state = true;
+    try {
+      await ref.read(driverApiProvider).updateDriverStatus(
+        operationalStatus: isOnline ? 1 : 3,
+        isAcceptingOrders: !isOnline,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+      await ref.read(authControllerProvider).refreshProfile();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isOnline ? 'تم إيقاف استقبال الطلبات.' : 'أصبحت متاحًا لاستقبال الطلبات.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تحديث الحالة على السيرفر: $error')),
+        );
+      }
+    } finally {
+      ref.read(driverStatusBusyProvider.notifier).state = false;
+    }
+  }
+
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(shipmentsProvider);
     ref.invalidate(walletSummaryProvider);
+    await ref.read(authControllerProvider).refreshProfile();
     ref.invalidate(connectionProvider);
     ref.invalidate(currentPositionProvider);
     await Future.wait([
@@ -61,6 +108,7 @@ class HomeScreen extends ConsumerWidget {
     final connection = ref.watch(connectionProvider);
     final position = ref.watch(currentPositionProvider);
     final profile = auth.profile;
+    final statusBusy = ref.watch(driverStatusBusyProvider);
     final shipmentRows = shipments.valueOrNull ?? const <Shipment>[];
     final active = shipmentRows.where((item) => item.status.isActive).toList();
     final completedToday = shipmentRows.where((item) {
@@ -134,6 +182,10 @@ class HomeScreen extends ConsumerWidget {
                     _StatusBanner(
                       profile: profile,
                       connected: connection.valueOrNull,
+                      busy: statusBusy,
+                      onToggle: profile == null
+                          ? null
+                          : () => _changeAvailability(context, ref, profile),
                     ),
                     const SizedBox(height: 15),
                     MapPanel(
@@ -249,14 +301,22 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.profile, required this.connected});
+  const _StatusBanner({
+    required this.profile,
+    required this.connected,
+    required this.busy,
+    required this.onToggle,
+  });
   final DriverProfile? profile;
   final bool? connected;
+  final bool busy;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    final online = profile?.operationalStatus.toLowerCase() == 'online';
+    final online = profile != null &&
+        profile!.operationalStatus.toLowerCase() != 'offline';
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -302,8 +362,8 @@ class _StatusBanner extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   ar
-                      ? 'تغيير الحالة ينتظر دعمًا من السيرفر'
-                      : 'Status changes require a server endpoint',
+                      ? 'حالة الاتصال واستقبال العروض من السيرفر'
+                      : 'Live availability and offers on the server',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.white70),
@@ -311,10 +371,30 @@ class _StatusBanner extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            connected == false ? Icons.wifi_off_rounded : Icons.wifi_rounded,
-            color: connected == false ? const Color(0xFFFFB09A) : Colors.white,
-          ),
+          if (busy)
+            const SizedBox.square(
+              dimension: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          else
+            IconButton(
+              key: const Key('toggleDriverAvailability'),
+              tooltip: online
+                  ? (ar ? 'إيقاف استقبال الطلبات' : 'Go offline')
+                  : (ar ? 'بدء استقبال الطلبات' : 'Go online'),
+              onPressed: connected == false ? null : onToggle,
+              color: Colors.white,
+              icon: Icon(
+                connected == false
+                    ? Icons.wifi_off_rounded
+                    : (online
+                        ? Icons.toggle_on_rounded
+                        : Icons.toggle_off_outlined),
+              ),
+            ),
         ],
       ),
     );
