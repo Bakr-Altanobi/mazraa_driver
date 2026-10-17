@@ -135,7 +135,7 @@ class _AvailableOrdersScreenState extends ConsumerState<AvailableOrdersScreen> {
   Future<void> _accept(DriverOfferCard offer) async {
     setState(() => _busyOfferId = offer.offerId);
     try {
-      await ref.read(driverApiProvider).acceptDriverOffer(offer.offerId);
+      await ref.read(driverApiProvider).acceptOffer(offer.offerId);
       ref.invalidate(driverOfferFeedProvider);
       ref.invalidate(shipmentsProvider);
       if (!mounted) return;
@@ -156,7 +156,7 @@ class _AvailableOrdersScreenState extends ConsumerState<AvailableOrdersScreen> {
   Future<void> _reject(DriverOfferCard offer) async {
     setState(() => _busyOfferId = offer.offerId);
     try {
-      await ref.read(driverApiProvider).rejectDriverOffer(offer.offerId);
+      await ref.read(driverApiProvider).rejectOffer(offer.offerId);
       ref.invalidate(driverOfferFeedProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -626,10 +626,11 @@ class _ProductArt extends StatelessWidget {
       Alignment(-.75, .38),
       Alignment(-.75, .78),
     ];
+    final safeSlot = slot < 0 ? 0 : (slot > 3 ? 3 : slot);
     return _ReferenceCrop(
       width: 94,
       height: 101,
-      alignment: alignments[slot.clamp(0, 3)],
+      alignment: alignments[safeSlot],
       radius: 15,
     );
   }
