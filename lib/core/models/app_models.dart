@@ -429,9 +429,3 @@ String _driverOperationalStatus(Object? raw) {
   return raw?.toString() ?? 'Offline';
 }
 
-String _enumLabel(Object? value, List<String> labels) {
-  if (value is num && value.toInt() >= 0 && value.toInt() < labels.length) {
-    return labels[value.toInt()];
-  }
-  return value?.toString() ?? labels.first;
-}
