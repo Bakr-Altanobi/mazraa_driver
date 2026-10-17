@@ -123,6 +123,13 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const Divider(indent: 58, height: 1),
                       ListTile(
+                        leading: const Icon(Icons.grid_view_rounded),
+                        title: Text(ar ? 'جميع خدمات السائق' : 'Driver services'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/driver-services'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
                         leading: const Icon(Icons.support_agent_rounded),
                         title: Text(ar ? 'المساعدة والدعم' : 'Help & support'),
                         trailing: const Icon(Icons.chevron_right_rounded),
