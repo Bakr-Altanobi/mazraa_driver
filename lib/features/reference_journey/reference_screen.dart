@@ -167,6 +167,7 @@ class _ReferenceJourneyScreenState
         await repository.createIncident(
           subject: subject!,
           message: message!,
+          isEmergency: widget.screenNumber == 20,
         );
       } else {
         final isOffer = action == ReferenceAction.acceptOffer ||
