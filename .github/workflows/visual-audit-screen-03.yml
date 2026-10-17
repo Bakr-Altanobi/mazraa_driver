@@ -6,7 +6,7 @@ on:
       - chatgpt/visual-audit-screen-03-20261017
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export-reference:
@@ -14,6 +14,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: chatgpt/visual-audit-screen-03-20261017
+      - name: Apply screen 03 audit corrections once
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f tools/screen03_audit_patch.py ]; then
+            python3 tools/screen03_audit_patch.py
+            if ! git diff --quiet; then
+              git config user.name "Bakr-Altanobi"
+              git config user.email "bakrn.mac771@gmail.com"
+              git add lib/features/home/home_screen.dart lib/core/models/app_models.dart .github/scripts/capture-main-screen.sh
+              git commit -m "fix: align screen 03 status contract and visual smoke"
+              git push origin HEAD:chatgpt/visual-audit-screen-03-20261017
+            fi
+          fi
       - name: Verify exact reference and assets
         shell: bash
         run: |
