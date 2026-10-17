@@ -142,13 +142,33 @@ class _ReferenceJourneyScreenState
     setState(() => _actionBusy = true);
     try {
       final repository = ref.read(referenceRepositoryProvider);
+      int? selectedTargetId;
+      final needsTarget = action != ReferenceAction.createIncident &&
+          action != ReferenceAction.startShift &&
+          action != ReferenceAction.endShift;
+      if (needsTarget) {
+        final targets = await repository.eligibleActionTargets(action);
+        if (!mounted) return;
+        if (targets.isEmpty) {
+          throw StateError('لا توجد عناصر حقيقية في حالة تسمح بهذا الإجراء الآن.');
+        }
+        selectedTargetId = await _selectActionTarget(action, targets);
+        if (selectedTargetId == null || !mounted) return;
+      }
       if (action == ReferenceAction.createIncident) {
         await repository.createIncident(
           subject: subject!,
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        final isOffer = action == ReferenceAction.acceptOffer ||
+            action == ReferenceAction.rejectOffer;
+        await repository.runShipmentAction(
+          action,
+          reason: reason,
+          shipmentId: isOffer ? null : selectedTargetId,
+          offerId: isOffer ? selectedTargetId : null,
+        );
       }
       if (key != null) {
         ref.invalidate(referenceScreenPayloadProvider(key));
@@ -167,6 +187,43 @@ class _ReferenceJourneyScreenState
     } finally {
       if (mounted) setState(() => _actionBusy = false);
     }
+  }
+
+  Future<int?> _selectActionTarget(
+    ReferenceAction action,
+    List<Map<String, dynamic>> targets,
+  ) {
+    final isOffer = action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer;
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(isOffer ? 'اختر عرض التوصيل' : 'اختر الشحنة المطلوبة'),
+        children: [
+          for (final row in targets)
+            Builder(
+              builder: (dialogContext) {
+                final id = int.tryParse(
+                  '${isOffer ? (row['offerId'] ?? row['id']) : row['id']}',
+                );
+                if (id == null) return const SizedBox.shrink();
+                final number = row['shipmentNumber']?.toString() ?? '#$id';
+                return SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, id),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text('$number · ${isOffer ? 'عرض' : 'شحنة'} #$id'),
+                  ),
+                );
+              },
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<String?> _textDialog({
