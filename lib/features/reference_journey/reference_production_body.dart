@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
@@ -619,10 +620,14 @@ class ReferenceProductionBody extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
-        const _DisabledFormCard(
-          title: 'تفضيلات الحساب',
-          fields: ['اللغة', 'الخصوصية', 'مشاركة بيانات الموقع'],
-          reason: 'هذه التفضيلات ليست حقولاً محفوظة في Driver API.',
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.language_rounded),
+            title: const Text('اللغة والمظهر'),
+            subtitle: const Text('تفضيلات على الجهاز لا تحتاج بيانات خادمية.'),
+            trailing: const Icon(Icons.chevron_left_rounded),
+            onTap: () => context.push('/settings'),
+          ),
         ),
       ];
 
