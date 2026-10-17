@@ -5,6 +5,7 @@ import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
+/// Live markers only. No default city, fabricated road, or mock location.
 class MapPanel extends StatelessWidget {
   const MapPanel({
     this.driver,
@@ -21,11 +22,51 @@ class MapPanel extends StatelessWidget {
   final double height;
   final VoidCallback? onLocate;
 
-  GeoPoint get _center =>
-      driver ?? store ?? customer ?? const GeoPoint(24.7136, 46.6753);
+  bool _valid(GeoPoint? value) => value != null &&
+      value.latitude.isFinite && value.longitude.isFinite &&
+      value.latitude >= -90 && value.latitude <= 90 &&
+      value.longitude >= -180 && value.longitude <= 180;
 
   @override
   Widget build(BuildContext context) {
+    final ar = isArabic(context);
+    final courier = _valid(driver) ? driver : null;
+    final pickup = _valid(store) ? store : null;
+    final destination = _valid(customer) ? customer : null;
+    final center = courier ?? pickup ?? destination;
+    if (center == null || !AppEnvironment.mapsEnabled) {
+      return Container(
+        height: height,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: MazraaColors.sand.withValues(alpha: .35),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.map_outlined, color: MazraaColors.forest, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              center == null
+                  ? (ar ? 'لم تُرسل إحداثيات صحيحة لهذه الشحنة من السيرفر' : 'No valid shipment coordinates from the server')
+                  : (ar ? 'فعّل خرائط Google في إعدادات تشغيل التطبيق' : 'Enable Google Maps in app configuration'),
+              textAlign: TextAlign.center,
+            ),
+            if (onLocate != null) ...[
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: onLocate,
+                icon: const Icon(Icons.my_location_rounded),
+                label: Text(ar ? 'تحديث الموقع' : 'Update location'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
@@ -33,102 +74,47 @@ class MapPanel extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: AppEnvironment.mapsEnabled
-                  ? GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(_center.latitude, _center.longitude),
-                        zoom: 13.4,
-                      ),
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                      compassEnabled: true,
-                      markers: {
-                        if (driver != null)
-                          Marker(
-                            markerId: const MarkerId('driver'),
-                            position: LatLng(
-                              driver!.latitude,
-                              driver!.longitude,
-                            ),
-                            infoWindow: InfoWindow(
-                              title: isArabic(context)
-                                  ? 'موقعك'
-                                  : 'Your location',
-                            ),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                              BitmapDescriptor.hueGreen,
-                            ),
-                          ),
-                        if (store != null)
-                          Marker(
-                            markerId: const MarkerId('store'),
-                            position: LatLng(store!.latitude, store!.longitude),
-                            infoWindow: InfoWindow(
-                              title: isArabic(context) ? 'المتجر' : 'Store',
-                            ),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                              BitmapDescriptor.hueOrange,
-                            ),
-                          ),
-                        if (customer != null)
-                          Marker(
-                            markerId: const MarkerId('customer'),
-                            position: LatLng(
-                              customer!.latitude,
-                              customer!.longitude,
-                            ),
-                            infoWindow: InfoWindow(
-                              title: isArabic(context) ? 'العميل' : 'Customer',
-                            ),
-                          ),
-                      },
-                    )
-                  : CustomPaint(
-                      painter: _MapPainter(
-                        dark: Theme.of(context).brightness == Brightness.dark,
-                        hasStore: store != null,
-                        hasCustomer: customer != null,
-                      ),
-                      child: const SizedBox.expand(),
+              child: GoogleMap(
+                key: const Key('liveDriverGoogleMap'),
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(center.latitude, center.longitude),
+                  zoom: 13.4,
+                ),
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: true,
+                compassEnabled: true,
+                markers: {
+                  if (courier != null)
+                    Marker(
+                      markerId: const MarkerId('driver'),
+                      position: LatLng(courier.latitude, courier.longitude),
+                      infoWindow: InfoWindow(title: ar ? 'موقع السائق' : 'Driver'),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
                     ),
+                  if (pickup != null)
+                    Marker(
+                      markerId: const MarkerId('store'),
+                      position: LatLng(pickup.latitude, pickup.longitude),
+                      infoWindow: InfoWindow(title: ar ? 'المتجر' : 'Store'),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+                    ),
+                  if (destination != null)
+                    Marker(
+                      markerId: const MarkerId('customer'),
+                      position: LatLng(destination.latitude, destination.longitude),
+                      infoWindow: InfoWindow(title: ar ? 'العميل' : 'Customer'),
+                    ),
+                },
+              ),
             ),
             PositionedDirectional(
               top: 14,
               start: 14,
               child: StatusPill(
-                label: AppEnvironment.mapsEnabled
-                    ? (isArabic(context) ? 'خرائط مباشرة' : 'Live map')
-                    : (isArabic(context) ? 'معاينة الخريطة' : 'Map preview'),
-                icon: AppEnvironment.mapsEnabled
-                    ? Icons.layers_rounded
-                    : Icons.map_outlined,
+                label: ar ? 'خرائط Google' : 'Google Maps',
+                icon: Icons.layers_rounded,
               ),
             ),
-            if (!AppEnvironment.mapsEnabled)
-              PositionedDirectional(
-                bottom: 14,
-                start: 14,
-                end: 72,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surface.withValues(alpha: .94),
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Text(
-                    isArabic(context)
-                        ? 'فعّل مفتاح Google Maps لإظهار الخريطة الحقيقية'
-                        : 'Configure Google Maps to show the live map',
-                    maxLines: 2,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ),
             if (onLocate != null)
               PositionedDirectional(
                 end: 14,
@@ -146,116 +132,4 @@ class MapPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MapPainter extends CustomPainter {
-  const _MapPainter({
-    required this.dark,
-    required this.hasStore,
-    required this.hasCustomer,
-  });
-  final bool dark;
-  final bool hasStore;
-  final bool hasCustomer;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final background = Paint()
-      ..color = dark ? const Color(0xFF1C2A21) : const Color(0xFFE8E2D2);
-    canvas.drawRect(Offset.zero & size, background);
-    final field = Paint()
-      ..color = dark ? const Color(0xFF213A2B) : const Color(0xFFDCE5C9);
-    for (var i = 0; i < 9; i++) {
-      final x = (i * 79.0) % size.width;
-      final y = (i * 47.0) % size.height;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x - 35, y - 22, 94, 54),
-          const Radius.circular(12),
-        ),
-        field,
-      );
-    }
-    final road = Paint()
-      ..color = dark ? const Color(0xFF667069) : Colors.white
-      ..strokeWidth = 18
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final roadEdge = Paint()
-      ..color = dark ? const Color(0xFF3D4941) : const Color(0xFFD2CCBC)
-      ..strokeWidth = 23
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final path = Path()
-      ..moveTo(-20, size.height * .78)
-      ..cubicTo(
-        size.width * .25,
-        size.height * .58,
-        size.width * .35,
-        size.height * .9,
-        size.width * .58,
-        size.height * .5,
-      )
-      ..cubicTo(
-        size.width * .72,
-        size.height * .24,
-        size.width * .85,
-        size.height * .44,
-        size.width + 20,
-        size.height * .15,
-      );
-    canvas.drawPath(path, roadEdge);
-    canvas.drawPath(path, road);
-    _marker(
-      canvas,
-      Offset(size.width * .56, size.height * .51),
-      MazraaColors.forest,
-      Icons.local_shipping_rounded,
-    );
-    if (hasStore) {
-      _marker(
-        canvas,
-        Offset(size.width * .22, size.height * .68),
-        MazraaColors.orange,
-        Icons.storefront_rounded,
-      );
-    }
-    if (hasCustomer) {
-      _marker(
-        canvas,
-        Offset(size.width * .82, size.height * .28),
-        MazraaColors.leaf,
-        Icons.home_rounded,
-      );
-    }
-  }
-
-  void _marker(Canvas canvas, Offset point, Color color, IconData icon) {
-    final shadow = Paint()..color = Colors.black.withValues(alpha: .18);
-    canvas.drawCircle(point.translate(0, 3), 19, shadow);
-    canvas.drawCircle(point, 18, Paint()..color = color);
-    canvas.drawCircle(point, 13, Paint()..color = Colors.white);
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: 19,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: color,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(
-      canvas,
-      point - Offset(textPainter.width / 2, textPainter.height / 2),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapPainter oldDelegate) =>
-      oldDelegate.dark != dark ||
-      oldDelegate.hasStore != hasStore ||
-      oldDelegate.hasCustomer != hasCustomer;
 }
