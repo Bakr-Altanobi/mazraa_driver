@@ -4,17 +4,41 @@ on:
   push:
     branches: [chatgpt/visual-reference-audit-20261017]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  reference:
+  audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-      - name: Inspect reference dimensions
+      - name: Apply deterministic screen 01 implementation
+        run: python3 tools/apply_screen01_visual.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.49.0-0.2.pre
+          channel: beta
+          cache: true
+      - run: flutter pub get
+      - name: Verify screen 01 pixel match and navigation events
+        run: flutter test test/visual/screen01_visual_test.dart
+      - name: Verify existing onboarding render contract
+        run: flutter test test/features/reference_journey/reference_screens_render_test.dart --plain-name 'reference onboarding screen 01 renders on compact viewport'
+      - name: Analyze changed UI
+        run: flutter analyze --no-fatal-infos lib/features/auth/auth_screens.dart test/visual/screen01_visual_test.dart
+      - name: Commit verified screen 01 implementation
         run: |
-          file refrinces/screens/01_onboarding.png
-          for f in refrinces/assets_primary/by_screen/01/*.png; do file "$f"; done
-      - uses: actions/upload-artifact@v4
+          if git diff --quiet; then
+            echo 'No implementation changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/auth/auth_screens.dart pubspec.yaml test/visual/screen01_visual_test.dart
+          git commit -m 'fix: match driver reference screen 01 exactly'
+          git push origin HEAD:chatgpt/visual-reference-audit-20261017
+      - name: Archive canonical reference and exact primary assets
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: visual-reference-screen-01
           path: |
