@@ -306,6 +306,35 @@ class DriverApi {
     );
   }
 
+  Future<List<dynamic>> getSupportFaqs() =>
+      _client.get<List<dynamic>>('api/support/faqs');
+
+  Future<List<dynamic>> getSupportTickets() =>
+      _client.get<List<dynamic>>('api/support/tickets');
+
+  Future<Map<String, dynamic>> getSupportTicket(int ticketId) =>
+      _client.get<Map<String, dynamic>>('api/support/tickets/$ticketId');
+
+  Future<Map<String, dynamic>> createSupportTicket({
+    required String subject,
+    required String message,
+    String priority = 'normal',
+  }) =>
+      _client.post<Map<String, dynamic>>(
+        'api/support/tickets',
+        data: {
+          'subject': subject.trim(),
+          'message': message.trim(),
+          'priority': priority,
+        },
+      );
+
+  Future<void> replySupportTicket(int ticketId, String message) =>
+      _client.post<Object?>(
+        'api/support/tickets/$ticketId/messages',
+        data: {'body': message.trim()},
+      );
+
   Future<WalletSummary> getWallet() async => WalletSummary.fromJson(
     await _client.get<Map<String, dynamic>>(ApiEndpoints.wallet),
   );
