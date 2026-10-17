@@ -12,6 +12,12 @@ void main() {
             builder: (_, _) => const DriverOnboardingScreen(),
           ),
           GoRoute(
+            path: '/register-driver',
+            builder: (_, _) => const Scaffold(
+              body: Center(child: Text('Real registration destination')),
+            ),
+          ),
+          GoRoute(
             path: '/login',
             builder: (_, _) => const Scaffold(
               body: Center(child: Text('Real login destination')),
@@ -48,4 +54,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Real login destination'), findsOneWidget);
   });
+  testWidgets('new drivers can reach the registration path', (tester) async {
+    final router = createRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.byKey(const Key('onboardingRegisterButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Real registration destination'), findsOneWidget);
+  });
+
 }
