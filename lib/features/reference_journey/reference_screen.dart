@@ -87,6 +87,47 @@ class _ReferenceJourneyScreenState
     ReferenceLoadKey? key,
   ) async {
     if (_actionBusy) return;
+    int? targetId;
+    if (action != ReferenceAction.startShift &&
+        action != ReferenceAction.endShift &&
+        action != ReferenceAction.createIncident) {
+      try {
+        final targets = await ref.read(referenceRepositoryProvider).actionTargets(action);
+        if (!mounted) return;
+        if (targets.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا توجد شحنات أو عروض مؤهلة لهذا الإجراء الآن.')),
+          );
+          return;
+        }
+        targetId = await showDialog<int>(
+          context: context,
+          builder: (dialogContext) => SimpleDialog(
+            title: const Text('اختر الطلب المقصود'),
+            children: [
+              for (final target in targets)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, target['id'] as int),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      target['label'].toString() + ' · ' + target['status'].toString(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (targetId == null || !mounted) return;
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحميل الطلبات من السيرفر: ' + error.toString())),
+          );
+        }
+        return;
+      }
+    }
 
     String? reason;
     String? subject;
@@ -136,10 +177,10 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        await repository.runShipmentAction(action, reason: reason, targetId: targetId);
       }
       if (key != null) {
-        ref.invalidate(referenceScreenPayloadProvider(key));
+        ref.invalidate(referenceScreenPayloadProvider);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
