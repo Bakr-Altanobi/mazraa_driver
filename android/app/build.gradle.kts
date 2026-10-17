@@ -13,8 +13,12 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
-    ?: System.getenv("MAPS_API_KEY")
+    ?.takeIf { it.isNotBlank() }
+    ?: System.getenv("MAPS_API_KEY")?.takeIf { it.isNotBlank() }
     ?: "MISSING_MAPS_API_KEY"
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -58,12 +62,12 @@ android {
 
     buildTypes {
         debug {
-            // The placeholder keeps debug/CI builds installable even when the
-            // developer key is injected only on a local machine.
+            // CI smoke builds can launch without a real key; production release
+            // builds are guarded below and must receive MAPS_API_KEY.
             manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         }
         release {
-            if (mapsApiKey == "MISSING_MAPS_API_KEY") {
+            if (releaseRequested && mapsApiKey == "MISSING_MAPS_API_KEY") {
                 throw GradleException(
                     "MAPS_API_KEY is required for release builds. Put it in android/local.properties or the MAPS_API_KEY environment variable."
                 )
