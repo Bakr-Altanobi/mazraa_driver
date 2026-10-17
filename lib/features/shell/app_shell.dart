@@ -14,66 +14,12 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offers = ref.watch(driverOfferFeedProvider).asData?.value.offers.length ?? 0;
-    final current = navigationShell.currentIndex;
-
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(13, 7, 13, 5),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x12000000),
-                blurRadius: 18,
-                offset: Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _ReferenceDestination(
-                  selected: current == 0,
-                  icon: Icons.home_rounded,
-                  outlineIcon: Icons.home_outlined,
-                  label: 'الرئيسية',
-                  onTap: () => _go(0),
-                ),
-              ),
-              Expanded(
-                child: _ReferenceDestination(
-                  selected: current == 2,
-                  icon: Icons.map_rounded,
-                  outlineIcon: Icons.map_outlined,
-                  label: 'الخريطة',
-                  onTap: () => _go(2),
-                ),
-              ),
-              Expanded(
-                child: _ReferenceDestination(
-                  selected: current == 1,
-                  icon: Icons.assignment_rounded,
-                  outlineIcon: Icons.assignment_outlined,
-                  label: 'الطلبات',
-                  badge: offers,
-                  onTap: () => _go(1),
-                ),
-              ),
-              Expanded(
-                child: _ReferenceDestination(
-                  selected: current == 4,
-                  icon: Icons.person_rounded,
-                  outlineIcon: Icons.person_outline_rounded,
-                  label: 'حسابي',
-                  onTap: () => _go(4),
-                ),
-              ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: ReferenceBottomNavigation(
+        currentBranch: navigationShell.currentIndex,
+        offerCount: offers,
+        onTap: _go,
       ),
     );
   }
@@ -82,6 +28,80 @@ class AppShell extends ConsumerWidget {
     navigationShell.goBranch(
       branch,
       initialLocation: branch == navigationShell.currentIndex,
+    );
+  }
+}
+
+class ReferenceBottomNavigation extends StatelessWidget {
+  const ReferenceBottomNavigation({
+    required this.currentBranch,
+    required this.offerCount,
+    required this.onTap,
+    super.key,
+  });
+
+  final int currentBranch;
+  final int offerCount;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(13, 7, 13, 5),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 18,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _ReferenceDestination(
+                selected: currentBranch == 0,
+                icon: Icons.home_rounded,
+                outlineIcon: Icons.home_outlined,
+                label: 'الرئيسية',
+                onTap: () => onTap(0),
+              ),
+            ),
+            Expanded(
+              child: _ReferenceDestination(
+                selected: currentBranch == 2,
+                icon: Icons.map_rounded,
+                outlineIcon: Icons.map_outlined,
+                label: 'الخريطة',
+                onTap: () => onTap(2),
+              ),
+            ),
+            Expanded(
+              child: _ReferenceDestination(
+                selected: currentBranch == 1,
+                icon: Icons.assignment_rounded,
+                outlineIcon: Icons.assignment_outlined,
+                label: 'الطلبات',
+                badge: offerCount,
+                onTap: () => onTap(1),
+              ),
+            ),
+            Expanded(
+              child: _ReferenceDestination(
+                selected: currentBranch == 4,
+                icon: Icons.person_rounded,
+                outlineIcon: Icons.person_outline_rounded,
+                label: 'حسابي',
+                onTap: () => onTap(4),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
