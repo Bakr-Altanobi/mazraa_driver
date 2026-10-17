@@ -296,7 +296,11 @@ class ReferenceProductionBody extends StatelessWidget {
   }) {
     final tracking = data.tracking;
     final trackedShipment = _map(tracking['shipment']);
-    final shipment = trackedShipment.isNotEmpty ? trackedShipment : data.shipmentDetail;
+    final shipment = <String, dynamic>{
+      ...data.shipmentDetail,
+      ...trackedShipment,
+      if (tracking['driverLocation'] != null) 'driverLocation': tracking['driverLocation'],
+    };
     return [
       _LiveShipmentMap(shipment: shipment),
       const SizedBox(height: 10),
@@ -1367,9 +1371,21 @@ class _LiveShipmentMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pickup = _coordinate(shipment['storeLocation'] ?? shipment['pickupLocation']);
-    final destination = _coordinate(shipment['customerLocation'] ?? shipment['deliveryLocation']);
-    final courier = _coordinate(shipment['driverLocation']);
+    final pickup = _coordinate(shipment['storeLocation'] ?? shipment['pickupLocation']) ??
+        _coordinate({
+          'latitude': shipment['storeLatitude'] ?? shipment['pickupLatitude'],
+          'longitude': shipment['storeLongitude'] ?? shipment['pickupLongitude'],
+        });
+    final destination = _coordinate(shipment['customerLocation'] ?? shipment['deliveryLocation']) ??
+        _coordinate({
+          'latitude': shipment['customerLatitude'] ?? shipment['deliveryLatitude'],
+          'longitude': shipment['customerLongitude'] ?? shipment['deliveryLongitude'],
+        });
+    final courier = _coordinate(shipment['driverLocation']) ??
+        _coordinate({
+          'latitude': shipment['driverLatitude'],
+          'longitude': shipment['driverLongitude'],
+        });
     final center = courier ?? pickup ?? destination;
     if (center == null) {
       return const _EmptyServerCard(
