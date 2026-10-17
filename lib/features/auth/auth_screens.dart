@@ -7,6 +7,7 @@ import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/home/home_bootstrap.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
+import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
