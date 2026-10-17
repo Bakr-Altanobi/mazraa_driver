@@ -263,6 +263,15 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 11),
                     OutlinedButton.icon(
+                      key: const Key('openDriverFinances'),
+                      onPressed: () => context.push('/finances'),
+                      icon: const Icon(Icons.account_balance_wallet_outlined),
+                      label: Text(
+                        ar ? 'الحساب البنكي وسحب الرصيد' : 'Bank & payouts',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
                       key: const Key('openDriverOffers'),
                       onPressed: () => context.push('/offers'),
                       icon: const Icon(Icons.local_offer_outlined),
