@@ -89,12 +89,7 @@ class DriverProfile {
       'Rejected',
       'Suspended',
     ]),
-    operationalStatus: _enumLabel(json['operationalStatus'], const [
-      'Offline',
-      'Online',
-      'Busy',
-      'OnBreak',
-    ]),
+    operationalStatus: _driverOperationalStatus(json['operationalStatus']),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
     ratingAverage: _asDouble(json['ratingAverage']),
@@ -405,6 +400,20 @@ double? _asNullableDouble(Object? value) => value == null
     : (value is num ? value.toDouble() : double.tryParse('$value'));
 DateTime? _asDate(Object? value) =>
     value == null ? null : DateTime.tryParse(value.toString());
+/// Backend DriverOperationalStatus uses values Offline=1, Online=2,
+/// Available=3, Busy=4, not zero-based enum indexes.
+String _driverOperationalStatus(Object? raw) {
+  const labels = <int, String>{
+    1: 'Offline',
+    2: 'Online',
+    3: 'Available',
+    4: 'Busy',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Offline';
+}
+
 String _enumLabel(Object? value, List<String> labels) {
   if (value is num && value.toInt() >= 0 && value.toInt() < labels.length) {
     return labels[value.toInt()];
