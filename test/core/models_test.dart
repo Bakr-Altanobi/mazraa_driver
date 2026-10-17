@@ -20,6 +20,30 @@ void main() {
       expect(session.roles, isEmpty);
     });
 
+    test('driver numeric enums match the backend contract', () {
+      final driver = DriverProfile.fromJson({
+        'userId': 23,
+        'name': 'Driver',
+        'vehicleType': 1,
+        'approvalStatus': 2,
+        'operationalStatus': 1,
+        'isAcceptingOrders': false,
+      });
+      expect(driver.vehicleType, 'Bike');
+      expect(driver.approvalStatus, 'Approved');
+      expect(driver.isApproved, isTrue);
+      expect(driver.operationalStatus, 'Offline');
+      final available = DriverProfile.fromJson({
+        'userId': 24,
+        'vehicleType': 0,
+        'approvalStatus': 1,
+        'operationalStatus': 3,
+      });
+      expect(available.vehicleType, 'Car');
+      expect(available.isApproved, isFalse);
+      expect(available.operationalStatus, 'Available');
+    });
+
     test('parses shipment enum from numeric and string payloads', () {
       expect(parseShipmentStatus(4), ShipmentStatus.assigned);
       expect(parseShipmentStatus('NearCustomer'), ShipmentStatus.nearCustomer);
