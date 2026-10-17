@@ -11,10 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Inspect reference dimensions
-        run: file refrinces/screens/01_onboarding.png
+        run: |
+          file refrinces/screens/01_onboarding.png
+          for f in refrinces/assets_primary/by_screen/01/*.png; do file "$f"; done
       - uses: actions/upload-artifact@v4
         with:
-          name: reference-screen-01
-          path: refrinces/screens/01_onboarding.png
+          name: visual-reference-screen-01
+          path: |
+            refrinces/screens/01_onboarding.png
+            refrinces/assets_primary/by_screen/01/*.png
           if-no-files-found: error
           retention-days: 7
