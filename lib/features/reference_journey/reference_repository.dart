@@ -303,14 +303,8 @@ class ReferenceRepository {
     required String subject,
     required String message,
   }) async {
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    int? shipmentId;
-    for (final row in rows) {
-      if (row is Map && row['id'] != null) {
-        shipmentId = int.tryParse(row['id'].toString());
-        if (shipmentId != null) break;
-      }
-    }
+    // A general incident must not be falsely linked to the first shipment.
+    // The server accepts ShipmentId=null for driver-wide reports.
     await _client.post<dynamic>(
       'api/driver-journey/incidents',
       data: {
@@ -318,7 +312,6 @@ class ReferenceRepository {
         'title': subject.trim(),
         'description': message.trim(),
         'isEmergency': false,
-        if (shipmentId != null) 'shipmentId': shipmentId,
       },
     );
   }
