@@ -345,6 +345,90 @@ class _ReferenceJourneyScreenState
       if (mounted) setState(() => _actionBusy = false);
     }
   }
+  Future<void> _requestPayout() async {
+    setState(() => _actionBusy = true);
+    final amount = TextEditingController();
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final rawAccounts = await repository.loadBankAccounts();
+      final wallet = await repository.loadWallet();
+      if (!mounted) return;
+      final banks = rawAccounts.whereType<Map>().where((item) =>
+          int.tryParse(item['id']?.toString() ?? '') != null).toList();
+      if (banks.isEmpty) throw StateError('أضف حسابًا بنكيًا قبل طلب السحب.');
+      final currency = (wallet['currencyCode'] ?? wallet['currency'])?.toString();
+      if (currency == null || currency.trim().isEmpty) {
+        throw StateError('عملة المحفظة غير متوفرة من السيرفر.');
+      }
+      int selected = int.parse(banks.first['id'].toString());
+      var invalid = false;
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('إنشاء طلب سحب'),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('الرصيد: ' + (wallet['balance']?.toString() ?? 'غير متوفر') +
+                  ' ' + currency),
+              DropdownButton<int>(
+                isExpanded: true,
+                value: selected,
+                items: [for (final bank in banks)
+                  DropdownMenuItem<int>(
+                    value: int.parse(bank['id'].toString()),
+                    child: Text((bank['bankName'] ?? '').toString() + ' · ' +
+                        (bank['accountHolderName'] ?? '').toString(),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) update(() => selected = value);
+                },
+              ),
+              TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: 'المبلغ (' + currency + ')'),
+              ),
+              if (invalid) const Text('أدخل مبلغًا صحيحًا أكبر من صفر.',
+                  style: TextStyle(color: Colors.red)),
+              const SizedBox(height: 8),
+              const Text('هذا طلب سحب للمراجعة، وليس تأكيد تحويل فوري.'),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('إلغاء')),
+              FilledButton(onPressed: () {
+                final value = double.tryParse(amount.text.trim());
+                if (value == null || !value.isFinite || value <= 0) {
+                  update(() => invalid = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              }, child: const Text('إرسال الطلب')),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.requestPayout(
+        bankAccountId: selected,
+        amount: double.parse(amount.text.trim()),
+        currency: currency,
+      );
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تسجيل طلب السحب للمراجعة لدى السيرفر.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      amount.dispose();
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
   Future<String?> _textDialog({
     required String title,
     required String label,
