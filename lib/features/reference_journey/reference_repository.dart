@@ -418,7 +418,7 @@ class ReferenceRepository {
         final day = int.tryParse('${fields?['dayOfWeek'] ?? ''}');
         final start = fields?['startTime']?.toString().trim() ?? '';
         final end = fields?['endTime']?.toString().trim() ?? '';
-        final timeFormat = RegExp(r'^(?:[01]\\d|2[0-3]):[0-5]\\d
+        final timeFormat = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d
       await _client.post<dynamic>('api/notifications/mark-all-read');
       return;
     }
