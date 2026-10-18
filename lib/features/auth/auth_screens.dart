@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/constants/api_endpoints.dart';
+import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/home/home_bootstrap.dart';
@@ -138,11 +139,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 }
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ar = isArabic(context);
     return Scaffold(
       key: const Key('onboardingScreen'),
@@ -205,7 +206,10 @@ class OnboardingScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: () => context.go('/login'),
+                      onPressed: () async {
+                        await ref.read(appSettingsProvider).completeOnboarding();
+                        if (context.mounted) context.go('/login');
+                      },
                       child: SizedBox(
                         width: double.infinity,
                         child: Text(
