@@ -135,7 +135,10 @@ class _ReferenceJourneyScreenState
         action == ReferenceAction.addDeliveryProof ||
         action == ReferenceAction.saveBankAccount ||
         action == ReferenceAction.requestPayout ||
-        action == ReferenceAction.addAvailabilityWindow) {
+        action == ReferenceAction.addAvailabilityWindow ||
+        action == ReferenceAction.sendChatMessage ||
+        action == ReferenceAction.createSupportTicket ||
+        action == ReferenceAction.replySupportTicket) {
       fields = await _fieldsDialog(action);
       if (!mounted || fields == null) return;
     }
@@ -232,6 +235,14 @@ class _ReferenceJourneyScreenState
           'verificationReference': 'رقم التحقق عند الاستلام',
           'notes': 'ملاحظات (اختياري)',
         },
+      ReferenceAction.sendChatMessage ||
+      ReferenceAction.replySupportTicket => const <String, String>{
+          'message': 'نص الرسالة',
+        },
+      ReferenceAction.createSupportTicket => const <String, String>{
+          'subject': 'عنوان التذكرة',
+          'message': 'تفاصيل طلب الدعم',
+        },
       ReferenceAction.addAvailabilityWindow => const <String, String>{
           'dayOfWeek': 'يوم الأسبوع (0 الأحد إلى 6 السبت)',
           'startTime': 'وقت البداية HH:mm',
@@ -291,6 +302,9 @@ class _ReferenceJourneyScreenState
                     const ['verificationReference'],
                   ReferenceAction.addDeliveryProof => const ['recipientName'],
                   ReferenceAction.addAvailabilityWindow => const ['dayOfWeek', 'startTime', 'endTime'],
+                  ReferenceAction.createSupportTicket => const ['subject', 'message'],
+                  ReferenceAction.sendChatMessage ||
+                  ReferenceAction.replySupportTicket => const ['message'],
                   _ => const <String>[],
                 };
                 if (required.any((key) => (data[key] ?? '').isEmpty)) {
@@ -423,4 +437,8 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
       ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
       ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
+      ReferenceAction.sendChatMessage => 'إرسال رسالة في المحادثة',
+      ReferenceAction.createSupportTicket => 'فتح تذكرة دعم',
+      ReferenceAction.replySupportTicket => 'الرد على تذكرة دعم',
+      ReferenceAction.startSupportChat => 'بدء محادثة مع الدعم',
     };
