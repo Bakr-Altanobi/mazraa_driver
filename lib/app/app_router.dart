@@ -10,6 +10,7 @@ import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/support/driver_support_screen.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
+import 'package:mazraa_driver/features/wallet/driver_payout_screen.dart';
 
 const _ciSmokeHome = bool.fromEnvironment(
   'CI_SMOKE_HOME',
@@ -119,6 +120,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/offers', builder: (_, _) => const DriverOffersScreen()),
+      GoRoute(path: '/payouts', builder: (_, _) => const DriverPayoutScreen()),
     ],
   );
 });
