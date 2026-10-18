@@ -150,6 +150,15 @@ class ApiClient {
     }
   }
 
+  Future<void> delete(String path) async {
+    try {
+      await _dio.delete<dynamic>(path);
+    } on DioException catch (error, stack) {
+      if (kDebugMode) debugPrintStack(stackTrace: stack);
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<T> put<T>(String path, {Object? data}) async {
     try {
       final response = await _dio.put<T>(path, data: data);
