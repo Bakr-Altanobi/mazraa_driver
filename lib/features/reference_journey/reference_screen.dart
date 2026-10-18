@@ -130,6 +130,15 @@ class _ReferenceJourneyScreenState
       }
     }
 
+    Map<String, dynamic>? fields;
+    if (action == ReferenceAction.addPickupProof ||
+        action == ReferenceAction.addDeliveryProof ||
+        action == ReferenceAction.saveBankAccount ||
+        action == ReferenceAction.requestPayout) {
+      fields = await _fieldsDialog(action);
+      if (!mounted || fields == null) return;
+    }
+
     String? reason;
     String? subject;
     String? message;
@@ -180,7 +189,7 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, targetId: targetId, reason: reason);
+        await repository.runShipmentAction(action, targetId: targetId, reason: reason, fields: fields);
       }
       if (key != null) {
         ref.invalidate(referenceScreenPayloadProvider(key));
@@ -198,6 +207,96 @@ class _ReferenceJourneyScreenState
       }
     } finally {
       if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fieldsDialog(ReferenceAction action) async {
+    final inputs = switch (action) {
+      ReferenceAction.saveBankAccount => const <String, String>{
+          'bankName': 'اسم البنك',
+          'accountHolderName': 'اسم صاحب الحساب',
+          'iban': 'رقم IBAN',
+          'accountNumber': 'رقم الحساب (اختياري)',
+        },
+      ReferenceAction.requestPayout => const <String, String>{
+          'amount': 'مبلغ السحب بالعملة المسجلة في المحفظة',
+        },
+      ReferenceAction.addPickupProof => const <String, String>{
+          'verificationReference': 'رقم التحقق عند الاستلام',
+          'notes': 'ملاحظات (اختياري)',
+        },
+      ReferenceAction.addDeliveryProof => const <String, String>{
+          'recipientName': 'اسم المستلم',
+          'verificationReference': 'رمز/مرجع التحقق (اختياري)',
+          'notes': 'ملاحظات (اختياري)',
+        },
+      _ => const <String, String>{},
+    };
+    final controllers = {
+      for (final key in inputs.keys) key: TextEditingController(),
+    };
+    try {
+      return await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(_actionTitle(action)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in inputs.entries) ...[
+                  TextField(
+                    controller: controllers[field.key],
+                    keyboardType: field.key == 'amount'
+                        ? const TextInputType.numberWithOptions(decimal: true)
+                        : TextInputType.text,
+                    textDirection: field.key == 'iban' || field.key == 'amount'
+                        ? TextDirection.ltr
+                        : null,
+                    decoration: InputDecoration(labelText: field.value),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final data = {
+                  for (final field in controllers.entries)
+                    field.key: field.value.text.trim(),
+                };
+                final required = switch (action) {
+                  ReferenceAction.saveBankAccount =>
+                    const ['bankName', 'accountHolderName', 'iban'],
+                  ReferenceAction.requestPayout => const ['amount'],
+                  ReferenceAction.addPickupProof =>
+                    const ['verificationReference'],
+                  ReferenceAction.addDeliveryProof => const ['recipientName'],
+                  _ => const <String>[],
+                };
+                if (required.any((key) => (data[key] ?? '').isEmpty)) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('أكمل الحقول المطلوبة أولًا.')),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, data);
+              },
+              child: const Text('التالي'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
     }
   }
 
@@ -302,4 +401,9 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
       ReferenceAction.pickupReturn => 'استلام المرتجع',
       ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
+      ReferenceAction.addPickupProof => 'تسجيل مرجع إثبات الاستلام',
+      ReferenceAction.addDeliveryProof => 'تسجيل إثبات التسليم',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب الرصيد',
+      ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
     };
