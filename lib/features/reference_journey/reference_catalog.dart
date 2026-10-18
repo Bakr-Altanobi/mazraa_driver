@@ -60,6 +60,10 @@ enum ReferenceAction {
   toggleScheduledTripsPreference,
   addAvailabilityWindow,
   removeAvailabilityWindow,
+  sendChatMessage,
+  createSupportTicket,
+  replySupportTicket,
+  startSupportChat,
 }
 
 class ReferenceScreenSpec {
@@ -282,6 +286,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Customer chat',
       descriptionAr: 'محادثات الحساب الحقيقية وعدد الرسائل غير المقروءة.',
       sources: [ReferenceDataSource.chats],
+      actions: [ReferenceAction.sendChatMessage],
     ),
     ReferenceScreenSpec(
       number: 20,
@@ -300,6 +305,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Support center',
       descriptionAr: 'FAQ والتذاكر الفعلية من مركز الدعم.',
       sources: [ReferenceDataSource.supportFaqs, ReferenceDataSource.supportTickets],
+      actions: [ReferenceAction.createSupportTicket, ReferenceAction.replySupportTicket, ReferenceAction.startSupportChat],
     ),
     ReferenceScreenSpec(
       number: 22,
