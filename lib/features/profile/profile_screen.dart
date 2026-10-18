@@ -116,6 +116,13 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       ListTile(
+                        leading: const Icon(Icons.upload_file_outlined),
+                        title: Text(ar ? 'رفع مستندات السائق' : 'Upload driver documents'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/upload-document'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
                         leading: const Icon(Icons.grid_view_rounded),
                         title: Text(ar ? 'كل خدمات السائق' : 'Driver services'),
                         subtitle: Text(ar ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
