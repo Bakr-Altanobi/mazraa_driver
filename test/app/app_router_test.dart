@@ -51,7 +51,7 @@ void main() {
       );
     });
 
-    test('fresh signed-out sessions start at reference onboarding', () {
+    test('fresh signed-out sessions start at onboarding', () {
       expect(
         resolveAuthRedirect(
           authState: AuthState.signedOut,
@@ -61,20 +61,20 @@ void main() {
       );
     });
 
-    test('authenticated drivers continue at reference screen 03', () {
+    test('authenticated drivers continue to the real home screen', () {
       expect(
         resolveAuthRedirect(
           authState: AuthState.authenticated,
           location: '/splash',
         ),
-        '/journey/03',
+        '/home',
       );
       expect(
         resolveAuthRedirect(
           authState: AuthState.authenticated,
           location: '/login',
         ),
-        '/journey/03',
+        '/home',
       );
     });
 
