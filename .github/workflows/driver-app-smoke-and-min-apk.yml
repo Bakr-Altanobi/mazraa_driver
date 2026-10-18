@@ -47,8 +47,16 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
       - name: Build real driver debug APK for ARM64 phones
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
-          flutter build apk --debug --target-platform android-arm64 --no-pub
+          if [[ -n "$GOOGLE_MAPS_API_KEY" ]]; then
+            echo "Android Maps key configured from GitHub Actions secrets (value hidden)."
+            flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS=true --no-pub
+          else
+            echo "::warning::GOOGLE_MAPS_API_KEY Actions secret not configured. Building without embedded Google Maps tiles."
+            flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS=false --no-pub
+          fi
           test -s build/app/outputs/flutter-apk/app-debug.apk
           mkdir -p artifacts
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/mazraa-driver-arm64-debug.apk
