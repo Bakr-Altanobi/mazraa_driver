@@ -57,7 +57,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: .ci-apks
-          key: driver-apks-v1-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+          key: driver-apks-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
 
       # Incremental build outputs are only needed when the tiny APK cache misses.
       - name: Restore incremental Flutter build cache
@@ -83,7 +83,8 @@ jobs:
 
           if [[ "${{ steps.apk-cache.outputs.cache-hit }}" == "true" \
                 && -s .ci-apks/app-debug.apk \
-                && -s .ci-apks/app-arm64-v8a-release.apk ]]; then
+                && -s .ci-apks/app-arm64-v8a-release.apk \
+                && -s .ci-apks/app-arm64-debug.apk ]]; then
             echo 'Exact source APK cache hit; skipping the complete Flutter/Gradle toolchain.'
             cp .ci-apks/app-debug.apk "$DEBUG_APK"
             cp .ci-apks/app-arm64-v8a-release.apk "$RELEASE_APK"
@@ -91,6 +92,7 @@ jobs:
           elif [[ "${{ steps.flutter-build-cache.outputs.cache-hit }}" == "true" \
                   && -s "$DEBUG_APK" \
                   && -s "$RELEASE_APK" \
+                  && -s .ci-apks/app-arm64-debug.apk \
                   && -f build/.ci-debug-source \
                   && -f build/.ci-release-source ]]; then
             source_hash="${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}"
@@ -191,6 +193,21 @@ jobs:
           echo 'Resolving from the restored local pub cache first; network is only a fallback on a real miss.'
           flutter pub get --offline || flutter pub get
 
+      # The developer's trial Google Maps key is never committed to Git.
+      # An optional Actions secret injects it into this ephemeral build.
+      - name: Configure Google Maps for trial builds
+        if: steps.compiled-state.outputs.reuse != 'true'
+        shell: bash
+        env:
+          TRIAL_MAPS_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: |
+          if [[ -n "$TRIAL_MAPS_KEY" ]]; then
+            printf '\\nMAPS_API_KEY=%s\\n' "$TRIAL_MAPS_KEY" >> android/local.properties
+            echo 'Google Maps trial key configured for Android.'
+          else
+            echo '::warning::GOOGLE_MAPS_ANDROID_API_KEY secret is absent; real embedded Google Maps requires a configured key.'
+          fi
+
       - name: Build x64 debug APK for HomeScreen smoke
         if: steps.compiled-state.outputs.reuse != 'true'
         shell: bash
@@ -254,6 +271,210 @@ jobs:
           compression-level: 0
           retention-days: 14
 
+      # Compile a separate real-device Debug APK. The x64 smoke APK above
+      # contains CI_SMOKE_HOME and must never be sent to a driver.
+      - name: Build smallest ABI-specific arm64 Debug APK
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [[ "${{ steps.compiled-state.outputs.reuse }}" == "true" ]]; then
+            cp .ci-apks/app-arm64-debug.apk artifacts/mazraa-driver-arm64-debug.apk
+          else
+            flutter build apk \\
+              --debug \\
+              --no-pub \\
+              --target-platform android-arm64 \\
+              --dart-define=ENABLE_GOOGLE_MAPS=true
+            cp build/app/outputs/flutter-apk/app-debug.apk artifacts/mazraa-driver-arm64-debug.apk
+          fi
+          test -s artifacts/mazraa-driver-arm64-debug.apk
+          unzip -Z1 artifacts/mazraa-driver-arm64-debug.apk | grep -q '^lib/arm64-v8a/libflutter.so
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p .ci-apks
+          cp "$DEBUG_APK" .ci-apks/app-debug.apk
+          cp "$RELEASE_APK" .ci-apks/app-arm64-v8a-release.apk
+          cp artifacts/mazraa-driver-arm64-debug.apk .ci-apks/app-arm64-debug.apk
+
+      - name: Save compiled APK cache
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .ci-apks
+          key: driver-apks-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+
+      - name: Upload emulator diagnostics on smoke failure
+        if: failure() && steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: mazraa-driver-emulator-diagnostics
+          path: |
+            artifacts/activity-dump.txt
+            artifacts/window-dump.txt
+            artifacts/window.xml
+            artifacts/not-ready-screen.png
+            artifacts/logcat.txt
+            artifacts/emulator.log
+          if-no-files-found: ignore
+          compression-level: 6
+          retention-days: 7
+
+      - name: Save Flutter SDK cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.flutter-sdk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: /opt/hostedtoolcache/flutter/beta-3.49.0-0.2.pre-x64
+          key: driver-flutter-sdk-${{ runner.os }}-3.49.0-0.2.pre-v1
+
+      - name: Save Dart pub cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.pub-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/.pub-cache
+          key: driver-pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+
+      - name: Save Gradle cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: driver-gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+
+      - name: Save Android native build cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.android-native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/ndk/28.2.13676358
+            /usr/local/lib/android/sdk/cmake/3.22.1
+          key: driver-android-native-${{ runner.os }}-ndk28.2-cmake3.22-v1
+
+      - name: Save Android emulator cache
+        if: always() && steps.android-emulator-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/emulator
+            /usr/local/lib/android/sdk/platform-tools
+            /usr/local/lib/android/sdk/system-images/android-35/default/x86_64
+            ~/.android/avd
+            ~/.android/adb*
+          key: driver-emulator-${{ runner.os }}-api35-x64-v3
+
+      - name: Save incremental Flutter build cache
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true' && steps.flutter-build-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            .dart_tool
+            android/.gradle
+            build
+          key: driver-build-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+
+          if unzip -Z1 artifacts/mazraa-driver-arm64-debug.apk | grep -q '^lib/x86_64/libflutter.so
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p .ci-apks
+          cp "$DEBUG_APK" .ci-apks/app-debug.apk
+          cp "$RELEASE_APK" .ci-apks/app-arm64-v8a-release.apk
+
+      - name: Save compiled APK cache
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .ci-apks
+          key: driver-apks-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+
+      - name: Upload emulator diagnostics on smoke failure
+        if: failure() && steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: mazraa-driver-emulator-diagnostics
+          path: |
+            artifacts/activity-dump.txt
+            artifacts/window-dump.txt
+            artifacts/window.xml
+            artifacts/not-ready-screen.png
+            artifacts/logcat.txt
+            artifacts/emulator.log
+          if-no-files-found: ignore
+          compression-level: 6
+          retention-days: 7
+
+      - name: Save Flutter SDK cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.flutter-sdk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: /opt/hostedtoolcache/flutter/beta-3.49.0-0.2.pre-x64
+          key: driver-flutter-sdk-${{ runner.os }}-3.49.0-0.2.pre-v1
+
+      - name: Save Dart pub cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.pub-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/.pub-cache
+          key: driver-pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+
+      - name: Save Gradle cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: driver-gradle-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+
+      - name: Save Android native build cache
+        if: always() && steps.compiled-state.outputs.reuse != 'true' && steps.android-native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/ndk/28.2.13676358
+            /usr/local/lib/android/sdk/cmake/3.22.1
+          key: driver-android-native-${{ runner.os }}-ndk28.2-cmake3.22-v1
+
+      - name: Save Android emulator cache
+        if: always() && steps.android-emulator-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/emulator
+            /usr/local/lib/android/sdk/platform-tools
+            /usr/local/lib/android/sdk/system-images/android-35/default/x86_64
+            ~/.android/avd
+            ~/.android/adb*
+          key: driver-emulator-${{ runner.os }}-api35-x64-v3
+
+      - name: Save incremental Flutter build cache
+        if: success() && steps.apk-cache.outputs.cache-hit != 'true' && steps.flutter-build-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            .dart_tool
+            android/.gradle
+            build
+          key: driver-build-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+; then
+            echo '::error::Debug delivery APK unexpectedly contains an x86_64 engine.'
+            exit 1
+          fi
+          echo 'Android arm64 Debug APK:'
+          du -h artifacts/mazraa-driver-arm64-debug.apk
+          stat -c 'APK bytes: %s' artifacts/mazraa-driver-arm64-debug.apk
+
+      - name: Upload arm64 Debug APK for driver testers
+        uses: actions/upload-artifact@v7
+        with:
+          name: mazraa-driver-debug-arm64-apk
+          path: artifacts/mazraa-driver-arm64-debug.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
       - name: Stage compiled APK cache
         if: success() && steps.apk-cache.outputs.cache-hit != 'true'
         shell: bash
@@ -267,7 +488,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: .ci-apks
-          key: driver-apks-v1-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
+          key: driver-apks-v2-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('lib/**', 'assets/**', 'android/**', 'pubspec.yaml', 'pubspec.lock') }}
 
       - name: Upload emulator diagnostics on smoke failure
         if: failure() && steps.smoke.outcome == 'failure'
