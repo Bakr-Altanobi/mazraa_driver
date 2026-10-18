@@ -1843,6 +1843,13 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
       ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
       ReferenceAction.createIncident => Icons.support_agent_rounded,
+      ReferenceAction.goOnline => Icons.wifi_rounded,
+      ReferenceAction.goOffline => Icons.wifi_off_rounded,
+      ReferenceAction.joinScheduledTrip => Icons.event_available_outlined,
+      ReferenceAction.withdrawScheduledTrip => Icons.event_busy_outlined,
+      ReferenceAction.acceptReturn => Icons.assignment_turned_in_outlined,
+      ReferenceAction.pickupReturn => Icons.inventory_outlined,
+      ReferenceAction.completeReturn => Icons.check_circle_outline_rounded,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1857,4 +1864,11 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
+      ReferenceAction.goOnline => 'تفعيل استقبال الطلبات',
+      ReferenceAction.goOffline => 'إيقاف استقبال الطلبات',
+      ReferenceAction.joinScheduledTrip => 'طلب الانضمام لرحلة مجدولة',
+      ReferenceAction.withdrawScheduledTrip => 'سحب طلب الانضمام',
+      ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
+      ReferenceAction.pickupReturn => 'استلام المرتجع',
+      ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
     };
