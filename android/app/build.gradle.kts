@@ -12,7 +12,13 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey = localProperties.getProperty("MAPS_API_KEY", "")
+val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+    ?.takeIf { it.isNotBlank() }
+    ?: System.getenv("MAPS_API_KEY")?.takeIf { it.isNotBlank() }
+    ?: "MISSING_MAPS_API_KEY"
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -36,8 +42,6 @@ android {
 
     defaultConfig {
         applicationId = "com.mazraa.driver"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -57,7 +61,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            // CI smoke builds can launch without a real key; production release
+            // builds are guarded below and must receive MAPS_API_KEY.
+            manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        }
         release {
+            if (releaseRequested && mapsApiKey == "MISSING_MAPS_API_KEY") {
+                throw GradleException(
+                    "MAPS_API_KEY is required for release builds. Put it in android/local.properties or the MAPS_API_KEY environment variable."
+                )
+            }
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

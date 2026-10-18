@@ -2,11 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/auth/driver_registration_screen.dart';
+import 'package:mazraa_driver/features/communication/driver_communication_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/services/driver_compliance_screens.dart';
+import 'package:mazraa_driver/features/services/driver_services_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
+import 'package:mazraa_driver/features/shipments/available_orders_screen.dart';
+import 'package:mazraa_driver/features/shipments/driver_map_overview_screen.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
 
@@ -20,12 +26,16 @@ String? resolveAuthRedirect({
   required String location,
 }) {
   final isJourneyPublic =
-      location == '/journey/01' || location == '/journey/1' ||
-      location == '/journey/02' || location == '/journey/2';
+      location == '/journey/01' ||
+      location == '/journey/1' ||
+      location == '/journey/02' ||
+      location == '/journey/2' ||
+      location == '/journey/13';
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
       location == '/onboarding' ||
+      location == '/register-driver' ||
       isJourneyPublic;
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
@@ -46,7 +56,7 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -68,11 +78,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(
+        path: '/register-driver',
+        builder: (_, _) => const DriverRegistrationScreen(),
+      ),
+      GoRoute(
         path: '/journey/:screen',
         builder: (context, state) {
           final raw = state.pathParameters['screen'] ?? '1';
           final parsed = int.tryParse(raw) ?? 1;
           final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
+          if (number == 13) return const DriverRegistrationScreen();
+          if (number == 14 || number == 43 || number == 47) {
+            return const DriverDocumentsScreen();
+          }
+          if (number == 19) return const DriverChatsScreen();
+          if (number == 21) return const DriverSupportCenterScreen();
+          if (number == 30 || number == 38) return const BankPayoutScreen();
+          if (number == 39) return const ReturnTasksScreen();
+          if (number == 42) return const VehicleMaintenanceScreen();
           return ReferenceJourneyScreen(screenNumber: number);
         },
       ),
@@ -89,13 +112,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/shipments',
-                builder: (_, _) => const ShipmentsScreen(),
+                builder: (_, _) => const AvailableOrdersScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/wallet', builder: (_, _) => const WalletScreen()),
+              GoRoute(
+                path: '/map',
+                builder: (_, _) => const DriverMapOverviewScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -109,12 +135,53 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/profile',
-                builder: (_, _) => const ProfileScreen(),
+                path: '/more',
+                builder: (_, _) => const DriverServicesScreen(),
               ),
             ],
           ),
         ],
+      ),
+      GoRoute(path: '/profile', redirect: (_, _) => '/more'),
+      GoRoute(
+        path: '/profile-details',
+        builder: (_, _) => const ProfileScreen(),
+      ),
+      GoRoute(path: '/wallet', builder: (_, _) => const WalletScreen()),
+      GoRoute(
+        path: '/preferences',
+        builder: (_, _) => const DriverPreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/availability',
+        builder: (_, _) => const DriverAvailabilityScreen(),
+      ),
+      GoRoute(
+        path: '/scheduled-trips',
+        builder: (_, _) => const ScheduledTripsScreen(),
+      ),
+      GoRoute(
+        path: '/bank-payout',
+        builder: (_, _) => const BankPayoutScreen(),
+      ),
+      GoRoute(
+        path: '/returns',
+        builder: (_, _) => const ReturnTasksScreen(),
+      ),
+      GoRoute(
+        path: '/documents',
+        builder: (_, _) => const DriverDocumentsScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance',
+        builder: (_, _) => const VehicleMaintenanceScreen(),
+      ),
+      GoRoute(path: '/chats', builder: (_, _) => const DriverChatsScreen()),
+      GoRoute(
+        path: '/chats/:id',
+        builder: (context, state) => DriverChatThreadScreen(
+          chatId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
       ),
       GoRoute(
         path: '/shipments/:id',
@@ -123,7 +190,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-      GoRoute(path: '/support', builder: (_, _) => const SupportScreen()),
+      GoRoute(
+        path: '/support',
+        builder: (_, _) => const DriverSupportCenterScreen(),
+      ),
+      GoRoute(
+        path: '/support/tickets/:id',
+        builder: (context, state) => SupportTicketThreadScreen(
+          ticketId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
     ],
   );
 });

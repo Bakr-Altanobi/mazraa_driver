@@ -20,6 +20,7 @@ dependencies:
   geolocator: ^14.0.1
   go_router: ^15.1.2
   google_maps_flutter: ^2.12.2
+  image_picker: ^1.2.4
   intl: ^0.20.2
   permission_handler: ^12.0.0+1
   shared_preferences: ^2.5.3
@@ -41,3 +42,9 @@ flutter:
     # Runtime-sized derivatives of the exact ASSET_INDEX artwork. Original
     # reference PNG files remain untouched under refrinces/assets_primary/.
     - assets/reference_runtime/
+    # Screen 03 uses this canonical reference layer directly because the old
+    # runtime alias incorrectly pointed at asset_route_map_pin_cluster.
+    - refrinces/assets_primary/by_screen/03/01_asset_home_route_dashboard.png
+    # Screen 04 crops its four card photos, logo and driver portrait directly
+    # from the canonical reference. No substitute/generated artwork is used.
+    - refrinces/screens/04_orders_list.png

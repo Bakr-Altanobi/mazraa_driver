@@ -22,10 +22,18 @@ class MapPanel extends StatelessWidget {
   final VoidCallback? onLocate;
 
   GeoPoint get _center =>
-      driver ?? store ?? customer ?? const GeoPoint(24.7136, 46.6753);
+      driver ?? store ?? customer ?? const GeoPoint(15.3694, 44.1910);
+
+  List<LatLng> get _routePoints => [
+        if (driver != null) LatLng(driver!.latitude, driver!.longitude),
+        if (store != null) LatLng(store!.latitude, store!.longitude),
+        if (customer != null)
+          LatLng(customer!.latitude, customer!.longitude),
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final routePoints = _routePoints;
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
@@ -42,6 +50,8 @@ class MapPanel extends StatelessWidget {
                       myLocationButtonEnabled: false,
                       zoomControlsEnabled: false,
                       compassEnabled: true,
+                      mapToolbarEnabled: false,
+                      trafficEnabled: false,
                       markers: {
                         if (driver != null)
                           Marker(
@@ -82,6 +92,17 @@ class MapPanel extends StatelessWidget {
                             ),
                           ),
                       },
+                      polylines: routePoints.length < 2
+                          ? const <Polyline>{}
+                          : {
+                              Polyline(
+                                polylineId: const PolylineId('driver-route'),
+                                points: routePoints,
+                                width: 6,
+                                color: MazraaColors.forest,
+                                geodesic: true,
+                              ),
+                            },
                     )
                   : CustomPaint(
                       painter: _MapPainter(

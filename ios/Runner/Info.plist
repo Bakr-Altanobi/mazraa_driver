@@ -29,11 +29,11 @@
 	<key>GMSApiKey</key>
 	<string>$(MAPS_API_KEY)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>تُستخدم الكاميرا لإثبات الاستلام أو التسليم عند دعم السيرفر.</string>
+	<string>تُستخدم الكاميرا لالتقاط وثائق السائق والمركبة وإثباتات التوصيل عند الحاجة.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>يحتاج تطبيق مزرعتي إلى موقعك أثناء مهمة توصيل نشطة لإرسال تحديثات الشحنة.</string>
+	<string>يحتاج تطبيق مزرعتي إلى موقعك أثناء مهمة توصيل نشطة لإرسال تحديثات الشحنة وإظهار المسار.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>تُستخدم الصور لإرفاق إثباتات التسليم عند دعم السيرفر.</string>
+	<string>تُستخدم مكتبة الصور لاختيار وثائق السائق والمركبة وإثباتات التوصيل.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

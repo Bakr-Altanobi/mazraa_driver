@@ -11,7 +11,6 @@ import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
-
   @override
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
@@ -23,12 +22,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
-  Future<void> _bootstrap({bool force = false}) {
-    return ref.read(authControllerProvider).initialize(
-      force: force,
-      preloadHome: () => preloadDriverHome(ref),
-    );
-  }
+  Future<void> _bootstrap({bool force = false}) =>
+      ref.read(authControllerProvider).initialize(
+        force: force,
+        preloadHome: () => preloadDriverHome(ref),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +34,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final ar = isArabic(context);
     final failed = auth.state == AuthState.bootstrapFailed;
     final preparingHome = auth.state == AuthState.preparingHome;
-
     return Scaffold(
       key: const Key('splashScreen'),
       body: DecoratedBox(
@@ -56,10 +53,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 children: [
                   Hero(
                     tag: 'mazraa-logo',
-                    child: SvgPicture.asset(
-                      'assets/branding/mazraa_mark.svg',
-                      width: 96,
-                    ),
+                    child: SvgPicture.asset('assets/branding/mazraa_mark.svg', width: 96),
                   ),
                   const SizedBox(height: 18),
                   Text(
@@ -72,9 +66,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   Text(
                     ar ? 'رفيقك في كل رحلة' : 'Your companion on every trip',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: MazraaColors.forest.withValues(alpha: .72),
-                    ),
                   ),
                   const SizedBox(height: 34),
                   if (failed) ...[
@@ -91,9 +82,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                               : 'App initialization could not be completed.'),
                       key: const Key('bootstrapError'),
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
                     ),
                     const SizedBox(height: 18),
                     FilledButton.icon(
@@ -103,9 +91,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       label: Text(ar ? 'إعادة المحاولة' : 'Retry'),
                     ),
                   ] else ...[
-                    const SizedBox(
-                      width: 28,
-                      height: 28,
+                    const SizedBox.square(
+                      dimension: 28,
                       child: CircularProgressIndicator(strokeWidth: 2.7),
                     ),
                     const SizedBox(height: 13),
@@ -123,9 +110,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                             : 'sessionRestoreProgress',
                       ),
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
                     ),
                   ],
                 ],
@@ -165,21 +149,19 @@ class OnboardingScreen extends StatelessWidget {
                         ReferenceAssets.brandLeaf,
                         width: 52,
                         height: 52,
-                        fit: BoxFit.contain,
                         cacheWidth: 180,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     SizedBox(
                       height: artworkHeight,
-                      width: double.infinity,
                       child: Image.asset(
                         ReferenceAssets.onboardingFarm,
                         fit: BoxFit.contain,
                         cacheWidth: 900,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     const _ReferenceAssetRow(
                       paths: [
                         ReferenceAssets.driverAvatar,
@@ -196,23 +178,20 @@ class OnboardingScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       ar
-                          ? 'تابع شحناتك، موقعك، ومحفظتك من مكان واحد مع تحديثات حقيقية من منصة مزرعتي.'
-                          : 'Track shipments, location, and wallet in one place with live data from Mazraa.',
+                          ? 'استقبل عروض التوصيل، تابع المسار على الخريطة، حدّث حالة الشحنة، واستلم أرباحك من تطبيق واحد.'
+                          : 'Receive delivery offers, navigate, update shipment status and manage earnings from one app.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
                     FilledButton(
                       onPressed: () => context.go('/login'),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Text(
-                          ar ? 'البدء الآن' : 'Get started',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                      child: Text(ar ? 'لدي حساب سائق' : 'I have a driver account'),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/register-driver'),
+                      icon: const Icon(Icons.person_add_alt_1_rounded),
+                      label: Text(ar ? 'الانضمام كسائق جديد' : 'Become a new driver'),
                     ),
                   ],
                 ),
@@ -227,19 +206,16 @@ class OnboardingScreen extends StatelessWidget {
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
-
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _email = TextEditingController(
-    text: AppEnvironment.testDriverEmail,
-  );
-  late final TextEditingController _password = TextEditingController(
-    text: AppEnvironment.testDriverPassword,
-  );
+  late final TextEditingController _email =
+      TextEditingController(text: AppEnvironment.testDriverEmail);
+  late final TextEditingController _password =
+      TextEditingController(text: AppEnvironment.testDriverPassword);
   bool _obscure = true;
 
   @override
@@ -322,13 +298,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 8),
                     Text(
                       ar
-                          ? 'سجّل دخولك بحساب السائق المعتمد للبدء. بعد نجاح الدخول لن ينتقل التطبيق قبل اكتمال بيانات الشاشة التالية.'
-                          : 'Sign in with your approved driver account. The app waits for the next screen data before navigating.',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                          ? 'سجّل دخولك بحساب السائق. بيانات الرحلات والمحفظة والحالة تُحمّل من السيرفر قبل دخول التطبيق.'
+                          : 'Sign in with your driver account. Live driver data is loaded before entering the app.',
                     ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 24),
                     TextFormField(
                       key: const Key('emailField'),
                       controller: _email,
@@ -339,12 +312,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: ar ? 'البريد الإلكتروني' : 'Email',
                         prefixIcon: const Icon(Icons.mail_outline_rounded),
                       ),
-                      validator: (value) {
-                        if (value == null || !value.contains('@')) {
-                          return ar ? 'أدخل بريدًا صحيحًا' : 'Enter a valid email';
-                        }
-                        return null;
-                      },
+                      validator: (value) => value?.contains('@') == true
+                          ? null
+                          : (ar ? 'أدخل بريدًا صحيحًا' : 'Enter a valid email'),
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -373,10 +343,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: TextButton(
-                        onPressed: () => _showUnavailable(context, ar),
-                        child: Text(
-                          ar ? 'نسيت كلمة المرور؟' : 'Forgot password?',
-                        ),
+                        onPressed: () => _forgotPassword(context, ar),
+                        child: Text(ar ? 'نسيت كلمة المرور؟' : 'Forgot password?'),
                       ),
                     ),
                     if (auth.errorMessage != null) ...[
@@ -386,22 +354,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: Theme.of(context).colorScheme.errorContainer,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline_rounded,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                auth.errorMessage!,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: Text(auth.errorMessage!),
                       ),
                       const SizedBox(height: 14),
                     ],
@@ -409,9 +362,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       key: const Key('loginButton'),
                       onPressed: busy ? null : _submit,
                       child: busy
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
+                          ? const SizedBox.square(
+                              dimension: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.4,
                                 color: Colors.white,
@@ -419,23 +371,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             )
                           : Text(ar ? 'تسجيل الدخول' : 'Sign in'),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () => _showUnavailable(context, ar),
+                      onPressed: busy ? null : () => context.go('/register-driver'),
                       icon: const Icon(Icons.person_add_alt_1_rounded),
-                      label: Text(
-                        ar ? 'طلب الانضمام كسائق' : 'Apply as a driver',
-                      ),
+                      label: Text(ar ? 'طلب الانضمام كسائق' : 'Apply as a driver'),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Text(
                       ar
                           ? 'تُحفظ رموز الجلسة داخل التخزين الآمن للجهاز.'
                           : 'Session tokens are kept in secure device storage.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
@@ -447,7 +395,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _showUnavailable(BuildContext context, bool ar) {
+  void _forgotPassword(BuildContext context, bool ar) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -456,17 +404,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.admin_panel_settings_outlined, size: 45),
+            const Icon(Icons.lock_reset_rounded, size: 45),
             const SizedBox(height: 12),
             Text(
-              ar ? 'تتطلب مراجعة الإدارة' : 'Admin review required',
+              ar ? 'استعادة كلمة المرور' : 'Password recovery',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
               ar
-                  ? 'لا يوفر السيرفر الحالي مسارًا عامًا آمنًا لتسجيل السائق أو استعادة كلمة المرور. تواصل مع إدارة المنصة.'
-                  : 'The server does not currently expose a safe public driver registration or password recovery endpoint. Contact platform support.',
+                  ? 'استعادة كلمة المرور ليست متاحة من API الحالي بعد. تواصل مع دعم المنصة من الحساب أو الإدارة.'
+                  : 'Password recovery is not exposed by the current API yet. Contact platform support.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -478,7 +426,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
 class _ReferenceAssetRow extends StatelessWidget {
   const _ReferenceAssetRow({required this.paths});
-
   final List<String> paths;
 
   @override
