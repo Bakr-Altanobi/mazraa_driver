@@ -1855,6 +1855,10 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.saveBankAccount => Icons.account_balance_outlined,
       ReferenceAction.requestPayout => Icons.payments_outlined,
       ReferenceAction.markAllNotificationsRead => Icons.mark_email_read_outlined,
+      ReferenceAction.toggleOffersPreference => Icons.tune_rounded,
+      ReferenceAction.toggleScheduledTripsPreference => Icons.event_repeat_outlined,
+      ReferenceAction.addAvailabilityWindow => Icons.edit_calendar_outlined,
+      ReferenceAction.removeAvailabilityWindow => Icons.event_busy_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1881,4 +1885,8 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
       ReferenceAction.requestPayout => 'طلب سحب الرصيد',
       ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
+      ReferenceAction.toggleOffersPreference => 'تبديل استقبال عروض التوصيل',
+      ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
+      ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
+      ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
     };
