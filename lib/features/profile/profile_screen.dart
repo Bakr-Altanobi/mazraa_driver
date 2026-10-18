@@ -6,6 +6,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
+import 'package:mazraa_driver/features/profile/driver_support_screen.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -120,6 +121,13 @@ class ProfileScreen extends ConsumerWidget {
                         title: Text(ar ? 'الإعدادات' : 'Settings'),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => context.push('/settings'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.grid_view_rounded),
+                        title: Text(ar ? 'جميع خدمات السائق' : 'Driver services'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/driver-services'),
                       ),
                       const Divider(indent: 58, height: 1),
                       ListTile(
@@ -383,117 +391,5 @@ class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final ar = isArabic(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(ar ? 'المساعدة والدعم' : 'Help & support')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.support_agent_rounded,
-                  size: 52,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  ar ? 'كيف يمكننا مساعدتك؟' : 'How can we help?',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  ar
-                      ? 'لا توجد واجهة تذاكر دعم في السيرفر الحالي. لم نعرض إرسالًا وهميًا، ويمكن للإدارة ربطه عند توفير Endpoint.'
-                      : 'The current server has no support-ticket endpoint. No simulated submission is shown; it can be connected when an endpoint is available.',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          SectionHeader(
-            title: ar ? 'أسئلة شائعة' : 'Frequently asked questions',
-            icon: Icons.quiz_outlined,
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
-              children: [
-                ExpansionTile(
-                  title: Text(
-                    ar
-                        ? 'لماذا لا أستطيع تغيير حالة الاتصال؟'
-                        : 'Why can’t I change online status?',
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    Text(
-                      ar
-                          ? 'يحتاج ذلك إلى Endpoint خاص بحالة السائق، وهو غير موجود في نسخة السيرفر الحالية.'
-                          : 'It requires a driver-status endpoint, which is absent from the current server.',
-                    ),
-                  ],
-                ),
-                const Divider(height: 1),
-                ExpansionTile(
-                  title: Text(
-                    ar
-                        ? 'لماذا لا يظهر المسار على الخريطة؟'
-                        : 'Why is route guidance unavailable?',
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    Text(
-                      ar
-                          ? 'يلزم مفتاح Google Maps مقيّد وخدمة Routes مفعّلة. يمكن دائمًا فتح الملاحة الخارجية عند توفر إحداثيات الوجهة.'
-                          : 'A restricted Google Maps key and Routes service are required. External navigation remains available when destination coordinates exist.',
-                    ),
-                  ],
-                ),
-                const Divider(height: 1),
-                ExpansionTile(
-                  title: Text(
-                    ar
-                        ? 'هل رصيد المحفظة هو أرباح السائق؟'
-                        : 'Is wallet balance the same as driver earnings?',
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    Text(
-                      ar
-                          ? 'لا. المحفظة حساب مالي عام، والسيرفر لا يوفّر حاليًا كشف مستحقات سائق مستقل.'
-                          : 'No. The wallet is a general financial account; the server does not expose a separate driver earnings ledger.',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.shield_outlined,
-                color: MazraaColors.forest,
-              ),
-              title: Text(ar ? 'السلامة أولًا' : 'Safety first'),
-              subtitle: Text(
-                ar
-                    ? 'لا تستخدم التطبيق أثناء القيادة. توقف في مكان آمن قبل تنفيذ أي إجراء.'
-                    : 'Do not operate the app while driving. Stop safely before taking action.',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const DriverSupportScreen();
 }

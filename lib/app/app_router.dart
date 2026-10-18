@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/auth/driver_onboarding_screen.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_directory_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
@@ -46,7 +48,9 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  // The 48 reference screens stay directly addressable for review; drivers
+  // enter the operational tab shell after the real home bootstrap completes.
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -65,8 +69,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const DriverOnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/driver-services', builder: (_, _) => const DriverServicesDirectoryScreen()),
       GoRoute(
         path: '/journey/:screen',
         builder: (context, state) {

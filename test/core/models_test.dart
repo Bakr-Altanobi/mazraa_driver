@@ -27,6 +27,24 @@ void main() {
       expect(parseShipmentStatus('not-a-status'), ShipmentStatus.unknown);
     });
 
+    test('uses delivery timestamp from API and never assumes creation is delivery', () {
+      final completed = Shipment.fromJson({
+        'id': 13,
+        'shipmentNumber': 'SHP-13',
+        'status': 'Delivered',
+        'createdAt': '2026-10-17T22:00:00Z',
+        'deliveredAt': '2026-10-18T02:30:00Z',
+      });
+      final missing = Shipment.fromJson({
+        'id': 14,
+        'shipmentNumber': 'SHP-14',
+        'status': 'Delivered',
+        'createdAt': '2026-10-18T02:00:00Z',
+      });
+      expect(completed.deliveredAt, DateTime.utc(2026, 10, 18, 2, 30));
+      expect(missing.deliveredAt, isNull);
+    });
+
     test('parses tracking wrapper and coordinates', () {
       final shipment = Shipment.fromJson({
         'shipment': {

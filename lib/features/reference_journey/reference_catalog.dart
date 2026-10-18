@@ -233,6 +233,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.journeyMe,
         ReferenceDataSource.availability,
         ReferenceDataSource.preferences,
+        ReferenceDataSource.scheduledTrips,
         ReferenceDataSource.shifts,
       ],
       actions: [ReferenceAction.startShift, ReferenceAction.endShift],
@@ -368,7 +369,7 @@ abstract final class ReferenceCatalog {
       descriptionAr: 'إعدادات واجهة محلية مع معلومات الحساب الحقيقية.',
       sources: [ReferenceDataSource.journeyMe],
       unsupported: [
-        'تفضيل لغة واجهة التطبيق وتفضيلات الخصوصية العامة ليست حقولاً في ملف السائق على السيرفر.',
+        'تفضيلات خصوصية الموقع الخادمية غير متاحة؛ أما اللغة والمظهر فيُحفظان محلياً من الإعدادات.',
       ],
     ),
     ReferenceScreenSpec(

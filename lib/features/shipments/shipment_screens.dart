@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -7,6 +8,7 @@ import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
+import 'package:mazraa_driver/features/shipments/driver_offers_panel.dart';
 import 'package:mazraa_driver/shared/widgets/map_panel.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -40,7 +42,10 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
         actions: [
           IconButton(
             tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(shipmentsProvider),
+            onPressed: () {
+              ref.invalidate(shipmentsProvider);
+              ref.invalidate(driverOffersProvider);
+            },
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -99,23 +104,15 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: state.when(
+            child: _filter == _ShipmentFilter.available
+                ? const DriverOffersPanel()
+                : state.when(
               loading: LoadingList.new,
               error: (error, _) => ErrorState(
                 error: error,
                 onRetry: () => ref.invalidate(shipmentsProvider),
               ),
               data: (items) {
-                if (_filter == _ShipmentFilter.available) {
-                  return EmptyState(
-                    title: ar
-                        ? 'لا توجد واجهة عروض متاحة'
-                        : 'No offers feed available',
-                    message: ar
-                        ? 'السيرفر الحالي يعيد الشحنات المسندة إليك فقط، ولا يوفّر Endpoint مستقلًا للعروض غير المسندة.'
-                        : 'The server currently returns only shipments assigned to you and has no endpoint for unassigned offers.',
-                  );
-                }
                 final query = _search.text.trim().toLowerCase();
                 final filtered = items.where((item) {
                   final matchesFilter = switch (_filter) {
@@ -289,6 +286,89 @@ class ShipmentDetailsScreen extends ConsumerStatefulWidget {
 class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
   bool _acting = false;
   bool _sendingLocation = false;
+  StreamSubscription<Position>? _liveLocationSubscription;
+  DateTime? _lastLiveLocationSentAt;
+  bool _uploadingLiveLocation = false;
+
+  @override
+  void dispose() {
+    _liveLocationSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _toggleLiveLocation() async {
+    if (_liveLocationSubscription != null) {
+      await _liveLocationSubscription?.cancel();
+      _liveLocationSubscription = null;
+      if (mounted) setState(() {});
+      return;
+    }
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw StateError('فعّل خدمات الموقع على الجهاز أولًا.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw StateError('إذن الموقع مطلوب للتتبع المباشر.');
+      }
+      final stream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 20,
+        ),
+      );
+      _lastLiveLocationSentAt = null;
+      _liveLocationSubscription = stream.listen(
+        (position) async {
+          if (_uploadingLiveLocation || !mounted) return;
+          final now = DateTime.now();
+          if (_lastLiveLocationSentAt != null &&
+              now.difference(_lastLiveLocationSentAt!).inSeconds < 15) {
+            return;
+          }
+          _lastLiveLocationSentAt = now;
+          _uploadingLiveLocation = true;
+          try {
+            await ref.read(driverApiProvider).updateLocation(
+              widget.shipmentId,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              heading: position.heading,
+              speedKph: position.speed * 3.6,
+              accuracyMeters: position.accuracy,
+            );
+            if (mounted) ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+          } catch (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('تعذر تحديث التتبع: $error')),
+              );
+            }
+          } finally {
+            _uploadingLiveLocation = false;
+          }
+        },
+        onError: (Object error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('تعذر تحديد الموقع: $error')),
+            );
+          }
+        },
+      );
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
+  }
 
   Future<void> _runAction(String action, Shipment shipment) async {
     final ar = isArabic(context);
@@ -308,11 +388,24 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       reason = await _failureReason();
       if (reason == null || !mounted) return;
     }
+    // Contactless orders require a server-validated OTP/QR proof. We never
+    // guess the code or bypass verification; standard deliveries can be
+    // confirmed without a code when permitted by the backend.
+    String? numericCode;
+    if (action == 'deliver') {
+      numericCode = await _deliveryProofCode();
+      if (numericCode == null || !mounted) return;
+    }
     setState(() => _acting = true);
     try {
       await ref
           .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason);
+          .changeShipmentStatus(
+            shipment.id,
+            action,
+            reason: reason,
+            numericCode: numericCode?.isEmpty == true ? null : numericCode,
+          );
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -335,6 +428,46 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     } finally {
       if (mounted) setState(() => _acting = false);
     }
+  }
+
+  Future<String?> _deliveryProofCode() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إثبات تسليم الشحنة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'أدخل رمز الاستلام الذي يظهر للعميل إن كانت الشحنة بدون تلامس. '
+              'اتركه فارغًا فقط إذا كان التسليم عاديًا؛ السيرفر يتحقق من نوع الشحنة.',
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: const Key('deliveryNumericCodeField'),
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز التحقق (إن لزم)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('تأكيد التسليم'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   Future<String?> _failureReason() async {
@@ -548,6 +681,22 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   ),
                 ],
               ),
+              if (!shipment.status.isClosed) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: const Key('foregroundLiveTrackingButton'),
+                    onPressed: _toggleLiveLocation,
+                    icon: Icon(_liveLocationSubscription == null
+                        ? Icons.location_searching_rounded
+                        : Icons.stop_circle_outlined),
+                    label: Text(_liveLocationSubscription == null
+                        ? 'بدء التتبع المباشر أثناء عرض الشاشة'
+                        : 'إيقاف التتبع المباشر'),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               SectionHeader(
                 title: ar ? 'معلومات الرحلة' : 'Trip information',
@@ -613,33 +762,6 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               ),
               const SizedBox(height: 10),
               _ShipmentTimeline(status: shipment.status),
-              if (shipment.status == ShipmentStatus.pickedUp) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: MazraaColors.warning.withValues(alpha: .13),
-                    borderRadius: BorderRadius.circular(17),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: MazraaColors.warning,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          ar
-                              ? 'السيرفر يتطلب الانتقال إلى InTransit قبل الاقتراب من العميل، لكنه لا يوفّر Endpoint لهذه الخطوة حاليًا.'
-                              : 'The server requires InTransit before NearCustomer, but exposes no endpoint for that transition.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
@@ -667,8 +789,10 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       case ShipmentStatus.nearCustomer:
         actions.addAll(['deliver', 'fail']);
         break;
-      case ShipmentStatus.pending:
       case ShipmentStatus.pickedUp:
+        actions.addAll(['depart', 'fail']);
+        break;
+      case ShipmentStatus.pending:
       case ShipmentStatus.delivered:
       case ShipmentStatus.cancelled:
       case ShipmentStatus.failed:
@@ -858,6 +982,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
   'accept' => ar ? 'قبول الشحنة' : 'Accept shipment',
   'reject' => ar ? 'رفض الشحنة' : 'Reject shipment',
   'pickup' => ar ? 'تأكيد الاستلام' : 'Confirm pickup',
+  'depart' => ar ? 'بدأت التوصيل' : 'Depart for customer',
   'near-customer' => ar ? 'أنا قريب من العميل' : 'Near customer',
   'deliver' => ar ? 'تأكيد التسليم' : 'Confirm delivery',
   'fail' => ar ? 'تعذر التسليم' : 'Report failure',
@@ -867,6 +992,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
 IconData _actionIcon(String action) => switch (action) {
   'accept' => Icons.check_circle_outline_rounded,
   'pickup' => Icons.inventory_2_outlined,
+  'depart' => Icons.route_rounded,
   'near-customer' => Icons.near_me_outlined,
   'deliver' => Icons.task_alt_rounded,
   _ => Icons.arrow_forward_rounded,

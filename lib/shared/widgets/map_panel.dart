@@ -4,6 +4,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
+import 'package:mazraa_driver/shared/widgets/shipment_navigation_button.dart';
 
 class MapPanel extends StatelessWidget {
   const MapPanel({
@@ -21,11 +22,46 @@ class MapPanel extends StatelessWidget {
   final double height;
   final VoidCallback? onLocate;
 
-  GeoPoint get _center =>
-      driver ?? store ?? customer ?? const GeoPoint(24.7136, 46.6753);
+  GeoPoint? get _center => driver ?? store ?? customer;
 
   @override
   Widget build(BuildContext context) {
+    final center = _center;
+    if (center == null) {
+      // No fabricated Riyadh coordinate or simulated route is presented to
+      // drivers when neither their device nor the backend provides a location.
+      return SizedBox(
+        height: height,
+        child: Card(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_off_outlined, size: 40),
+                  const SizedBox(height: 12),
+                  Text(
+                    isArabic(context)
+                        ? 'الموقع غير متاح، فعّل إذن الموقع أو افتح شحنة ذات إحداثيات.'
+                        : 'Location unavailable. Enable location permission or open a shipment with coordinates.',
+                    textAlign: TextAlign.center,
+                  ),
+                  if (onLocate != null) ...[
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: onLocate,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(isArabic(context) ? 'تحديث الموقع' : 'Refresh location'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
@@ -36,7 +72,7 @@ class MapPanel extends StatelessWidget {
               child: AppEnvironment.mapsEnabled
                   ? GoogleMap(
                       initialCameraPosition: CameraPosition(
-                        target: LatLng(_center.latitude, _center.longitude),
+                        target: LatLng(center.latitude, center.longitude),
                         zoom: 13.4,
                       ),
                       myLocationButtonEnabled: false,
@@ -126,6 +162,35 @@ class MapPanel extends StatelessWidget {
                         : 'Configure Google Maps to show the live map',
                     maxLines: 2,
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ),
+            if (store != null || customer != null)
+              PositionedDirectional(
+                start: 12,
+                end: onLocate == null ? 12 : 66,
+                bottom: AppEnvironment.mapsEnabled ? 10 : 72,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (store != null)
+                        ShipmentNavigationButton(
+                          key: const Key('navigateToPickup'),
+                          destination: store!,
+                          label: 'الاستلام',
+                          icon: Icons.storefront_outlined,
+                        ),
+                      if (store != null && customer != null)
+                        const SizedBox(width: 8),
+                      if (customer != null)
+                        ShipmentNavigationButton(
+                          key: const Key('navigateToCustomer'),
+                          destination: customer!,
+                          label: 'العميل',
+                          icon: Icons.navigation_rounded,
+                        ),
+                    ],
                   ),
                 ),
               ),
