@@ -212,6 +212,7 @@ class Shipment {
     required this.transportCost,
     required this.netProfit,
     required this.createdAt,
+    this.deliveredAt,
     this.driverId,
     this.customerId,
     this.customerLocation,
@@ -240,6 +241,7 @@ class Shipment {
       transportCost: _asDouble(shipmentJson['transportCost']),
       netProfit: _asDouble(shipmentJson['netProfit']),
       createdAt: _asDate(shipmentJson['createdAt']) ?? DateTime.now(),
+      deliveredAt: _asDate(shipmentJson['deliveredAt']),
       customerLocation: GeoPoint.fromDynamic(
         shipmentJson['customerLocation'],
         latitude: shipmentJson['customerLatitude'],
@@ -268,6 +270,7 @@ class Shipment {
   final double transportCost;
   final double netProfit;
   final DateTime createdAt;
+  final DateTime? deliveredAt;
   final GeoPoint? customerLocation;
   final GeoPoint? storeLocation;
   final GeoPoint? driverLocation;
