@@ -126,6 +126,30 @@ class ApiClient {
     }
   }
 
+  /// Authenticated form-data upload through the same refresh-token interceptor.
+  Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required String filePath,
+    required String fileName,
+    required Map<String, dynamic> fields,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        ...fields,
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        path,
+        data: form,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data ?? const <String, dynamic>{};
+    } on DioException catch (error, stack) {
+      if (kDebugMode) debugPrintStack(stackTrace: stack);
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<T> put<T>(String path, {Object? data}) async {
     try {
       final response = await _dio.put<T>(path, data: data);
