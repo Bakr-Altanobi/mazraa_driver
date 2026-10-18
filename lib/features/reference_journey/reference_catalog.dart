@@ -51,6 +51,11 @@ enum ReferenceAction {
   acceptReturn,
   pickupReturn,
   completeReturn,
+  addPickupProof,
+  addDeliveryProof,
+  saveBankAccount,
+  requestPayout,
+  markAllNotificationsRead,
 }
 
 class ReferenceScreenSpec {
@@ -150,7 +155,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Pickup verification',
       descriptionAr: 'تأكيد الاستلام ثم بدء الانتقال للشحنة الفعلية.',
       sources: [ReferenceDataSource.shipmentDetail, ReferenceDataSource.shipmentProofs],
-      actions: [ReferenceAction.pickupShipment, ReferenceAction.startTransit],
+      actions: [ReferenceAction.addPickupProof, ReferenceAction.pickupShipment, ReferenceAction.startTransit],
       unsupported: [
         'قائمة أصناف فحص مستقلة لكل شحنة ليست ضمن Shipment DTO الحالي.',
       ],
@@ -189,6 +194,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.bankAccounts,
         ReferenceDataSource.payouts,
       ],
+      actions: [ReferenceAction.requestPayout],
     ),
     ReferenceScreenSpec(
       number: 11,
@@ -196,6 +202,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Notifications',
       descriptionAr: 'إشعارات الحساب الفعلية القادمة من Notifications API.',
       sources: [ReferenceDataSource.notifications],
+      actions: [ReferenceAction.markAllNotificationsRead],
     ),
     ReferenceScreenSpec(
       number: 12,
@@ -364,6 +371,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.tracking,
         ReferenceDataSource.shipmentProofs,
       ],
+      actions: [ReferenceAction.addDeliveryProof],
     ),
     ReferenceScreenSpec(
       number: 30,
@@ -371,6 +379,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Bank account edit',
       descriptionAr: 'الحسابات البنكية الفعلية للسائق من driver-journey.',
       sources: [ReferenceDataSource.bankAccounts, ReferenceDataSource.wallet],
+      actions: [ReferenceAction.saveBankAccount],
     ),
     ReferenceScreenSpec(
       number: 31,
