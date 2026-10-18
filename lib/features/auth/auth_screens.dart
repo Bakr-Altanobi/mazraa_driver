@@ -481,7 +481,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: TextButton(
-                        onPressed: () => context.push('/apply'),
+                        onPressed: _forgotPassword,
                         child: Text(
                           ar ? 'نسيت كلمة المرور؟' : 'Forgot password?',
                         ),
@@ -529,7 +529,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
-                      onPressed: () => _showUnavailable(context, ar),
+                      onPressed: () => context.push('/apply'),
                       icon: const Icon(Icons.person_add_alt_1_rounded),
                       label: Text(
                         ar ? 'طلب الانضمام كسائق' : 'Apply as a driver',
