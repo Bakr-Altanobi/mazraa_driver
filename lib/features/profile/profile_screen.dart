@@ -116,6 +116,15 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       ListTile(
+                        leading: const Icon(Icons.grid_view_rounded),
+                        title: Text(ar ? 'كل خدمات السائق' : 'Driver services'),
+                        subtitle: Text(ar ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
+                            : 'Schedule, vehicle, returns, incidents and earnings'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/services'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
                         leading: const Icon(Icons.settings_outlined),
                         title: Text(ar ? 'الإعدادات' : 'Settings'),
                         trailing: const Icon(Icons.chevron_right_rounded),
