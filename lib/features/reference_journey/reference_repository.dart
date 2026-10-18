@@ -205,9 +205,33 @@ class ReferenceRepository {
     return ReferenceScreenPayload(results: results);
   }
 
+  /// A reference action must have a user-selected, server-issued target. Never
+  /// silently mutate the first eligible order or offer in an account.
+  Future<List<Map<String, dynamic>>> eligibleActionTargets(
+    ReferenceAction action,
+  ) async {
+    if (action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/offers');
+      return rows.whereType<Map<String, dynamic>>().where((row) {
+        final id = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
+        final expiry = DateTime.tryParse('${row['expiresAt'] ?? ''}');
+        return id != null && expiry != null && expiry.isAfter(DateTime.now());
+      }).toList(growable: false);
+    }
+    final rows = await _client.get<List<dynamic>>('api/Shipments');
+    return rows.whereType<Map<String, dynamic>>().where(
+      (row) => selectShipmentIdForAction([row], action) != null,
+    ).toList(growable: false);
+  }
+
   Future<void> runShipmentAction(
     ReferenceAction action, {
     String? reason,
+    int? shipmentId,
+    int? offerId,
+    String? numericCode,
+    String? qrToken,
   }) async {
     if (action == ReferenceAction.startShift) {
       await _client.post<dynamic>(
@@ -225,16 +249,14 @@ class ReferenceRepository {
     }
     if (action == ReferenceAction.acceptOffer ||
         action == ReferenceAction.rejectOffer) {
-      final offers =
-          await _client.get<List<dynamic>>('api/driver-journey/offers');
-      int? offerId;
-      for (final row in offers) {
-        if (row is! Map) continue;
-        offerId = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
-        if (offerId != null) break;
+      if (offerId == null || offerId <= 0) {
+        throw StateError('اختر عرض توصيل حقيقيًا قبل إرسال هذا القرار.');
       }
-      if (offerId == null) {
-        throw StateError('لا يوجد عرض توصيل فعلي متاح للسائق الآن.');
+      final eligible = await eligibleActionTargets(action);
+      if (!eligible.any(
+        (row) => int.tryParse('${row['offerId'] ?? row['id']}') == offerId,
+      )) {
+        throw StateError('العرض المحدد لم يعد متاحًا على السيرفر.');
       }
       final verb = action == ReferenceAction.acceptOffer ? 'accept' : 'reject';
       await _client.post<dynamic>(
@@ -245,13 +267,14 @@ class ReferenceRepository {
     if (action == ReferenceAction.createIncident) {
       throw ArgumentError.value(action);
     }
-
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    final shipmentId = selectShipmentIdForAction(rows, action);
-    if (shipmentId == null) {
-      throw StateError(
-        'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',
-      );
+    if (shipmentId == null || shipmentId <= 0) {
+      throw StateError('اختر الشحنة المقصودة قبل تغيير حالتها.');
+    }
+    final rows = await eligibleActionTargets(action);
+    if (!rows.any(
+      (row) => int.tryParse('${row['id']}') == shipmentId,
+    )) {
+      throw StateError('حالة الشحنة المحددة لم تعد تسمح بتنفيذ العملية.');
     }
     final actionName = switch (action) {
       ReferenceAction.acceptShipment => 'accept',
@@ -274,30 +297,38 @@ class ReferenceRepository {
                   ? 'تعذر الوصول للعميل'
                   : reason!.trim(),
             }
-          : null,
+          : action == ReferenceAction.deliverShipment &&
+                  ((numericCode?.trim().isNotEmpty ?? false) ||
+                      (qrToken?.trim().isNotEmpty ?? false))
+              ? {
+                  'numericCode': numericCode?.trim().isEmpty == true
+                      ? null
+                      : numericCode?.trim(),
+                  'qrToken': qrToken?.trim().isEmpty == true
+                      ? null
+                      : qrToken?.trim(),
+                }
+              : null,
     );
   }
 
   Future<void> createIncident({
     required String subject,
     required String message,
+    bool isEmergency = false,
   }) async {
-    final rows = await _client.get<List<dynamic>>('api/Shipments');
-    int? shipmentId;
-    for (final row in rows) {
-      if (row is Map && row['id'] != null) {
-        shipmentId = int.tryParse(row['id'].toString());
-        if (shipmentId != null) break;
-      }
+    // A general incident must not be falsely linked to the first shipment.
+    // The server accepts ShipmentId=null for driver-wide reports.
+    if (subject.trim().isEmpty || message.trim().isEmpty) {
+      throw ArgumentError('عنوان البلاغ والتفاصيل مطلوبان.');
     }
     await _client.post<dynamic>(
       'api/driver-journey/incidents',
       data: {
-        'category': 'driver-report',
+        'category': isEmergency ? 'emergency' : 'driver-report',
         'title': subject.trim(),
         'description': message.trim(),
-        'isEmergency': false,
-        if (shipmentId != null) 'shipmentId': shipmentId,
+        'isEmergency': isEmergency,
       },
     );
   }

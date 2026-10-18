@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
@@ -405,11 +406,23 @@ class ReferenceProductionBody extends StatelessWidget {
   }
 
   List<Widget> _registration(BuildContext context, _ReferenceData data) => [
-        const _DisabledFormCard(
-          title: 'طلب الانضمام كسائق',
-          fields: ['الاسم الكامل', 'البريد', 'الهاتف', 'نوع المركبة', 'كلمة المرور'],
-          reason:
-              'إنشاء السائق موجود إدارياً فقط ويتطلب users.create؛ لا يوجد تسجيل ذاتي public للسائق.',
+        _DriverCard(driver: data.driver),
+        const SizedBox(height: 12),
+        _ServerFieldCard(
+          title: 'حالة طلب الانضمام من السيرفر',
+          rows: {
+            'رقم السائق': _text(data.driver['driverCode']),
+            'حالة الاعتماد': _text(data.driver['approvalStatus']),
+            'التحقق من الهوية': _yesNo(data.driver['isVerified']),
+            'وسيلة التوصيل': _text(data.driver['vehicleType']),
+          },
+        ),
+        const SizedBox(height: 12),
+        const _NoticeCard(
+          icon: Icons.verified_user_outlined,
+          title: 'تسجيل السائق الجديد متاح',
+          message:
+              'يمكن تقديم طلب سائق جديد من شاشة البداية أو تسجيل الدخول عبر Auth/register ثم driver-journey/apply. يظهر الطلب قيد مراجعة الإدارة ولا يسمح باستقبال الشحنات حتى الاعتماد.',
         ),
       ];
 
@@ -454,6 +467,12 @@ class ReferenceProductionBody extends StatelessWidget {
     ),
     const SizedBox(height: 10),
     _GenericList(
+      title: 'الرحلات المجدولة المتاحة',
+      items: data.scheduledTrips,
+      preferredKeys: const ['trip', 'participation'],
+    ),
+    const SizedBox(height: 10),
+    _GenericList(
       title: 'الورديات',
       items: data.shifts,
       preferredKeys: const ['status', 'startedAt', 'endedAt', 'completedShipments'],
@@ -485,10 +504,12 @@ class ReferenceProductionBody extends StatelessWidget {
         const SizedBox(height: 12),
         _FaqList(faqs: data.faqs),
         const SizedBox(height: 12),
-        const _DisabledActionCard(
-          title: 'SOS طوارئ',
-          buttonLabel: 'إرسال SOS',
-          reason: 'لا يوجد مسار SOS جغرافي مخصص في API الحالي.',
+        const _NoticeCard(
+          icon: Icons.emergency_outlined,
+          title: 'بلاغ عاجل للدعم',
+          message: 'استخدم إجراء «رفع بلاغ» أدناه لإرسال بلاغ عاجل موثّق إلى منصة مزرعتي. '
+              'هذه الخدمة لا تتصل بجهات الإسعاف أو الشرطة؛ في الخطر المباشر اتصل '
+              'بخدمات الطوارئ المحلية بنفسك.',
         ),
       ];
 
@@ -611,10 +632,14 @@ class ReferenceProductionBody extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
-        const _DisabledFormCard(
-          title: 'تفضيلات الحساب',
-          fields: ['اللغة', 'الخصوصية', 'مشاركة بيانات الموقع'],
-          reason: 'هذه التفضيلات ليست حقولاً محفوظة في Driver API.',
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.language_rounded),
+            title: const Text('اللغة والمظهر'),
+            subtitle: const Text('تفضيلات على الجهاز لا تحتاج بيانات خادمية.'),
+            trailing: const Icon(Icons.chevron_left_rounded),
+            onTap: () => context.push('/settings'),
+          ),
         ),
       ];
 
@@ -824,6 +849,7 @@ class _ReferenceData {
   Map<String, dynamic> get preferences => _map(result(ReferenceDataSource.preferences)?.payload);
   List<Map<String, dynamic>> get availability => _listOfMaps(result(ReferenceDataSource.availability)?.payload);
   List<Map<String, dynamic>> get offers => _listOfMaps(result(ReferenceDataSource.offers)?.payload);
+  List<Map<String, dynamic>> get scheduledTrips => _listOfMaps(result(ReferenceDataSource.scheduledTrips)?.payload);
   List<Map<String, dynamic>> get currentTrips => _listOfMaps(result(ReferenceDataSource.currentTrips)?.payload);
   List<Map<String, dynamic>> get shifts => _listOfMaps(result(ReferenceDataSource.shifts)?.payload);
   List<Map<String, dynamic>> get shipments => _listOfMaps(result(ReferenceDataSource.shipments)?.payload);
@@ -889,7 +915,7 @@ class _ReferenceHero extends StatelessWidget {
                 assets.first.path,
                 fit: BoxFit.contain,
                 cacheWidth: 720,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.image_not_supported_outlined,
                   size: 54,
                 ),
@@ -917,7 +943,7 @@ class _ReferenceHero extends StatelessWidget {
                           asset.path,
                           fit: BoxFit.contain,
                           cacheWidth: 180,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                         ),
                       ),
                     ),
@@ -1443,32 +1469,6 @@ class _DisabledFormCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
             ],
-            _InlineUnsupported(reason),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DisabledActionCard extends StatelessWidget {
-  const _DisabledActionCard({required this.title, required this.buttonLabel, required this.reason});
-  final String title;
-  final String buttonLabel;
-  final String reason;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: null, child: Text(buttonLabel)),
-            const SizedBox(height: 10),
             _InlineUnsupported(reason),
           ],
         ),

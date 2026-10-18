@@ -76,25 +76,9 @@ class DriverProfile {
     name: (json['name'] ?? '').toString(),
     email: (json['email'] ?? '').toString(),
     phone: (json['phone'] ?? '').toString(),
-    vehicleType: _enumLabel(json['vehicleType'], const [
-      'None',
-      'Motorcycle',
-      'Car',
-      'Van',
-      'Truck',
-    ]),
-    approvalStatus: _enumLabel(json['approvalStatus'], const [
-      'Pending',
-      'Approved',
-      'Rejected',
-      'Suspended',
-    ]),
-    operationalStatus: _enumLabel(json['operationalStatus'], const [
-      'Offline',
-      'Online',
-      'Busy',
-      'OnBreak',
-    ]),
+    vehicleType: _driverVehicleType(json['vehicleType']),
+    approvalStatus: _driverApprovalStatus(json['approvalStatus']),
+    operationalStatus: _driverOperationalStatus(json['operationalStatus']),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
     ratingAverage: _asDouble(json['ratingAverage']),
@@ -229,6 +213,7 @@ class Shipment {
     this.driverLocation,
     this.distanceKm,
     this.etaMinutes,
+    this.deliveredAt,
   });
 
   factory Shipment.fromJson(Map<String, dynamic> json) {
@@ -250,6 +235,7 @@ class Shipment {
       transportCost: _asDouble(shipmentJson['transportCost']),
       netProfit: _asDouble(shipmentJson['netProfit']),
       createdAt: _asDate(shipmentJson['createdAt']) ?? DateTime.now(),
+      deliveredAt: _asDate(shipmentJson['deliveredAt']),
       customerLocation: GeoPoint.fromDynamic(
         shipmentJson['customerLocation'],
         latitude: shipmentJson['customerLatitude'],
@@ -278,6 +264,7 @@ class Shipment {
   final double transportCost;
   final double netProfit;
   final DateTime createdAt;
+  final DateTime? deliveredAt;
   final GeoPoint? customerLocation;
   final GeoPoint? storeLocation;
   final GeoPoint? driverLocation;
@@ -405,9 +392,43 @@ double? _asNullableDouble(Object? value) => value == null
     : (value is num ? value.toDouble() : double.tryParse('$value'));
 DateTime? _asDate(Object? value) =>
     value == null ? null : DateTime.tryParse(value.toString());
-String _enumLabel(Object? value, List<String> labels) {
-  if (value is num && value.toInt() >= 0 && value.toInt() < labels.length) {
-    return labels[value.toInt()];
-  }
-  return value?.toString() ?? labels.first;
+/// Backend DriverOperationalStatus uses values Offline=1, Online=2,
+/// Available=3, Busy=4, not zero-based enum indexes.
+// Explicit server enum contracts: DriverApprovalStatus starts at 1, while
+// VehicleType is Car=0/Bike=1/Van=2/Truck=3. Do not use a UI-only list index.
+String _driverApprovalStatus(Object? raw) {
+  const labels = <int, String>{
+    1: 'Pending',
+    2: 'Approved',
+    3: 'Rejected',
+    4: 'Suspended',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Pending';
 }
+
+String _driverVehicleType(Object? raw) {
+  const labels = <int, String>{
+    0: 'Car',
+    1: 'Bike',
+    2: 'Van',
+    3: 'Truck',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Unknown';
+}
+
+String _driverOperationalStatus(Object? raw) {
+  const labels = <int, String>{
+    1: 'Offline',
+    2: 'Online',
+    3: 'Available',
+    4: 'Busy',
+  };
+  final value = int.tryParse(raw?.toString() ?? '');
+  if (value != null) return labels[value] ?? 'Unknown';
+  return raw?.toString() ?? 'Offline';
+}
+

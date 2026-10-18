@@ -421,7 +421,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
-                      onPressed: () => _showUnavailable(context, ar),
+                      onPressed: busy ? null : () => context.go('/register-driver'),
                       icon: const Icon(Icons.person_add_alt_1_rounded),
                       label: Text(
                         ar ? 'طلب الانضمام كسائق' : 'Apply as a driver',

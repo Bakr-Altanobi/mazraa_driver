@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
+import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
@@ -49,6 +50,9 @@ class HomeScreen extends ConsumerWidget {
     await Future.wait([
       ref.read(shipmentsProvider.future),
       ref.read(walletSummaryProvider.future),
+      // A newly approved driver must be able to go online without signing
+      // out and in again. The backend remains authoritative.
+      ref.read(authControllerProvider).refreshProfile(),
     ]);
   }
 
@@ -65,11 +69,12 @@ class HomeScreen extends ConsumerWidget {
     final active = shipmentRows.where((item) => item.status.isActive).toList();
     final completedToday = shipmentRows.where((item) {
       final now = DateTime.now();
-      final date = item.createdAt.toLocal();
+      final deliveredAt = item.deliveredAt?.toLocal();
       return item.status == ShipmentStatus.delivered &&
-          date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day;
+          deliveredAt != null &&
+          deliveredAt.year == now.year &&
+          deliveredAt.month == now.month &&
+          deliveredAt.day == now.day;
     }).length;
     final currentPoint = position.valueOrNull == null
         ? (profile?.currentLatitude != null && profile?.currentLongitude != null
@@ -134,6 +139,7 @@ class HomeScreen extends ConsumerWidget {
                     _StatusBanner(
                       profile: profile,
                       connected: connection.valueOrNull,
+                      location: currentPoint,
                     ),
                     const SizedBox(height: 15),
                     MapPanel(
@@ -248,15 +254,66 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.profile, required this.connected});
+class _StatusBanner extends ConsumerStatefulWidget {
+  const _StatusBanner({
+    required this.profile,
+    required this.connected,
+    required this.location,
+  });
   final DriverProfile? profile;
   final bool? connected;
+  final GeoPoint? location;
+
+  @override
+  ConsumerState<_StatusBanner> createState() => _StatusBannerState();
+}
+
+class _StatusBannerState extends ConsumerState<_StatusBanner> {
+  bool _saving = false;
+
+  Future<void> _toggle() async {
+    final profile = widget.profile;
+    if (profile == null || _saving) return;
+    if (!profile.isApproved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن بدء استقبال الطلبات قبل اعتماد حساب السائق.')),
+      );
+      return;
+    }
+    final online = profile.operationalStatus.toLowerCase() != 'offline' &&
+        profile.operationalStatus.toLowerCase() != 'unknown';
+    setState(() => _saving = true);
+    try {
+      await ref.read(driverApiProvider).updateDriverStatus(
+        operationalStatus: online ? 1 : 2,
+        isAcceptingOrders: !online,
+        latitude: widget.location?.latitude,
+        longitude: widget.location?.longitude,
+      );
+      await ref.read(authControllerProvider).refreshProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(online ? 'أصبحت غير متصل' : 'أصبحت متصلًا ومستعدًا لاستقبال الطلبات')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
     final ar = isArabic(context);
-    final online = profile?.operationalStatus.toLowerCase() == 'online';
+    final online = profile != null &&
+        profile.operationalStatus.toLowerCase() != 'offline' &&
+        profile.operationalStatus.toLowerCase() != 'unknown';
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -295,26 +352,40 @@ class _StatusBanner extends StatelessWidget {
                   online
                       ? (ar ? 'أنت متصل' : 'You are online')
                       : (ar ? 'حالتك الحالية: غير متصل' : 'Currently offline'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  ar
-                      ? 'تغيير الحالة ينتظر دعمًا من السيرفر'
-                      : 'Status changes require a server endpoint',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  profile?.isApproved == false
+                      ? (ar ? 'بانتظار اعتماد حساب السائق' : 'Awaiting driver approval')
+                      : (ar ? 'اضغط لتغيير حالة استقبال الطلبات' : 'Change order availability'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
           ),
-          Icon(
-            connected == false ? Icons.wifi_off_rounded : Icons.wifi_rounded,
-            color: connected == false ? const Color(0xFFFFB09A) : Colors.white,
-          ),
+          if (_saving)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            )
+          else
+            Switch(
+              key: const Key('driverLiveStatusSwitch'),
+              value: online,
+              onChanged: widget.connected == false || profile == null || !profile.isApproved
+                  ? null
+                  : (_) => _toggle(),
+            ),
+          if (widget.connected == false) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.wifi_off_rounded, color: Color(0xFFFFB09A)),
+          ],
         ],
       ),
     );

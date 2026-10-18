@@ -61,20 +61,37 @@ void main() {
       );
     });
 
-    test('authenticated drivers continue at reference screen 03', () {
+    test('authenticated drivers enter the operational home', () {
       expect(
         resolveAuthRedirect(
           authState: AuthState.authenticated,
           location: '/splash',
         ),
-        '/journey/03',
+        '/home',
       );
       expect(
         resolveAuthRedirect(
           authState: AuthState.authenticated,
           location: '/login',
         ),
-        '/journey/03',
+        '/home',
+      );
+    });
+
+    test('allows a signed-out user to apply as a driver but guards private screens', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.signedOut,
+          location: '/register-driver',
+        ),
+        isNull,
+      );
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.authenticated,
+          location: '/register-driver',
+        ),
+        '/home',
       );
     });
 

@@ -5,6 +5,7 @@ import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_production_body.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_repository.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_driver_controls.dart';
 
 class ReferenceJourneyScreen extends ConsumerStatefulWidget {
   const ReferenceJourneyScreen({required this.screenNumber, super.key});
@@ -50,6 +51,17 @@ class _ReferenceJourneyScreenState
             ),
         ],
       ),
+      bottomNavigationBar: sessionReady &&
+              const <int>{10, 12, 15, 16, 30, 39, 42}.contains(widget.screenNumber)
+          ? DriverServiceControls(
+              screenNumber: widget.screenNumber,
+              onSaved: () {
+                if (key != null) {
+                  ref.invalidate(referenceScreenPayloadProvider(key));
+                }
+              },
+            )
+          : null,
       body: ReferenceProductionBody(
         spec: spec,
         payload: asyncPayload?.valueOrNull,
@@ -130,13 +142,44 @@ class _ReferenceJourneyScreenState
     setState(() => _actionBusy = true);
     try {
       final repository = ref.read(referenceRepositoryProvider);
+      int? selectedTargetId;
+      final needsTarget = action != ReferenceAction.createIncident &&
+          action != ReferenceAction.startShift &&
+          action != ReferenceAction.endShift;
+      if (needsTarget) {
+        final targets = await repository.eligibleActionTargets(action);
+        if (!mounted) return;
+        if (targets.isEmpty) {
+          throw StateError('لا توجد عناصر حقيقية في حالة تسمح بهذا الإجراء الآن.');
+        }
+        selectedTargetId = await _selectActionTarget(action, targets);
+        if (selectedTargetId == null || !mounted) return;
+      }
+      String? numericCode;
+      String? qrToken;
+      if (action == ReferenceAction.deliverShipment) {
+        final proof = await _deliveryProofDialog();
+        if (proof == null || !mounted) return;
+        numericCode = proof.$1;
+        qrToken = proof.$2;
+      }
       if (action == ReferenceAction.createIncident) {
         await repository.createIncident(
           subject: subject!,
           message: message!,
+          isEmergency: widget.screenNumber == 20,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        final isOffer = action == ReferenceAction.acceptOffer ||
+            action == ReferenceAction.rejectOffer;
+        await repository.runShipmentAction(
+          action,
+          reason: reason,
+          shipmentId: isOffer ? null : selectedTargetId,
+          offerId: isOffer ? selectedTargetId : null,
+          numericCode: numericCode,
+          qrToken: qrToken,
+        );
       }
       if (key != null) {
         ref.invalidate(referenceScreenPayloadProvider(key));
@@ -154,6 +197,128 @@ class _ReferenceJourneyScreenState
       }
     } finally {
       if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<int?> _selectActionTarget(
+    ReferenceAction action,
+    List<Map<String, dynamic>> targets,
+  ) {
+    final isOffer = action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer;
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(isOffer ? 'اختر عرض التوصيل' : 'اختر الشحنة المطلوبة'),
+        children: [
+          for (final row in targets)
+            Builder(
+              builder: (dialogContext) {
+                final id = int.tryParse(
+                  '${isOffer ? (row['offerId'] ?? row['id']) : row['id']}',
+                );
+                if (id == null) return const SizedBox.shrink();
+                final number = row['shipmentNumber']?.toString() ?? '#$id';
+                return SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, id),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text('$number · ${isOffer ? 'عرض' : 'شحنة'} #$id'),
+                  ),
+                );
+              },
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Delivery proof is provided by the recipient and verified by the server.
+  /// Standard handoffs may omit it; contactless handoffs cannot be completed
+  /// without a valid code or QR token returned to the customer by the backend.
+  Future<(String?, String?)?> _deliveryProofDialog() async {
+    final controller = TextEditingController();
+    var useQr = false;
+    try {
+      return await showDialog<(String?, String?)>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('إثبات تسليم الشحنة'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'أدخل رمز الاستلام الذي أعطاه العميل. '
+                    'للتسليم العادي فقط يمكنك ترك الحقل فارغًا؛ '
+                    'السيرفر يرفض التسليم بدون إثبات عندما يكون الطلب بدون تلامس.',
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('رمز رقمي'),
+                        selected: !useQr,
+                        onSelected: (_) => update(() {
+                          useQr = false;
+                          controller.clear();
+                        }),
+                      ),
+                      ChoiceChip(
+                        label: const Text('رمز QR'),
+                        selected: useQr,
+                        onSelected: (_) => update(() {
+                          useQr = true;
+                          controller.clear();
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const Key('referenceDeliveryProofField'),
+                    controller: controller,
+                    textDirection: TextDirection.ltr,
+                    keyboardType:
+                        useQr ? TextInputType.text : TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: useQr ? 'الرمز الموجود في QR' : 'رمز الاستلام',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  Navigator.pop(
+                    dialogContext,
+                    (
+                      useQr || value.isEmpty ? null : value,
+                      useQr && value.isNotEmpty ? value : null,
+                    ),
+                  );
+                },
+                child: const Text('تأكيد التسليم'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
     }
   }
 

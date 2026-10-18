@@ -86,6 +86,12 @@ class DriverApi {
         },
       );
 
+  Future<List<dynamic>> getDriverAvailability() =>
+      _client.get<List<dynamic>>('api/driver-journey/me/availability');
+
+  Future<void> updateDriverAvailability(List<Map<String, dynamic>> windows) =>
+      _client.put<Object?>('api/driver-journey/me/availability', data: windows);
+
   Future<List<dynamic>> getOffers() =>
       _client.get<List<dynamic>>('api/driver-journey/offers');
 
@@ -127,6 +133,29 @@ class DriverApi {
 
   Future<List<dynamic>> getVehicleMaintenance() =>
       _client.get<List<dynamic>>('api/driver-journey/vehicle-maintenance');
+
+  Future<Map<String, dynamic>> getMyCurrentVehicle() =>
+      _client.get<Map<String, dynamic>>('api/Vehicles/my-current');
+
+  Future<Map<String, dynamic>> addVehicleMaintenance({
+    required int vehicleId,
+    required DateTime serviceAt,
+    double? odometerKm,
+    DateTime? nextServiceAt,
+    double? nextServiceOdometerKm,
+    String? notes,
+  }) =>
+      _client.post<Map<String, dynamic>>(
+        'api/driver-journey/vehicle-maintenance',
+        data: {
+          'vehicleId': vehicleId,
+          'serviceAt': serviceAt.toUtc().toIso8601String(),
+          'odometerKm': odometerKm,
+          'nextServiceAt': nextServiceAt?.toUtc().toIso8601String(),
+          'nextServiceOdometerKm': nextServiceOdometerKm,
+          'notes': notes?.trim(),
+        },
+      );
 
   Future<List<dynamic>> getBankAccounts() =>
       _client.get<List<dynamic>>('api/driver-journey/bank-accounts');
@@ -198,6 +227,15 @@ class DriverApi {
   Future<List<dynamic>> getReturnTasks() =>
       _client.get<List<dynamic>>('api/driver-journey/returns');
 
+  Future<void> acceptReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/accept');
+
+  Future<void> pickupReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/pickup');
+
+  Future<void> completeReturnTask(int taskId) =>
+      _client.post<Object?>('api/driver-journey/returns/$taskId/complete');
+
   Future<Map<String, dynamic>> getPerformance() =>
       _client.get<Map<String, dynamic>>('api/driver-journey/performance');
 
@@ -267,6 +305,35 @@ class DriverApi {
       },
     );
   }
+
+  Future<List<dynamic>> getSupportFaqs() =>
+      _client.get<List<dynamic>>('api/support/faqs');
+
+  Future<List<dynamic>> getSupportTickets() =>
+      _client.get<List<dynamic>>('api/support/tickets');
+
+  Future<Map<String, dynamic>> getSupportTicket(int ticketId) =>
+      _client.get<Map<String, dynamic>>('api/support/tickets/$ticketId');
+
+  Future<Map<String, dynamic>> createSupportTicket({
+    required String subject,
+    required String message,
+    String priority = 'normal',
+  }) =>
+      _client.post<Map<String, dynamic>>(
+        'api/support/tickets',
+        data: {
+          'subject': subject.trim(),
+          'message': message.trim(),
+          'priority': priority,
+        },
+      );
+
+  Future<void> replySupportTicket(int ticketId, String message) =>
+      _client.post<Object?>(
+        'api/support/tickets/$ticketId/messages',
+        data: {'body': message.trim()},
+      );
 
   Future<WalletSummary> getWallet() async => WalletSummary.fromJson(
     await _client.get<Map<String, dynamic>>(ApiEndpoints.wallet),
