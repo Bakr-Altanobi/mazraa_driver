@@ -193,7 +193,13 @@ class _ReferenceJourneyScreenState
         await repository.runShipmentAction(action, targetId: targetId, reason: reason, fields: fields);
       }
       if (key != null) {
-        ref.invalidate(referenceScreenPayloadProvider(key));
+        // A mutation may affect more than its current screen: online status,
+        // offers, shipments, payouts and shift summaries share server data.
+        for (final screen in ReferenceCatalog.screens) {
+          ref.invalidate(referenceScreenPayloadProvider(
+            ReferenceLoadKey(screen.number, key.userId),
+          ));
+        }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
