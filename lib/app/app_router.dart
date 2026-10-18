@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
@@ -20,6 +22,7 @@ const _ciSmokeHome = bool.fromEnvironment(
 String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
+  bool hasSeenOnboarding = false,
 }) {
   final isPublic =
       location == '/login' ||
@@ -40,7 +43,7 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    if (location == '/splash') return '/onboarding';
+    if (location == '/splash') return hasSeenOnboarding ? '/login' : '/onboarding';
     return isPublic ? null : '/login';
   }
 
@@ -49,9 +52,10 @@ String? resolveAuthRedirect({
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
+  final settings = ref.read(appSettingsProvider);
   return GoRouter(
     initialLocation: _ciSmokeHome ? '/home' : '/splash',
-    refreshListenable: auth,
+    refreshListenable: Listenable.merge([auth, settings]),
     redirect: (context, state) {
       if (_ciSmokeHome) {
         return state.matchedLocation == '/home' ? null : '/home';
@@ -59,6 +63,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return resolveAuthRedirect(
         authState: auth.state,
         location: state.matchedLocation,
+        hasSeenOnboarding: settings.onboardingCompleted,
       );
     },
     routes: [
