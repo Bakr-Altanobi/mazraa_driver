@@ -7,6 +7,9 @@ import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
+import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
+import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/shared/widgets/map_panel.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,23 +102,25 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: state.when(
+            child: _filter == _ShipmentFilter.available
+                ? RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(driverOffersProvider);
+                      await ref.read(driverOffersProvider.future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
+                      children: const [DriverOfferList()],
+                    ),
+                  )
+                : state.when(
               loading: LoadingList.new,
               error: (error, _) => ErrorState(
                 error: error,
                 onRetry: () => ref.invalidate(shipmentsProvider),
               ),
               data: (items) {
-                if (_filter == _ShipmentFilter.available) {
-                  return EmptyState(
-                    title: ar
-                        ? 'لا توجد واجهة عروض متاحة'
-                        : 'No offers feed available',
-                    message: ar
-                        ? 'السيرفر الحالي يعيد الشحنات المسندة إليك فقط، ولا يوفّر Endpoint مستقلًا للعروض غير المسندة.'
-                        : 'The server currently returns only shipments assigned to you and has no endpoint for unassigned offers.',
-                  );
-                }
                 final query = _search.text.trim().toLowerCase();
                 final filtered = items.where((item) {
                   final matchesFilter = switch (_filter) {
@@ -208,7 +213,7 @@ class _ShipmentCard extends StatelessWidget {
                       color: color.withValues(alpha: .12),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Icon(Icons.local_shipping_rounded, color: color),
+                    child: Image.asset(ReferenceAssets.deliveryParcel, fit: BoxFit.contain, cacheWidth: 160),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
