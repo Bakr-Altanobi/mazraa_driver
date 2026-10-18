@@ -11,6 +11,15 @@ on:
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - '.github/workflows/driver-app-smoke-and-min-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/driver-app-smoke-and-min-apk.yml'
 
 permissions:
   contents: read
