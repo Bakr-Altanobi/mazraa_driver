@@ -137,6 +137,7 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     _StatusBanner(
                       profile: profile,
+                      journey: ref.watch(driverJourneyProvider).valueOrNull,
                       connected: connection.valueOrNull,
                     ),
                     const SizedBox(height: 12),
@@ -266,14 +267,18 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.profile, required this.connected});
+  const _StatusBanner({required this.profile, required this.connected, required this.journey});
   final DriverProfile? profile;
+  final Map<String, dynamic>? journey;
   final bool? connected;
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    final online = profile?.operationalStatus.toLowerCase() == 'online';
+    final driver = journey?['driver'];
+    final live = driver is Map ? driver : null;
+    final online = live?['isAcceptingOrders'] == true ||
+        (live == null && profile?.isAcceptingOrders == true);
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -318,9 +323,11 @@ class _StatusBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  ar
-                      ? 'تغيير الحالة ينتظر دعمًا من السيرفر'
-                      : 'Status changes require a server endpoint',
+                  online
+                      ? (ar ? 'ستظهر عروض التوصيل عند توفرها في منطقتك.'
+                            : 'Delivery offers appear as they become available.')
+                      : (ar ? 'يمكنك تفعيل استقبال الطلبات أو بدء وردية أدناه.'
+                            : 'You can enable availability or start a shift below.'),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.white70),
