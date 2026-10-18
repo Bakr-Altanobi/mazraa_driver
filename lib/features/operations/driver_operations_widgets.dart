@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -166,8 +168,37 @@ class DriverOfferList extends ConsumerStatefulWidget {
   ConsumerState<DriverOfferList> createState() => _DriverOfferListState();
 }
 
-class _DriverOfferListState extends ConsumerState<DriverOfferList> {
+class _DriverOfferListState extends ConsumerState<DriverOfferList>
+    with WidgetsBindingObserver {
   int? pendingId;
+  Timer? _offerTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _offerTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (mounted && pendingId == null) ref.invalidate(driverOffersProvider);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _offerTimer?.cancel();
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) ref.invalidate(driverOffersProvider);
+      _offerTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+        if (mounted && pendingId == null) ref.invalidate(driverOffersProvider);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _offerTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   Future<void> _take(DriverOffer offer, {required bool accept}) async {
     if (pendingId != null) return;
