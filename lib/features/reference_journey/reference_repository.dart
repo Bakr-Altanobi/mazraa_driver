@@ -52,7 +52,9 @@ bool referenceActionNeedsTarget(ReferenceAction action) => switch (action) {
   ReferenceAction.addPickupProof ||
   ReferenceAction.addDeliveryProof ||
   ReferenceAction.requestPayout ||
-  ReferenceAction.removeAvailabilityWindow => true,
+  ReferenceAction.removeAvailabilityWindow ||
+  ReferenceAction.sendChatMessage ||
+  ReferenceAction.replySupportTicket => true,
   _ => false,
 };
 
@@ -116,7 +118,11 @@ int? selectShipmentIdForAction(
     ReferenceAction.toggleOffersPreference ||
     ReferenceAction.toggleScheduledTripsPreference ||
     ReferenceAction.addAvailabilityWindow ||
-    ReferenceAction.removeAvailabilityWindow => const <String>{},
+    ReferenceAction.removeAvailabilityWindow ||
+    ReferenceAction.createSupportTicket ||
+    ReferenceAction.startSupportChat ||
+    ReferenceAction.sendChatMessage ||
+    ReferenceAction.replySupportTicket => const <String>{},
   };
   for (final row in rows) {
     if (row is! Map || row['id'] == null) continue;
@@ -255,6 +261,32 @@ class ReferenceRepository {
     ReferenceAction action,
   ) async {
     if (!referenceActionNeedsTarget(action)) return const [];
+    if (action == ReferenceAction.sendChatMessage) {
+      final rows = await _client.get<List<dynamic>>('api/chats');
+      return [
+        for (final row in rows)
+          if (row is Map &&
+              row['isClosed'] != true &&
+              int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'محادثة #${row['id']} · ${(row['otherUser'] is Map ? (row['otherUser'] as Map)['name'] : null) ?? (row['isSupport'] == true ? 'الدعم' : 'المستلم')}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.replySupportTicket) {
+      final rows = await _client.get<List<dynamic>>('api/support/tickets');
+      return [
+        for (final row in rows)
+          if (row is Map &&
+              row['status'] != 'closed' &&
+              int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'تذكرة ${row['number'] ?? row['id']} · ${row['subject'] ?? ''}',
+            ),
+      ];
+    }
     if (action == ReferenceAction.removeAvailabilityWindow) {
       final rows = await _client.get<List<dynamic>>(
         'api/driver-journey/me/availability',
@@ -354,6 +386,41 @@ class ReferenceRepository {
   }) async {
     if (referenceActionNeedsTarget(action) && targetId == null) {
       throw StateError('حدد العرض أو الشحنة أو الرحلة أو المرتجع قبل تنفيذ الإجراء.');
+    }
+    if (action == ReferenceAction.startSupportChat) {
+      await _client.post<dynamic>('api/support/live-chat');
+      return;
+    }
+    if (action == ReferenceAction.createSupportTicket) {
+      final subject = fields?['subject']?.toString().trim() ?? '';
+      final message = fields?['message']?.toString().trim() ?? '';
+      if (subject.isEmpty || message.isEmpty) {
+        throw StateError('عنوان وتفاصيل التذكرة مطلوبان.');
+      }
+      final options = await _client.get<Map<String, dynamic>>(
+        'api/support/ticket-options',
+      );
+      final priority = options['defaultPriority']?.toString();
+      if (priority == null || priority.isEmpty) {
+        throw StateError('تعذر جلب أولوية التذاكر من السيرفر.');
+      }
+      await _client.post<dynamic>('api/support/tickets', data: {
+        'subject': subject,
+        'message': message,
+        'priority': priority,
+      });
+      return;
+    }
+    if (action == ReferenceAction.sendChatMessage ||
+        action == ReferenceAction.replySupportTicket) {
+      final message = fields?['message']?.toString().trim() ?? '';
+      if (message.isEmpty) throw StateError('لا يمكن إرسال رسالة فارغة.');
+      final chat = action == ReferenceAction.sendChatMessage;
+      await _client.post<dynamic>(
+        chat ? 'api/chats/$targetId/messages' : 'api/support/tickets/$targetId/messages',
+        data: {'body': message},
+      );
+      return;
     }
     if (action == ReferenceAction.toggleOffersPreference ||
         action == ReferenceAction.toggleScheduledTripsPreference) {
