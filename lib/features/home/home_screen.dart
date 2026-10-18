@@ -8,6 +8,8 @@ import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
+import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
+import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
 import 'package:mazraa_driver/features/wallet/wallet_providers.dart';
 import 'package:mazraa_driver/shared/widgets/map_panel.dart';
@@ -44,6 +46,8 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(shipmentsProvider);
     ref.invalidate(walletSummaryProvider);
+    ref.invalidate(driverJourneyProvider);
+    ref.invalidate(driverOffersProvider);
     ref.invalidate(connectionProvider);
     ref.invalidate(currentPositionProvider);
     await Future.wait([
@@ -135,6 +139,19 @@ class HomeScreen extends ConsumerWidget {
                       profile: profile,
                       connected: connection.valueOrNull,
                     ),
+                    const SizedBox(height: 12),
+                    const DriverControlPanel(),
+                    const SizedBox(height: 16),
+                    SectionHeader(
+                      title: ar ? 'عروض قريبة منك' : 'Delivery offers',
+                      icon: Icons.local_offer_outlined,
+                      action: TextButton(
+                        onPressed: () => context.push('/offers'),
+                        child: Text(ar ? 'كل العروض' : 'View all'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const DriverOfferList(compact: true),
                     const SizedBox(height: 15),
                     MapPanel(
                       driver: currentPoint,
