@@ -18,6 +18,14 @@
 
 يمكن للاختبار استخدام المفتاح المؤقت المحفوظ محليًا مسبقًا. اقرأه من `android/local.properties` على صورة `MAPS_API_KEY=...`، أو من متغير البيئة `MAPS_API_KEY`. لا تضع المفتاح في Git ولا في سجلات CI. قبل نشر التطبيق، استبدله بمفتاح مخصص لتطبيق Android، وفعل Maps SDK for Android وقيد المفتاح بحزمة `com.mazraa.driver` وبصمة شهادة توقيع الإنتاج.
 
+## نسخة Android Debug المخصصة للتجربة
+
+شغّل Workflow `Driver App Smoke Screenshot & Minimal APK` على فرع التسليم. عند نجاحه سيظهر Artifact باسم `mazraa-driver-debug-arm64-apk` يحتوي `mazraa-driver-arm64-debug.apk`. هذه **نسخة Debug لهاتف Android ARM64**، وليست نسخة المحاكي التي تعمل بعلم `CI_SMOKE_HOME`. اتصالها افتراضيًا بـ `https://mzraa.runasp.net/` ويتم تسجيل الدخول ببيانات السائق الحقيقية.
+
+قبل فحص الخرائط ضمن نسخة GitHub Actions، تأكد من إضافة مفتاح Google Maps التجريبي الموجود لديك إلى Repository Secret بالاسم `GOOGLE_MAPS_ANDROID_API_KEY`. القراءة محليًا تظل من `android/local.properties` باسم `MAPS_API_KEY`. من دون مفتاح صحيح لن يمكن اعتماد ظهور الخرائط، حتى إن اكتمل بناء APK. يجب أن يسمح المفتاح بحزمة `com.mazraa.driver` وبصمة توقيع **Debug** عند تقييد المفتاح.
+
+يُثبت APK على هاتف Android ARM64 بإذن تثبيت التطبيقات من هذا المصدر؛ لا تستخدم نسخة المحاكي x64 ولا ترفع Debug إلى Google Play. النسخة ذات أصغر حجم مخصصة للاختبار العام في CI باسم `mazraa-driver-minimal-arm64-apk` هي Release موقعة توقيعًا تجريبيًا وليست ملف Debug المطلوب.
+
 ## توقيع التطبيق للإصدار
 
 أنشئ `android/key.properties` محليًا مع `storeFile` و`keyAlias` و`keyPassword` و`storePassword` (لا تحفظ كلمات المرور في المستودع). أنشئ شهادة توقيع إنتاج خاصة بالعميل واحتفظ بنسخة احتياطية آمنة. **ملفات APK الصادرة من CI قد تكون موقعة بمفتاح debug لأغراض التجربة، ولا يجب رفعها إلى Google Play.**
