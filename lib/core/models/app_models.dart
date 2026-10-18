@@ -76,25 +76,15 @@ class DriverProfile {
     name: (json['name'] ?? '').toString(),
     email: (json['email'] ?? '').toString(),
     phone: (json['phone'] ?? '').toString(),
-    vehicleType: _enumLabel(json['vehicleType'], const [
-      'None',
-      'Motorcycle',
-      'Car',
-      'Van',
-      'Truck',
-    ]),
-    approvalStatus: _enumLabel(json['approvalStatus'], const [
-      'Pending',
-      'Approved',
-      'Rejected',
-      'Suspended',
-    ]),
-    operationalStatus: _enumLabel(json['operationalStatus'], const [
-      'Offline',
-      'Online',
-      'Busy',
-      'OnBreak',
-    ]),
+    vehicleType: _serverEnumLabel(json['vehicleType'], const {
+      0: 'Car', 1: 'Bike', 2: 'Van', 3: 'Truck',
+    }),
+    approvalStatus: _serverEnumLabel(json['approvalStatus'], const {
+      1: 'Pending', 2: 'Approved', 3: 'Rejected', 4: 'Suspended',
+    }),
+    operationalStatus: _serverEnumLabel(json['operationalStatus'], const {
+      1: 'Offline', 2: 'Online', 3: 'Available', 4: 'Busy',
+    }),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
     ratingAverage: _asDouble(json['ratingAverage']),
@@ -393,6 +383,19 @@ class AppNotification {
   final DateTime createdAt;
   final String? eventType;
   final int? shipmentId;
+}
+
+/// Explicit server enum values. Do not assume these enums are zero-based or
+/// share the same order as client labels; the API can send names or numbers.
+String _serverEnumLabel(Object? value, Map<int, String> labels) {
+  if (value is num) return labels[value.toInt()] ?? value.toString();
+  final raw = value?.toString() ?? '';
+  final parsed = int.tryParse(raw);
+  if (parsed != null) return labels[parsed] ?? raw;
+  for (final label in labels.values) {
+    if (label.toLowerCase() == raw.toLowerCase()) return label;
+  }
+  return raw;
 }
 
 int _asInt(Object? value) =>
