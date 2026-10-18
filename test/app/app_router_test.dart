@@ -78,6 +78,17 @@ void main() {
       );
     });
 
+    test('returning drivers bypass repeated onboarding', () {
+      expect(
+        resolveAuthRedirect(
+          authState: AuthState.signedOut,
+          location: '/splash',
+          hasSeenOnboarding: true,
+        ),
+        '/login',
+      );
+    });
+
     test('protects private pages for signed-out drivers', () {
       expect(
         resolveAuthRedirect(
