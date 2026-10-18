@@ -69,3 +69,47 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  build-small-release:
+    name: Build smallest installable ARM64 release-test APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.49.0-0.2.pre'
+          channel: beta
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Build tree-shaken and ABI-filtered release APK
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$GOOGLE_MAPS_API_KEY" ]]; then
+            echo "Restricted Maps Android key supplied via secret."
+            MAPS_ENABLED=true
+          else
+            echo "::warning::Maps key missing: Android Google Maps tiles will be unavailable in this APK."
+            MAPS_ENABLED=false
+          fi
+          flutter build apk --release --target-platform android-arm64 --split-per-abi --tree-shake-icons --no-pub --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED"
+          test -s build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk artifacts/mazraa-driver-arm64-small-release-test.apk
+          echo "Release-test APK size (bytes): $(stat -c%s artifacts/mazraa-driver-arm64-small-release-test.apk)"
+          sha256sum artifacts/mazraa-driver-arm64-small-release-test.apk
+      - name: Upload size-optimized release-test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mazraa-driver-arm64-small-release-test
+          path: artifacts/mazraa-driver-arm64-small-release-test.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
