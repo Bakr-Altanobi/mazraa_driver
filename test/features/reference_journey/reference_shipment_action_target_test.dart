@@ -24,6 +24,28 @@ void main() {
     expect(selectShipmentIdForAction(rows, ReferenceAction.failShipment), 12);
   });
 
+  test('all record mutations require an explicitly selected target', () {
+    for (final action in [
+      ReferenceAction.acceptShipment,
+      ReferenceAction.pickupShipment,
+      ReferenceAction.startTransit,
+      ReferenceAction.nearCustomer,
+      ReferenceAction.deliverShipment,
+      ReferenceAction.failShipment,
+      ReferenceAction.acceptOffer,
+      ReferenceAction.rejectOffer,
+      ReferenceAction.joinScheduledTrip,
+      ReferenceAction.withdrawScheduledTrip,
+      ReferenceAction.acceptReturn,
+      ReferenceAction.pickupReturn,
+      ReferenceAction.completeReturn,
+    ]) {
+      expect(referenceActionNeedsTarget(action), isTrue);
+    }
+    expect(referenceActionNeedsTarget(ReferenceAction.goOnline), isFalse);
+    expect(referenceActionNeedsTarget(ReferenceAction.startShift), isFalse);
+  });
+
   test('action never falls back to an unrelated first shipment', () {
     const unrelated = <Map<String, Object>>[
       {'id': 20, 'status': 'Pending'},
