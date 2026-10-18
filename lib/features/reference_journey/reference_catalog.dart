@@ -44,6 +44,26 @@ enum ReferenceAction {
   acceptOffer,
   rejectOffer,
   createIncident,
+  goOnline,
+  goOffline,
+  joinScheduledTrip,
+  withdrawScheduledTrip,
+  acceptReturn,
+  pickupReturn,
+  completeReturn,
+  addPickupProof,
+  addDeliveryProof,
+  saveBankAccount,
+  requestPayout,
+  markAllNotificationsRead,
+  toggleOffersPreference,
+  toggleScheduledTripsPreference,
+  addAvailabilityWindow,
+  removeAvailabilityWindow,
+  sendChatMessage,
+  createSupportTicket,
+  replySupportTicket,
+  startSupportChat,
 }
 
 class ReferenceScreenSpec {
@@ -106,6 +126,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.wallet,
         ReferenceDataSource.shifts,
       ],
+      actions: [ReferenceAction.goOnline, ReferenceAction.goOffline],
     ),
     ReferenceScreenSpec(
       number: 4,
@@ -142,7 +163,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Pickup verification',
       descriptionAr: 'تأكيد الاستلام ثم بدء الانتقال للشحنة الفعلية.',
       sources: [ReferenceDataSource.shipmentDetail, ReferenceDataSource.shipmentProofs],
-      actions: [ReferenceAction.pickupShipment, ReferenceAction.startTransit],
+      actions: [ReferenceAction.addPickupProof, ReferenceAction.pickupShipment, ReferenceAction.startTransit],
       unsupported: [
         'قائمة أصناف فحص مستقلة لكل شحنة ليست ضمن Shipment DTO الحالي.',
       ],
@@ -181,6 +202,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.bankAccounts,
         ReferenceDataSource.payouts,
       ],
+      actions: [ReferenceAction.requestPayout],
     ),
     ReferenceScreenSpec(
       number: 11,
@@ -188,6 +210,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Notifications',
       descriptionAr: 'إشعارات الحساب الفعلية القادمة من Notifications API.',
       sources: [ReferenceDataSource.notifications],
+      actions: [ReferenceAction.markAllNotificationsRead],
     ),
     ReferenceScreenSpec(
       number: 12,
@@ -195,6 +218,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Profile settings',
       descriptionAr: 'بيانات السائق وحالة التشغيل وتفضيلات قبول الرحلات.',
       sources: [ReferenceDataSource.journeyMe, ReferenceDataSource.preferences],
+      actions: [ReferenceAction.goOnline, ReferenceAction.goOffline, ReferenceAction.toggleOffersPreference, ReferenceAction.toggleScheduledTripsPreference],
     ),
     ReferenceScreenSpec(
       number: 13,
@@ -235,7 +259,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.preferences,
         ReferenceDataSource.shifts,
       ],
-      actions: [ReferenceAction.startShift, ReferenceAction.endShift],
+      actions: [ReferenceAction.startShift, ReferenceAction.endShift, ReferenceAction.joinScheduledTrip, ReferenceAction.withdrawScheduledTrip, ReferenceAction.addAvailabilityWindow, ReferenceAction.removeAvailabilityWindow],
     ),
     ReferenceScreenSpec(
       number: 17,
@@ -262,6 +286,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Customer chat',
       descriptionAr: 'محادثات الحساب الحقيقية وعدد الرسائل غير المقروءة.',
       sources: [ReferenceDataSource.chats],
+      actions: [ReferenceAction.sendChatMessage],
     ),
     ReferenceScreenSpec(
       number: 20,
@@ -280,6 +305,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Support center',
       descriptionAr: 'FAQ والتذاكر الفعلية من مركز الدعم.',
       sources: [ReferenceDataSource.supportFaqs, ReferenceDataSource.supportTickets],
+      actions: [ReferenceAction.createSupportTicket, ReferenceAction.replySupportTicket, ReferenceAction.startSupportChat],
     ),
     ReferenceScreenSpec(
       number: 22,
@@ -331,7 +357,9 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.currentTrips,
         ReferenceDataSource.shipments,
         ReferenceDataSource.preferences,
+        ReferenceDataSource.scheduledTrips,
       ],
+      actions: [ReferenceAction.joinScheduledTrip, ReferenceAction.withdrawScheduledTrip],
     ),
     ReferenceScreenSpec(
       number: 28,
@@ -353,6 +381,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.tracking,
         ReferenceDataSource.shipmentProofs,
       ],
+      actions: [ReferenceAction.addDeliveryProof],
     ),
     ReferenceScreenSpec(
       number: 30,
@@ -360,6 +389,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Bank account edit',
       descriptionAr: 'الحسابات البنكية الفعلية للسائق من driver-journey.',
       sources: [ReferenceDataSource.bankAccounts, ReferenceDataSource.wallet],
+      actions: [ReferenceAction.saveBankAccount],
     ),
     ReferenceScreenSpec(
       number: 31,
@@ -404,6 +434,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Service area',
       descriptionAr: 'مناطق التوصيل الفعلية مع نطاق قبول العروض في تفضيلات السائق.',
       sources: [ReferenceDataSource.deliveryZones, ReferenceDataSource.preferences],
+      actions: [ReferenceAction.toggleOffersPreference],
       unsupported: [
         'قائمة مناطق خدمة مفضلة للسائق بالمعرفات ليست محفوظة حالياً؛ المتاح نطاق العروض بالكيلومتر.',
       ],
@@ -445,6 +476,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Return order',
       descriptionAr: 'مهام المرتجع المسندة للسائق وحالات تنفيذها الفعلية.',
       sources: [ReferenceDataSource.returns, ReferenceDataSource.shipmentDetail],
+      actions: [ReferenceAction.acceptReturn, ReferenceAction.pickupReturn, ReferenceAction.completeReturn],
     ),
     ReferenceScreenSpec(
       number: 40,
