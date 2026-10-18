@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
+import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
@@ -65,7 +66,8 @@ class HomeScreen extends ConsumerWidget {
     final active = shipmentRows.where((item) => item.status.isActive).toList();
     final completedToday = shipmentRows.where((item) {
       final now = DateTime.now();
-      final date = item.createdAt.toLocal();
+      final date = item.deliveredAt?.toLocal();
+      if (date == null) return false;
       return item.status == ShipmentStatus.delivered &&
           date.year == now.year &&
           date.month == now.month &&
@@ -134,6 +136,33 @@ class HomeScreen extends ConsumerWidget {
                     _StatusBanner(
                       profile: profile,
                       connected: connection.valueOrNull,
+                      onToggle: profile?.isApproved == true
+                          ? (accepting) async {
+                              try {
+                                await ref.read(driverApiProvider).updateDriverStatus(
+                                  operationalStatus: accepting ? 3 : 1,
+                                  isAcceptingOrders: accepting,
+                                  latitude: currentPoint?.latitude,
+                                  longitude: currentPoint?.longitude,
+                                );
+                                await ref.read(authControllerProvider).refreshProfile();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(accepting
+                                        ? (ar ? 'أصبحت متاحًا للطلبات' : 'Now available for orders')
+                                        : (ar ? 'أنت الآن غير متصل' : 'You are offline'))),
+                                  );
+                                }
+                              } catch (error) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error.toString())),
+                                  );
+                                }
+                                rethrow;
+                              }
+                            }
+                          : null,
                     ),
                     const SizedBox(height: 15),
                     MapPanel(
@@ -248,15 +277,44 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.profile, required this.connected});
+class _StatusBanner extends StatefulWidget {
+  const _StatusBanner({
+    required this.profile,
+    required this.connected,
+    required this.onToggle,
+  });
   final DriverProfile? profile;
   final bool? connected;
+  final Future<void> Function(bool accepting)? onToggle;
+
+  @override
+  State<_StatusBanner> createState() => _StatusBannerState();
+}
+
+class _StatusBannerState extends State<_StatusBanner> {
+  bool _busy = false;
+
+  Future<void> _toggle(bool newValue) async {
+    if (_busy || widget.onToggle == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onToggle!(newValue);
+    } catch (_) {
+      // Parent displays the real server response; never assume it succeeded.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    final online = profile?.operationalStatus.toLowerCase() == 'online';
+    final profile = widget.profile;
+    final accepting = profile?.isAcceptingOrders == true;
+    final online = profile != null &&
+        (profile.operationalStatus.toLowerCase() == 'online' ||
+         profile.operationalStatus.toLowerCase() == 'available' ||
+         profile.operationalStatus.toLowerCase() == 'busy');
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -264,63 +322,51 @@ class _StatusBanner extends StatelessWidget {
           colors: [MazraaColors.forest, MazraaColors.forestDark],
         ),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: MazraaColors.forest.withValues(alpha: .18),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          Container(
-            width: 47,
-            height: 47,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              online ? Icons.sensors_rounded : Icons.power_settings_new_rounded,
-              color: Colors.white,
-            ),
-          ),
+          Icon(online ? Icons.sensors_rounded : Icons.power_settings_new_rounded,
+              color: Colors.white),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  online
-                      ? (ar ? 'أنت متصل' : 'You are online')
-                      : (ar ? 'حالتك الحالية: غير متصل' : 'Currently offline'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                  accepting
+                      ? (ar ? 'تستقبل طلبات التوصيل' : 'Accepting deliveries')
+                      : (ar ? 'استقبال الطلبات متوقف' : 'Not accepting deliveries'),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: Colors.white),
                 ),
-                const SizedBox(height: 3),
                 Text(
-                  ar
-                      ? 'تغيير الحالة ينتظر دعمًا من السيرفر'
-                      : 'Status changes require a server endpoint',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  profile?.isApproved != true
+                      ? (ar ? 'الحساب يحتاج موافقة الإدارة' : 'Approval required')
+                      : (ar ? 'غيّر التوفر مباشرة في السيرفر' : 'Synced with the server'),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: Colors.white70),
                 ),
               ],
             ),
           ),
-          Icon(
-            connected == false ? Icons.wifi_off_rounded : Icons.wifi_rounded,
-            color: connected == false ? const Color(0xFFFFB09A) : Colors.white,
-          ),
+          if (_busy)
+            const SizedBox(width: 24, height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          else
+            Switch.adaptive(
+              key: const Key('driverAvailabilityToggle'),
+              value: accepting,
+              onChanged: widget.onToggle == null || widget.connected == false
+                  ? null : _toggle,
+              activeTrackColor: Colors.white70,
+            ),
+          if (widget.connected == false)
+            const Icon(Icons.wifi_off_rounded, color: Colors.white),
         ],
       ),
     );
   }
 }
-
 class _ActiveShipmentCard extends StatelessWidget {
   const _ActiveShipmentCard({required this.shipment});
   final Shipment shipment;

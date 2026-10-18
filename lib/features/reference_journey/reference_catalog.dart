@@ -44,6 +44,9 @@ enum ReferenceAction {
   acceptOffer,
   rejectOffer,
   createIncident,
+  updatePreferences,
+  saveBankAccount,
+  requestPayout,
 }
 
 class ReferenceScreenSpec {
@@ -181,6 +184,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.bankAccounts,
         ReferenceDataSource.payouts,
       ],
+      actions: [ReferenceAction.requestPayout],
     ),
     ReferenceScreenSpec(
       number: 11,
@@ -195,6 +199,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Profile settings',
       descriptionAr: 'بيانات السائق وحالة التشغيل وتفضيلات قبول الرحلات.',
       sources: [ReferenceDataSource.journeyMe, ReferenceDataSource.preferences],
+      actions: [ReferenceAction.updatePreferences],
     ),
     ReferenceScreenSpec(
       number: 13,
@@ -235,7 +240,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.preferences,
         ReferenceDataSource.shifts,
       ],
-      actions: [ReferenceAction.startShift, ReferenceAction.endShift],
+      actions: [ReferenceAction.startShift, ReferenceAction.endShift, ReferenceAction.updatePreferences],
     ),
     ReferenceScreenSpec(
       number: 17,
@@ -360,6 +365,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Bank account edit',
       descriptionAr: 'الحسابات البنكية الفعلية للسائق من driver-journey.',
       sources: [ReferenceDataSource.bankAccounts, ReferenceDataSource.wallet],
+      actions: [ReferenceAction.saveBankAccount],
     ),
     ReferenceScreenSpec(
       number: 31,

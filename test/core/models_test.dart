@@ -20,6 +20,32 @@ void main() {
       expect(session.roles, isEmpty);
     });
 
+    test('maps driver status and vehicle enums exactly as backend defines them', () {
+      Map<String, dynamic> profile(int approval, int operational, int vehicle) => {
+        'userId': 15,
+        'name': 'Courier',
+        'email': 'driver@example.com',
+        'phone': '777777777',
+        'approvalStatus': approval,
+        'operationalStatus': operational,
+        'vehicleType': vehicle,
+        'isAcceptingOrders': true,
+      };
+      final available = DriverProfile.fromJson(profile(2, 3, 0));
+      expect(available.approvalStatus, 'Approved');
+      expect(available.isApproved, isTrue);
+      expect(available.operationalStatus, 'Available');
+      expect(available.vehicleType, 'Car');
+      final suspended = DriverProfile.fromJson(profile(4, 4, 1));
+      expect(suspended.approvalStatus, 'Suspended');
+      expect(suspended.isApproved, isFalse);
+      expect(suspended.operationalStatus, 'Busy');
+      expect(suspended.vehicleType, 'Bike');
+      final offline = DriverProfile.fromJson(profile(1, 1, 2));
+      expect(offline.approvalStatus, 'Pending');
+      expect(offline.operationalStatus, 'Offline');
+      expect(offline.vehicleType, 'Van');
+    });
     test('parses shipment enum from numeric and string payloads', () {
       expect(parseShipmentStatus(4), ShipmentStatus.assigned);
       expect(parseShipmentStatus('NearCustomer'), ShipmentStatus.nearCustomer);

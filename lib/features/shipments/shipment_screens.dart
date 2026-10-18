@@ -308,11 +308,22 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       reason = await _failureReason();
       if (reason == null || !mounted) return;
     }
+    String? numericCode;
+    String? qrToken;
+    if (action == 'deliver') {
+      final proof = await _deliveryProof();
+      if (proof == null || !mounted) return;
+      numericCode = proof.$1;
+      qrToken = proof.$2;
+    }
     setState(() => _acting = true);
     try {
       await ref
           .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason);
+          .changeShipmentStatus(
+            shipment.id, action,
+            reason: reason, numericCode: numericCode, qrToken: qrToken,
+          );
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -337,6 +348,54 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     }
   }
 
+  Future<(String?, String?)?> _deliveryProof() async {
+    final code = TextEditingController();
+    final qr = TextEditingController();
+    try {
+      return await showDialog<(String?, String?)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('إثبات التسليم للعميل'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('للتسليم بدون تلامس يجب إدخال رمز العميل الرقمي أو QR. للطلبات العادية يمكن المتابعة دون رمز وفق قواعد السيرفر.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: code,
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(labelText: 'رمز التحقق الرقمي'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: qr,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(labelText: 'رمز QR (إن وجد)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء')),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, (
+                code.text.trim().isEmpty ? null : code.text.trim(),
+                qr.text.trim().isEmpty ? null : qr.text.trim(),
+              )),
+              child: const Text('تأكيد مع السيرفر'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      code.dispose();
+      qr.dispose();
+    }
+  }
   Future<String?> _failureReason() async {
     final controller = TextEditingController();
     final result = await showModalBottomSheet<String>(

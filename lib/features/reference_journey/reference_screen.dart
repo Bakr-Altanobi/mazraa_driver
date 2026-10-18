@@ -87,10 +87,59 @@ class _ReferenceJourneyScreenState
     ReferenceLoadKey? key,
   ) async {
     if (_actionBusy) return;
+    if (action == ReferenceAction.updatePreferences ||
+        action == ReferenceAction.saveBankAccount ||
+        action == ReferenceAction.requestPayout) {
+      await _editAccountAction(action);
+      return;
+    }
+    int? targetId;
+    if (action != ReferenceAction.startShift &&
+        action != ReferenceAction.endShift &&
+        action != ReferenceAction.createIncident) {
+      try {
+        final targets = await ref.read(referenceRepositoryProvider).actionTargets(action);
+        if (!mounted) return;
+        if (targets.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا توجد شحنات أو عروض مؤهلة لهذا الإجراء الآن.')),
+          );
+          return;
+        }
+        targetId = await showDialog<int>(
+          context: context,
+          builder: (dialogContext) => SimpleDialog(
+            title: const Text('اختر الطلب المقصود'),
+            children: [
+              for (final target in targets)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, target['id'] as int),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      target['label'].toString() + ' · ' + target['status'].toString(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (targetId == null || !mounted) return;
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحميل الطلبات من السيرفر: ' + error.toString())),
+          );
+        }
+        return;
+      }
+    }
 
     String? reason;
     String? subject;
     String? message;
+    String? numericCode;
+    String? qrToken;
     if (action == ReferenceAction.failShipment) {
       reason = await _textDialog(
         title: 'سبب تعذر التسليم',
@@ -98,6 +147,11 @@ class _ReferenceJourneyScreenState
         initialValue: 'تعذر الوصول للعميل',
       );
       if (reason == null) return;
+    } else if (action == ReferenceAction.deliverShipment) {
+      final proof = await _deliveryProofDialog();
+      if (proof == null) return;
+      numericCode = proof.$1;
+      qrToken = proof.$2;
     } else if (action == ReferenceAction.createIncident) {
       final incident = await _incidentDialog();
       if (incident == null) return;
@@ -136,10 +190,12 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        await repository.runShipmentAction(action,
+            reason: reason, numericCode: numericCode, qrToken: qrToken,
+            targetId: targetId);
       }
       if (key != null) {
-        ref.invalidate(referenceScreenPayloadProvider(key));
+        ref.invalidate(referenceScreenPayloadProvider);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +213,262 @@ class _ReferenceJourneyScreenState
     }
   }
 
+  Future<void> _editAccountAction(ReferenceAction action) {
+    if (action == ReferenceAction.updatePreferences) return _updatePreferences();
+    if (action == ReferenceAction.saveBankAccount) return _updateBankAccount();
+    return _requestPayout();
+  }
+
+  Future<void> _updatePreferences() async {
+    setState(() => _actionBusy = true);
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final original = await repository.loadPreferences();
+      if (!mounted) return;
+      const fields = [
+        ('acceptScheduledTrips', 'الرحلات المجدولة'),
+        ('acceptPrivateDeliveries', 'التوصيل الخاص'),
+        ('acceptBatchDeliveries', 'التوصيل المجمع'),
+        ('isAvailableForOffers', 'استقبال العروض'),
+      ];
+      if (!fields.every((field) => original[field.$1] is bool) ||
+          original['offerRadiusKm'] == null ||
+          original['offerTimeoutSeconds'] == null) {
+        throw StateError('لم تصل التفضيلات كاملة من السيرفر.');
+      }
+      final values = Map<String, dynamic>.from(original);
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('تفضيلات السائق'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in fields)
+                  SwitchListTile.adaptive(
+                    title: Text(field.$2),
+                    value: values[field.$1] == true,
+                    onChanged: (value) => update(() => values[field.$1] = value),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('حفظ'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.savePreferences(values);
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث تفضيلات العمل على السيرفر.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+  Future<void> _updateBankAccount() async {
+    setState(() => _actionBusy = true);
+    final input = <TextEditingController>[];
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final accounts = await repository.loadBankAccounts();
+      if (!mounted) return;
+      final rows = accounts.whereType<Map>().toList();
+      final current = rows.where((a) => a['isDefault'] == true).firstOrNull ??
+          (rows.isEmpty ? null : rows.first);
+      TextEditingController field(String name) {
+        final controller = TextEditingController(text: current?[name]?.toString() ?? '');
+        input.add(controller);
+        return controller;
+      }
+      final bank = field('bankName');
+      final holder = field('accountHolderName');
+      final iban = field('iban');
+      final number = field('accountNumber');
+      var invalid = false;
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('الحساب البنكي للسائق'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: bank,
+                    decoration: const InputDecoration(labelText: 'اسم البنك')),
+                TextField(controller: holder,
+                    decoration: const InputDecoration(labelText: 'صاحب الحساب')),
+                TextField(controller: iban, textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(labelText: 'IBAN')),
+                TextField(controller: number, textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(labelText: 'رقم الحساب (اختياري)')),
+                const SizedBox(height: 10),
+                const Text('حفظ التغييرات يتطلب إعادة تحقق البنك من السيرفر.'),
+                if (invalid) const Text('املأ اسم البنك وصاحب الحساب وIBAN.',
+                    style: TextStyle(color: Colors.red)),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('إلغاء')),
+              FilledButton(onPressed: () {
+                if (bank.text.trim().isEmpty || holder.text.trim().isEmpty ||
+                    iban.text.trim().isEmpty) {
+                  update(() => invalid = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              }, child: const Text('حفظ')),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.saveBankAccount(
+        bankName: bank.text, holder: holder.text,
+        iban: iban.text, accountNumber: number.text,
+      );
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الحساب البنكي بانتظار التحقق.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      for (final controller in input) { controller.dispose(); }
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+  Future<void> _requestPayout() async {
+    setState(() => _actionBusy = true);
+    final amount = TextEditingController();
+    try {
+      final repository = ref.read(referenceRepositoryProvider);
+      final rawAccounts = await repository.loadBankAccounts();
+      final wallet = await repository.loadWallet();
+      if (!mounted) return;
+      final banks = rawAccounts.whereType<Map>().where((item) =>
+          int.tryParse(item['id']?.toString() ?? '') != null).toList();
+      if (banks.isEmpty) throw StateError('أضف حسابًا بنكيًا قبل طلب السحب.');
+      final currency = (wallet['currencyCode'] ?? wallet['currency'])?.toString();
+      if (currency == null || currency.trim().isEmpty) {
+        throw StateError('عملة المحفظة غير متوفرة من السيرفر.');
+      }
+      int selected = int.parse(banks.first['id'].toString());
+      var invalid = false;
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('إنشاء طلب سحب'),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('الرصيد: ' + (wallet['balance']?.toString() ?? 'غير متوفر') +
+                  ' ' + currency),
+              DropdownButton<int>(
+                isExpanded: true,
+                value: selected,
+                items: [for (final bank in banks)
+                  DropdownMenuItem<int>(
+                    value: int.parse(bank['id'].toString()),
+                    child: Text((bank['bankName'] ?? '').toString() + ' · ' +
+                        (bank['accountHolderName'] ?? '').toString(),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) update(() => selected = value);
+                },
+              ),
+              TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: 'المبلغ (' + currency + ')'),
+              ),
+              if (invalid) const Text('أدخل مبلغًا صحيحًا أكبر من صفر.',
+                  style: TextStyle(color: Colors.red)),
+              const SizedBox(height: 8),
+              const Text('هذا طلب سحب للمراجعة، وليس تأكيد تحويل فوري.'),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('إلغاء')),
+              FilledButton(onPressed: () {
+                final value = double.tryParse(amount.text.trim());
+                if (value == null || !value.isFinite || value <= 0) {
+                  update(() => invalid = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              }, child: const Text('إرسال الطلب')),
+            ],
+          ),
+        ),
+      );
+      if (save != true) return;
+      await repository.requestPayout(
+        bankAccountId: selected,
+        amount: double.parse(amount.text.trim()),
+        currency: currency,
+      );
+      ref.invalidate(referenceScreenPayloadProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تسجيل طلب السحب للمراجعة لدى السيرفر.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      amount.dispose();
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+  Future<(String?, String?)?> _deliveryProofDialog() async {
+    final numeric = TextEditingController();
+    final qr = TextEditingController();
+    try {
+      return await showDialog<(String?, String?)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('تأكيد التسليم من السيرفر'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('للشحنات بدون تلامس أدخل رمز العميل الرقمي أو QR. الطلبات العادية لا تحتاج الرمز.'),
+            TextField(controller: numeric, keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز التحقق الرقمي')),
+            TextField(controller: qr, textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'رمز QR (إن وجد)')),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, (
+              numeric.text.trim().isEmpty ? null : numeric.text.trim(),
+              qr.text.trim().isEmpty ? null : qr.text.trim(),
+            )), child: const Text('تأكيد التسليم')),
+          ],
+        ),
+      );
+    } finally {
+      numeric.dispose();
+      qr.dispose();
+    }
+  }
   Future<String?> _textDialog({
     required String title,
     required String label,
@@ -251,4 +563,7 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ',
+      ReferenceAction.updatePreferences => 'تعديل التفضيلات',
+      ReferenceAction.saveBankAccount => 'تعديل الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب من المحفظة',
     };

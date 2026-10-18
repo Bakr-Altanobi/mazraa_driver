@@ -12,12 +12,25 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey = localProperties.getProperty("MAPS_API_KEY", "")
+// Local trial key stays in ignored local.properties; CI/release can inject
+// MAPS_API_KEY securely through its environment instead of source control.
+val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+    ?.takeIf { it.isNotBlank() }
+    ?: System.getenv("MAPS_API_KEY").orEmpty()
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+if (releaseRequested && mapsApiKey.isBlank()) {
+    throw GradleException("Release requires MAPS_API_KEY in local.properties or the environment.")
+}
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+}
+if (releaseRequested && !keystorePropertiesFile.exists()) {
+    throw GradleException("Release signing requires Android key.properties and a production keystore.")
 }
 
 android {
@@ -42,7 +55,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey.ifBlank { "MISSING_GOOGLE_MAPS_KEY" }
     }
 
     signingConfigs {
@@ -61,7 +74,7 @@ android {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                signingConfigs.getByName("debug") // Debug builds only; release requires key.properties above
             }
         }
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
@@ -283,6 +284,8 @@ class ReferenceProductionBody extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       _LocationCard(shipment: shipment),
+      const SizedBox(height: 10),
+      _LiveShipmentMap(shipment: shipment),
     ];
   }
 
@@ -292,8 +295,15 @@ class ReferenceProductionBody extends StatelessWidget {
     required String destination,
   }) {
     final tracking = data.tracking;
-    final shipment = _map(tracking['shipment']);
+    final trackedShipment = _map(tracking['shipment']);
+    final shipment = <String, dynamic>{
+      ...data.shipmentDetail,
+      ...trackedShipment,
+      if (tracking['driverLocation'] != null) 'driverLocation': tracking['driverLocation'],
+    };
     return [
+      _LiveShipmentMap(shipment: shipment),
+      const SizedBox(height: 10),
       _RouteVisual(assets: spec.assets),
       const SizedBox(height: 12),
       _ServerFieldCard(
@@ -1336,6 +1346,104 @@ class _LocationCard extends StatelessWidget {
   }
 }
 
+
+class _LiveShipmentMap extends StatelessWidget {
+  const _LiveShipmentMap({required this.shipment});
+  final Map<String, dynamic> shipment;
+
+  // Never invent a coordinate when the backend omits or corrupts one.
+  static LatLng? _coordinate(Object? source) {
+    if (source is! Map) return null;
+    final rawLat = source['latitude'] ?? source['lat'];
+    final rawLng = source['longitude'] ?? source['lng'] ?? source['lon'];
+    final lat = rawLat is num
+        ? rawLat.toDouble()
+        : double.tryParse(rawLat?.toString() ?? '');
+    final lng = rawLng is num
+        ? rawLng.toDouble()
+        : double.tryParse(rawLng?.toString() ?? '');
+    if (lat == null || lng == null || !lat.isFinite || !lng.isFinite ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return null;
+    }
+    return LatLng(lat, lng);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pickup = _coordinate(shipment['storeLocation'] ?? shipment['pickupLocation']) ??
+        _coordinate({
+          'latitude': shipment['storeLatitude'] ?? shipment['pickupLatitude'],
+          'longitude': shipment['storeLongitude'] ?? shipment['pickupLongitude'],
+        });
+    final destination = _coordinate(shipment['customerLocation'] ?? shipment['deliveryLocation']) ??
+        _coordinate({
+          'latitude': shipment['customerLatitude'] ?? shipment['deliveryLatitude'],
+          'longitude': shipment['customerLongitude'] ?? shipment['deliveryLongitude'],
+        });
+    final courier = _coordinate(shipment['driverLocation']) ??
+        _coordinate({
+          'latitude': shipment['driverLatitude'],
+          'longitude': shipment['driverLongitude'],
+        });
+    final center = courier ?? pickup ?? destination;
+    if (center == null) {
+      return const _EmptyServerCard(
+        'لم يرسل السيرفر إحداثيات صالحة لهذه الشحنة؛ لا يمكن عرض خريطة دقيقة.',
+      );
+    }
+    final markers = <Marker>{
+      if (pickup != null)
+        Marker(
+          markerId: const MarkerId('shipment-pickup'),
+          position: pickup,
+          infoWindow: const InfoWindow(title: 'نقطة الاستلام'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        ),
+      if (destination != null)
+        Marker(
+          markerId: const MarkerId('shipment-customer'),
+          position: destination,
+          infoWindow: const InfoWindow(title: 'عنوان العميل'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        ),
+      if (courier != null)
+        Marker(
+          markerId: const MarkerId('shipment-driver'),
+          position: courier,
+          infoWindow: const InfoWindow(title: 'آخر موقع مسجل للسائق'),
+        ),
+    };
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 260,
+            child: GoogleMap(
+              key: const Key('shipmentGoogleMap'),
+              initialCameraPosition: CameraPosition(target: center, zoom: 13),
+              markers: markers,
+              mapType: MapType.normal,
+              zoomControlsEnabled: true,
+              mapToolbarEnabled: true,
+              myLocationButtonEnabled: false,
+              compassEnabled: true,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(10),
+            child: Text(
+              'المواقع من السيرفر. يمكن فتح الملاحة من علامات الخرائط.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class _RouteVisual extends StatelessWidget {
   const _RouteVisual({required this.assets});
   final List<ReferenceAssetSlot> assets;
@@ -1357,7 +1465,7 @@ class _RouteVisual extends StatelessWidget {
           const PositionedDirectional(
             start: 14,
             bottom: 14,
-            child: _SmallChip(label: 'المسار من السيرفر'),
+            child: _SmallChip(label: 'الرسم المرجعي'),
           ),
         ],
       ),
@@ -1843,6 +1951,9 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
       ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
       ReferenceAction.createIncident => Icons.support_agent_rounded,
+      ReferenceAction.updatePreferences => Icons.tune_rounded,
+      ReferenceAction.saveBankAccount => Icons.account_balance_outlined,
+      ReferenceAction.requestPayout => Icons.payments_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1857,4 +1968,7 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
+      ReferenceAction.updatePreferences => 'تعديل تفضيلات العمل',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب من المحفظة',
     };

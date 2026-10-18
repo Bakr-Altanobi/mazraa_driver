@@ -18,7 +18,7 @@ abstract final class ApiEndpoints {
 abstract final class AppEnvironment {
   static const mapsEnabled = bool.fromEnvironment(
     'ENABLE_GOOGLE_MAPS',
-    defaultValue: false,
+    defaultValue: true,
   );
   static const testDriverEmail = String.fromEnvironment('DRIVER_TEST_EMAIL');
   static const testDriverPassword = String.fromEnvironment(

@@ -77,23 +77,24 @@ class DriverProfile {
     email: (json['email'] ?? '').toString(),
     phone: (json['phone'] ?? '').toString(),
     vehicleType: _enumLabel(json['vehicleType'], const [
-      'None',
-      'Motorcycle',
       'Car',
+      'Bike',
       'Van',
       'Truck',
     ]),
     approvalStatus: _enumLabel(json['approvalStatus'], const [
+      'Unknown',
       'Pending',
       'Approved',
       'Rejected',
       'Suspended',
     ]),
     operationalStatus: _enumLabel(json['operationalStatus'], const [
+      'Unknown',
       'Offline',
       'Online',
+      'Available',
       'Busy',
-      'OnBreak',
     ]),
     isAcceptingOrders: json['isAcceptingOrders'] == true,
     isVerified: json['isVerified'] == true,
@@ -229,6 +230,7 @@ class Shipment {
     this.driverLocation,
     this.distanceKm,
     this.etaMinutes,
+    this.deliveredAt,
   });
 
   factory Shipment.fromJson(Map<String, dynamic> json) {
@@ -250,6 +252,7 @@ class Shipment {
       transportCost: _asDouble(shipmentJson['transportCost']),
       netProfit: _asDouble(shipmentJson['netProfit']),
       createdAt: _asDate(shipmentJson['createdAt']) ?? DateTime.now(),
+      deliveredAt: _asDate(shipmentJson['deliveredAt']),
       customerLocation: GeoPoint.fromDynamic(
         shipmentJson['customerLocation'],
         latitude: shipmentJson['customerLatitude'],
@@ -278,6 +281,7 @@ class Shipment {
   final double transportCost;
   final double netProfit;
   final DateTime createdAt;
+  final DateTime? deliveredAt;
   final GeoPoint? customerLocation;
   final GeoPoint? storeLocation;
   final GeoPoint? driverLocation;
