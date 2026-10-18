@@ -12,7 +12,8 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey = localProperties.getProperty("MAPS_API_KEY", "")
+val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+    ?.takeIf { it.isNotBlank() } ?: System.getenv("MAPS_API_KEY").orEmpty()
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")

@@ -6,9 +6,12 @@ import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/driver_services_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
+import 'package:mazraa_driver/features/shipments/driver_offers_screen.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
+import 'package:mazraa_driver/features/wallet/driver_finances_screen.dart';
 
 const _ciSmokeHome = bool.fromEnvironment(
   'CI_SMOKE_HOME',
@@ -46,7 +49,9 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  // The numbered reference gallery is available from driver services, not the
+  // landing screen after login. The working dashboard is the primary journey.
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -67,6 +72,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/finances', builder: (_, _) => const DriverFinancesScreen()),
+      GoRoute(path: '/offers', builder: (_, _) => const DriverOffersScreen()),
+      GoRoute(path: '/services', builder: (_, _) => const DriverServicesScreen()),
       GoRoute(
         path: '/journey/:screen',
         builder: (context, state) {

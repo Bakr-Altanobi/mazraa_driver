@@ -227,12 +227,19 @@ class ReferenceRepository {
         action == ReferenceAction.rejectOffer) {
       final offers =
           await _client.get<List<dynamic>>('api/driver-journey/offers');
-      int? offerId;
+      final offerIds = <int>{};
       for (final row in offers) {
         if (row is! Map) continue;
-        offerId = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
-        if (offerId != null) break;
+        final id = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
+        if (id != null) offerIds.add(id);
       }
+      if (offerIds.length > 1) {
+        throw StateError(
+          'هناك أكثر من عرض. افتح صفحة عروض التوصيل وحدد العرض المطلوب؛ '
+          'لن يختار التطبيق عرضًا بدلًا عنك.',
+        );
+      }
+      final offerId = offerIds.isEmpty ? null : offerIds.first;
       if (offerId == null) {
         throw StateError('لا يوجد عرض توصيل فعلي متاح للسائق الآن.');
       }
@@ -247,7 +254,18 @@ class ReferenceRepository {
     }
 
     final rows = await _client.get<List<dynamic>>('api/Shipments');
-    final shipmentId = selectShipmentIdForAction(rows, action);
+    final eligibleIds = <int>{};
+    for (final row in rows) {
+      final id = selectShipmentIdForAction([row], action);
+      if (id != null) eligibleIds.add(id);
+    }
+    if (eligibleIds.length > 1) {
+      throw StateError(
+        'هناك أكثر من شحنة مؤهلة. افتح قائمة الشحنات وحدد الشحنة '
+        'المطلوبة قبل تغيير حالتها.',
+      );
+    }
+    final shipmentId = eligibleIds.isEmpty ? null : eligibleIds.first;
     if (shipmentId == null) {
       throw StateError(
         'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',

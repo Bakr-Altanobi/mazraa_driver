@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mazraa_driver/core/constants/api_endpoints.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
@@ -22,10 +23,39 @@ class MapPanel extends StatelessWidget {
   final VoidCallback? onLocate;
 
   GeoPoint get _center =>
-      driver ?? store ?? customer ?? const GeoPoint(24.7136, 46.6753);
+      driver ?? store ?? customer!;
 
   @override
   Widget build(BuildContext context) {
+    if (driver == null && store == null && customer == null) {
+      return Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(26),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Image.asset(
+                ReferenceAssets.routeMap,
+                fit: BoxFit.contain,
+                cacheWidth: 480,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isArabic(context)
+                  ? 'بانتظار موقعك أو إحداثيات شحنة فعلية لعرض الخريطة'
+                  : 'Waiting for your location or real shipment coordinates',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
