@@ -1859,6 +1859,10 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.toggleScheduledTripsPreference => Icons.event_repeat_outlined,
       ReferenceAction.addAvailabilityWindow => Icons.edit_calendar_outlined,
       ReferenceAction.removeAvailabilityWindow => Icons.event_busy_outlined,
+      ReferenceAction.sendChatMessage => Icons.send_outlined,
+      ReferenceAction.createSupportTicket => Icons.confirmation_number_outlined,
+      ReferenceAction.replySupportTicket => Icons.reply_outlined,
+      ReferenceAction.startSupportChat => Icons.forum_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1889,4 +1893,8 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
       ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
       ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
+      ReferenceAction.sendChatMessage => 'إرسال رسالة في المحادثة',
+      ReferenceAction.createSupportTicket => 'فتح تذكرة دعم',
+      ReferenceAction.replySupportTicket => 'الرد على تذكرة دعم',
+      ReferenceAction.startSupportChat => 'بدء محادثة مع الدعم',
     };
