@@ -26,6 +26,45 @@ class DriverApi {
     return session;
   }
 
+  /// A newly registered/existing ordinary user can submit a driver
+  /// application. This does not grant approval or go-online rights. Any
+  /// temporary token is cleared after the submission attempt.
+  Future<void> submitDriverApplication({
+    required String email,
+    required String password,
+    required int vehicleType,
+    required bool createAccount,
+    String? name,
+  }) async {
+    final response = await _client.post<Map<String, dynamic>>(
+      createAccount ? 'api/Auth/register' : ApiEndpoints.login,
+      data: createAccount
+          ? {
+              'name': (name ?? '').trim(),
+              'email': email.trim(),
+              'password': password,
+            }
+          : {
+              'email': email.trim(),
+              'password': password,
+              'deviceName': 'mazraa-driver-application',
+            },
+    );
+    final temporary = AuthSession.fromJson(response);
+    if (!temporary.isUsable) {
+      throw const FormatException('تعذر استلام جلسة آمنة لتقديم طلب السائق.');
+    }
+    await _store.write(temporary);
+    try {
+      await _client.post<dynamic>('api/driver-journey/apply', data: {
+        'vehicleType': vehicleType,
+        'maxActiveShipments': 3,
+      });
+    } finally {
+      await _store.clear();
+    }
+  }
+
   Future<void> logout() async {
     final session = await _store.read();
     try {

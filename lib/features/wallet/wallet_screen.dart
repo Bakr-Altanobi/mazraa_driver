@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
@@ -50,7 +51,7 @@ class WalletScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _unsupported(context, ar),
+                      onPressed: () => context.push('/payouts'),
                       icon: const Icon(Icons.south_west_rounded),
                       label: Text(ar ? 'سحب' : 'Withdraw'),
                     ),
@@ -145,8 +146,8 @@ class WalletScreen extends ConsumerWidget {
               const SizedBox(height: 14),
               Text(
                 ar
-                    ? 'المحفظة مصدر مالي عام للمستخدم. لا يعرض السيرفر الحالي كشفًا مستقلاً لمستحقات السائق لكل شحنة.'
-                    : 'This is the user wallet. The server does not currently expose a separate per-shipment driver earnings statement.',
+                    ? 'هذه محفظة المستخدم، ولطلبات سحب السائق سجل مستقل يمكن مراجعته من شاشة السحب.'
+                    : 'This is the user wallet. Driver payout requests can be managed in the dedicated payouts screen.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -163,8 +164,8 @@ class WalletScreen extends ConsumerWidget {
       SnackBar(
         content: Text(
           ar
-              ? 'لا يوفّر السيرفر Endpoint للسحب أو التحويل حاليًا.'
-              : 'The server does not currently expose withdrawal or transfer endpoints.',
+              ? 'تحويل الأموال بين المستخدمين غير مفعّل على السيرفر الحالي.'
+              : 'User-to-user wallet transfers are not available in the current server configuration.',
         ),
       ),
     );
