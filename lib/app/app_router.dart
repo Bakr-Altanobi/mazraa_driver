@@ -5,7 +5,6 @@ import 'package:mazraa_driver/features/auth/auth_screens.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
-import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
@@ -19,14 +18,10 @@ String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
 }) {
-  final isJourneyPublic =
-      location == '/journey/01' || location == '/journey/1' ||
-      location == '/journey/02' || location == '/journey/2';
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
-      location == '/onboarding' ||
-      isJourneyPublic;
+      location == '/onboarding';
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
     return location == '/splash' ? null : '/splash';
@@ -46,7 +41,7 @@ String? resolveAuthRedirect({
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -67,15 +62,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(
-        path: '/journey/:screen',
-        builder: (context, state) {
-          final raw = state.pathParameters['screen'] ?? '1';
-          final parsed = int.tryParse(raw) ?? 1;
-          final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
-          return ReferenceJourneyScreen(screenNumber: number);
-        },
-      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
