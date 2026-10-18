@@ -6,6 +6,7 @@ import 'package:mazraa_driver/core/constants/api_endpoints.dart';
 import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
+import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/features/home/home_bootstrap.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
@@ -263,6 +264,109 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Future<void> _forgotPassword() async {
+    final ar = isArabic(context);
+    final controller = TextEditingController(text: _email.text.trim());
+    try {
+      final email = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(ar ? 'استعادة كلمة المرور' : 'Reset your password'),
+          content: TextField(
+            controller: controller,
+            textDirection: TextDirection.ltr,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: ar ? 'البريد الإلكتروني' : 'Email address'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+              child: Text(ar ? 'إلغاء' : 'Cancel')),
+            FilledButton(onPressed: () {
+              if (controller.text.trim().contains('@')) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            }, child: Text(ar ? 'إرسال' : 'Send')),
+          ],
+        ),
+      );
+      if (!mounted || email == null) return;
+      await ref.read(apiClientProvider).post<dynamic>(
+        'api/auth/forgot-password', data: {'email': email});
+      if (!mounted) return;
+      final resetNow = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(ar ? 'تحقق من بريدك' : 'Check your email'),
+          content: Text(ar
+              ? 'إذا كان البريد مرتبطًا بحساب، ستصلك رسالة تتضمن رمز إعادة التعيين. هل تريد إدخال الرمز الآن؟'
+              : 'If an account exists, a reset token will be emailed. Enter the token now?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(ar ? 'لاحقًا' : 'Later')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(ar ? 'لدي رمز' : 'I have a token')),
+          ],
+        ),
+      );
+      if (resetNow == true && mounted) await _resetPassword();
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())));
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final ar = isArabic(context);
+    final token = TextEditingController();
+    final password = TextEditingController();
+    try {
+      final data = await showDialog<(String, String)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(ar ? 'إعادة تعيين كلمة المرور' : 'Set a new password'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: token,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(labelText: ar ? 'رمز البريد' : 'Email token'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: password,
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(labelText: ar ? 'كلمة المرور الجديدة' : 'New password'),
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+              child: Text(ar ? 'إلغاء' : 'Cancel')),
+            FilledButton(onPressed: () {
+              if (token.text.trim().isNotEmpty && password.text.length >= 8) {
+                Navigator.pop(dialogContext, (token.text.trim(), password.text));
+              }
+            }, child: Text(ar ? 'تغيير كلمة المرور' : 'Reset password')),
+          ],
+        ),
+      );
+      if (!mounted || data == null) return;
+      await ref.read(apiClientProvider).post<dynamic>(
+        'api/auth/reset-password',
+        data: {'token': data.$1, 'newPassword': data.$2},
+      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ar ? 'تم تحديث كلمة المرور، سجّل الدخول الآن' : 'Password updated. Sign in now.')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      token.dispose();
+      password.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
@@ -377,7 +481,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: TextButton(
-                        onPressed: () => _showUnavailable(context, ar),
+                        onPressed: () => context.push('/apply'),
                         child: Text(
                           ar ? 'نسيت كلمة المرور؟' : 'Forgot password?',
                         ),
@@ -451,33 +555,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _showUnavailable(BuildContext context, bool ar) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.admin_panel_settings_outlined, size: 45),
-            const SizedBox(height: 12),
-            Text(
-              ar ? 'تتطلب مراجعة الإدارة' : 'Admin review required',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              ar
-                  ? 'لا يوفر السيرفر الحالي مسارًا عامًا آمنًا لتسجيل السائق أو استعادة كلمة المرور. تواصل مع إدارة المنصة.'
-                  : 'The server does not currently expose a safe public driver registration or password recovery endpoint. Contact platform support.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _ReferenceAssetRow extends StatelessWidget {
