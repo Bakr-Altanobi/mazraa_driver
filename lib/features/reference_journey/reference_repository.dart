@@ -136,12 +136,10 @@ class ReferenceRepository {
     ReferenceScreenSpec spec,
     int userId,
   ) async {
-    List<dynamic>? shipmentsCache;
+    Future<List<dynamic>>? shipmentsFuture;
 
-    Future<List<dynamic>> shipments() async {
-      return shipmentsCache ??=
-          await _client.get<List<dynamic>>('api/Shipments');
-    }
+    Future<List<dynamic>> shipments() =>
+        shipmentsFuture ??= _client.get<List<dynamic>>('api/Shipments');
 
     Future<int?> preferredShipmentId() async {
       final rows = await shipments();
@@ -243,10 +241,11 @@ class ReferenceRepository {
       }
     }
 
-    final results = <ReferenceSourceResult>[];
-    for (final source in spec.sources) {
-      results.add(await loadOne(source));
-    }
+    // Different endpoints load concurrently; failures remain isolated per
+    // source and the shipment list is fetched at most once per screen load.
+    final results = await Future.wait(
+      spec.sources.map(loadOne),
+    );
     return ReferenceScreenPayload(results: results);
   }
 
