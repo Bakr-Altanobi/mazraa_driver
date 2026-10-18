@@ -601,6 +601,22 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+              if (shipment.status == ShipmentStatus.accepted ||
+                  shipment.status == ShipmentStatus.pickedUp ||
+                  shipment.status == ShipmentStatus.nearCustomer) ...[
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/shipments/${shipment.id}/evidence')
+                      .then((_) {
+                        if (mounted) {
+                          ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
+                          ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+                        }
+                      }),
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: Text(ar ? 'إضافة صورة إثبات حقيقية' : 'Upload real proof photo'),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (!shipment.status.isClosed) ...[
                 LiveLocationSwitch(
                   key: ValueKey('live-tracking-${shipment.id}'),
