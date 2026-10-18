@@ -309,6 +309,11 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     );
     if (!confirmed || !mounted) return;
     String? reason;
+    String? numericCode;
+    if (action == 'deliver') {
+      numericCode = await _deliveryCode();
+      if (numericCode == null || !mounted) return;
+    }
     if (action == 'fail') {
       reason = await _failureReason();
       if (reason == null || !mounted) return;
@@ -317,7 +322,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     try {
       await ref
           .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason);
+          .changeShipmentStatus(shipment.id, action, reason: reason, numericCode: numericCode?.isEmpty == true ? null : numericCode);
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -339,6 +344,47 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       }
     } finally {
       if (mounted) setState(() => _acting = false);
+    }
+  }
+
+  Future<String?> _deliveryCode() async {
+    final controller = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isArabic(context) ? 'تأكيد التسليم' : 'Confirm delivery'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(isArabic(context)
+                  ? 'إذا طلب السيرفر رمز تسليم، أدخل الرمز الذي استلمه العميل. اتركه فارغًا فقط إذا لم يتطلب الطلب رمزًا.'
+                  : 'Enter the customer delivery code when required by the server. Leave blank only for deliveries without verification.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                textDirection: TextDirection.ltr,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: isArabic(context) ? 'رمز التسليم' : 'Delivery code',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(isArabic(context) ? 'إلغاء' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: Text(isArabic(context) ? 'متابعة' : 'Continue'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -618,34 +664,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               ),
               const SizedBox(height: 10),
               _ShipmentTimeline(status: shipment.status),
-              if (shipment.status == ShipmentStatus.pickedUp) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: MazraaColors.warning.withValues(alpha: .13),
-                    borderRadius: BorderRadius.circular(17),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: MazraaColors.warning,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          ar
-                              ? 'السيرفر يتطلب الانتقال إلى InTransit قبل الاقتراب من العميل، لكنه لا يوفّر Endpoint لهذه الخطوة حاليًا.'
-                              : 'The server requires InTransit before NearCustomer, but exposes no endpoint for that transition.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 22),
+const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
           );
@@ -666,6 +685,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       case ShipmentStatus.accepted:
         actions.addAll(['pickup', 'reject']);
         break;
+      case ShipmentStatus.pickedUp:
+        actions.addAll(['depart', 'fail']);
+        break;
       case ShipmentStatus.inTransit:
         actions.addAll(['near-customer', 'fail']);
         break;
@@ -673,7 +695,6 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         actions.addAll(['deliver', 'fail']);
         break;
       case ShipmentStatus.pending:
-      case ShipmentStatus.pickedUp:
       case ShipmentStatus.delivered:
       case ShipmentStatus.cancelled:
       case ShipmentStatus.failed:
@@ -863,6 +884,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
   'accept' => ar ? 'قبول الشحنة' : 'Accept shipment',
   'reject' => ar ? 'رفض الشحنة' : 'Reject shipment',
   'pickup' => ar ? 'تأكيد الاستلام' : 'Confirm pickup',
+  'depart' => ar ? 'بدء رحلة التوصيل' : 'Start delivery trip',
   'near-customer' => ar ? 'أنا قريب من العميل' : 'Near customer',
   'deliver' => ar ? 'تأكيد التسليم' : 'Confirm delivery',
   'fail' => ar ? 'تعذر التسليم' : 'Report failure',
@@ -872,6 +894,7 @@ String _actionLabel(String action, bool ar) => switch (action) {
 IconData _actionIcon(String action) => switch (action) {
   'accept' => Icons.check_circle_outline_rounded,
   'pickup' => Icons.inventory_2_outlined,
+  'depart' => Icons.route_rounded,
   'near-customer' => Icons.near_me_outlined,
   'deliver' => Icons.task_alt_rounded,
   _ => Icons.arrow_forward_rounded,
