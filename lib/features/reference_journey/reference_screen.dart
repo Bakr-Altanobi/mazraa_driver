@@ -134,7 +134,8 @@ class _ReferenceJourneyScreenState
     if (action == ReferenceAction.addPickupProof ||
         action == ReferenceAction.addDeliveryProof ||
         action == ReferenceAction.saveBankAccount ||
-        action == ReferenceAction.requestPayout) {
+        action == ReferenceAction.requestPayout ||
+        action == ReferenceAction.addAvailabilityWindow) {
       fields = await _fieldsDialog(action);
       if (!mounted || fields == null) return;
     }
@@ -225,6 +226,11 @@ class _ReferenceJourneyScreenState
           'verificationReference': 'رقم التحقق عند الاستلام',
           'notes': 'ملاحظات (اختياري)',
         },
+      ReferenceAction.addAvailabilityWindow => const <String, String>{
+          'dayOfWeek': 'يوم الأسبوع (0 الأحد إلى 6 السبت)',
+          'startTime': 'وقت البداية HH:mm',
+          'endTime': 'وقت النهاية HH:mm',
+        },
       ReferenceAction.addDeliveryProof => const <String, String>{
           'recipientName': 'اسم المستلم',
           'verificationReference': 'رمز/مرجع التحقق (اختياري)',
@@ -278,6 +284,7 @@ class _ReferenceJourneyScreenState
                   ReferenceAction.addPickupProof =>
                     const ['verificationReference'],
                   ReferenceAction.addDeliveryProof => const ['recipientName'],
+                  ReferenceAction.addAvailabilityWindow => const ['dayOfWeek', 'startTime', 'endTime'],
                   _ => const <String>[],
                 };
                 if (required.any((key) => (data[key] ?? '').isEmpty)) {
@@ -406,4 +413,8 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
       ReferenceAction.requestPayout => 'طلب سحب الرصيد',
       ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
+      ReferenceAction.toggleOffersPreference => 'تبديل استقبال عروض التوصيل',
+      ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
+      ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
+      ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
     };
