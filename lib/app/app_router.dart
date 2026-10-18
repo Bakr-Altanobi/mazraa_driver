@@ -8,6 +8,8 @@ import 'package:mazraa_driver/features/auth/driver_application_screen.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
+import 'package:mazraa_driver/features/operations/driver_services_screen.dart';
+import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
@@ -129,6 +131,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/offers', builder: (_, _) => const DriverOffersScreen()),
       GoRoute(path: '/payouts', builder: (_, _) => const DriverPayoutScreen()),
+      GoRoute(path: '/services', builder: (_, _) => const DriverServicesScreen()),
+      GoRoute(
+        path: '/journey/:number',
+        builder: (_, state) {
+          final number = int.tryParse(state.pathParameters['number'] ?? '');
+          if (number == null || number < 1 || number > 48) {
+            return const DriverServicesScreen();
+          }
+          return ReferenceJourneyScreen(screenNumber: number);
+        },
+      ),
     ],
   );
 });
