@@ -452,55 +452,26 @@ class ReferenceRepository {
       );
       return;
     }
-    if (action == ReferenceAction.addAvailabilityWindow ||
-        action == ReferenceAction.removeAvailabilityWindow) {
-      final raw = await _client.get<List<dynamic>>(
-        'api/driver-journey/me/availability',
-      );
-      if (raw.any((row) => row is! Map ||
-          row['id'] == null ||
-          row['dayOfWeek'] == null ||
-          row['startTime'] == null ||
-          row['endTime'] == null)) {
-        throw StateError('تعذر الحفاظ على الجدول الأسبوعي الحالي من بيانات السيرفر.');
+    if (action == ReferenceAction.removeAvailabilityWindow) {
+      await _client.delete('api/driver-journey/me/availability/$targetId');
+      return;
+    }
+    if (action == ReferenceAction.addAvailabilityWindow) {
+      final day = int.tryParse('\${fields?['dayOfWeek'] ?? ''}');
+      final start = fields?['startTime']?.toString().trim() ?? '';
+      final end = fields?['endTime']?.toString().trim() ?? '';
+      final timeFormat = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$');
+      if (day == null || day < 0 || day > 6 ||
+          !timeFormat.hasMatch(start) || !timeFormat.hasMatch(end) ||
+          start.compareTo(end) >= 0) {
+        throw StateError('حدد يومًا 0–6 ووقت بداية ونهاية بصيغة HH:mm مرتبين.');
       }
-      final body = <Map<String, dynamic>>[
-        for (final row in raw)
-          if (row is Map &&
-              !(action == ReferenceAction.removeAvailabilityWindow &&
-                int.tryParse('${row['id']}') == targetId))
-            {
-              'dayOfWeek': row['dayOfWeek'],
-              'startTime': row['startTime'],
-              'endTime': row['endTime'],
-              'isActive': row['isActive'] ?? true,
-            },
-      ];
-      if (action == ReferenceAction.removeAvailabilityWindow &&
-          body.length == raw.length) {
-        throw StateError('نافذة التوفر المحددة لم تعد موجودة.');
-      }
-      if (action == ReferenceAction.addAvailabilityWindow) {
-        final day = int.tryParse('${fields?['dayOfWeek'] ?? ''}');
-        final start = fields?['startTime']?.toString().trim() ?? '';
-        final end = fields?['endTime']?.toString().trim() ?? '';
-        final timeFormat = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$');
-        if (day == null || day < 0 || day > 6 ||
-            !timeFormat.hasMatch(start) || !timeFormat.hasMatch(end) ||
-            start.compareTo(end) >= 0) {
-          throw StateError('حدد يومًا 0–6 ووقت بداية ونهاية بصيغة HH:mm مرتبين.');
-        }
-        body.add({
-          'dayOfWeek': day,
-          'startTime': '$start:00',
-          'endTime': '$end:00',
-          'isActive': true,
-        });
-      }
-      await _client.put<dynamic>(
-        'api/driver-journey/me/availability',
-        data: body,
-      );
+      await _client.post<dynamic>('api/driver-journey/me/availability', data: {
+        'dayOfWeek': day,
+        'startTime': '$start:00',
+        'endTime': '$end:00',
+        'isActive': true,
+      });
       return;
     }
     if (action == ReferenceAction.markAllNotificationsRead) {
