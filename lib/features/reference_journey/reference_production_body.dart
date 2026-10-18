@@ -1850,6 +1850,11 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptReturn => Icons.assignment_turned_in_outlined,
       ReferenceAction.pickupReturn => Icons.inventory_outlined,
       ReferenceAction.completeReturn => Icons.check_circle_outline_rounded,
+      ReferenceAction.addPickupProof => Icons.fact_check_outlined,
+      ReferenceAction.addDeliveryProof => Icons.draw_outlined,
+      ReferenceAction.saveBankAccount => Icons.account_balance_outlined,
+      ReferenceAction.requestPayout => Icons.payments_outlined,
+      ReferenceAction.markAllNotificationsRead => Icons.mark_email_read_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1871,4 +1876,9 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
       ReferenceAction.pickupReturn => 'استلام المرتجع',
       ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
+      ReferenceAction.addPickupProof => 'تسجيل مرجع إثبات الاستلام',
+      ReferenceAction.addDeliveryProof => 'تسجيل إثبات التسليم',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب الرصيد',
+      ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
     };
