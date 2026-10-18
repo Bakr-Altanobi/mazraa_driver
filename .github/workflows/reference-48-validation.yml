@@ -1,4 +1,4 @@
-name: Validate 48-Screen Reference Journey
+name: Validate Driver App & Reference Assets
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
   validate-reference-journey:
     name: Validate catalog, routes and bundled assets
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -56,11 +56,14 @@ jobs:
             test/features/reference_journey/reference_assets_bundle_test.dart \
             test/features/reference_journey/reference_asset_index_contract_test.dart \
             test/features/reference_journey/reference_screens_render_test.dart \
-            test/features/reference_journey/reference_production_body_test.dart
+            test/features/reference_journey/reference_production_body_test.dart \
+            test/features/reference_journey/reference_server_truth_test.dart \
+            test/features/reference_journey/reference_shipment_action_target_test.dart \
+            test/features/driver_core_model_contract_test.dart \
+            test/features/connected_screens_test.dart \
+            test/features/login_screen_test.dart \
+            test/core/models_test.dart
 
       - name: Static analyze reference implementation
         run: |
-          flutter analyze --no-fatal-infos \
-            lib/features/reference_journey \
-            lib/app/app_router.dart \
-            lib/features/auth/auth_screens.dart
+          flutter analyze --no-fatal-infos lib
