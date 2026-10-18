@@ -56,6 +56,10 @@ enum ReferenceAction {
   saveBankAccount,
   requestPayout,
   markAllNotificationsRead,
+  toggleOffersPreference,
+  toggleScheduledTripsPreference,
+  addAvailabilityWindow,
+  removeAvailabilityWindow,
 }
 
 class ReferenceScreenSpec {
@@ -210,7 +214,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Profile settings',
       descriptionAr: 'بيانات السائق وحالة التشغيل وتفضيلات قبول الرحلات.',
       sources: [ReferenceDataSource.journeyMe, ReferenceDataSource.preferences],
-      actions: [ReferenceAction.goOnline, ReferenceAction.goOffline],
+      actions: [ReferenceAction.goOnline, ReferenceAction.goOffline, ReferenceAction.toggleOffersPreference, ReferenceAction.toggleScheduledTripsPreference],
     ),
     ReferenceScreenSpec(
       number: 13,
@@ -251,7 +255,7 @@ abstract final class ReferenceCatalog {
         ReferenceDataSource.preferences,
         ReferenceDataSource.shifts,
       ],
-      actions: [ReferenceAction.startShift, ReferenceAction.endShift, ReferenceAction.joinScheduledTrip, ReferenceAction.withdrawScheduledTrip],
+      actions: [ReferenceAction.startShift, ReferenceAction.endShift, ReferenceAction.joinScheduledTrip, ReferenceAction.withdrawScheduledTrip, ReferenceAction.addAvailabilityWindow, ReferenceAction.removeAvailabilityWindow],
     ),
     ReferenceScreenSpec(
       number: 17,
@@ -424,6 +428,7 @@ abstract final class ReferenceCatalog {
       titleEn: 'Service area',
       descriptionAr: 'مناطق التوصيل الفعلية مع نطاق قبول العروض في تفضيلات السائق.',
       sources: [ReferenceDataSource.deliveryZones, ReferenceDataSource.preferences],
+      actions: [ReferenceAction.toggleOffersPreference],
       unsupported: [
         'قائمة مناطق خدمة مفضلة للسائق بالمعرفات ليست محفوظة حالياً؛ المتاح نطاق العروض بالكيلومتر.',
       ],
