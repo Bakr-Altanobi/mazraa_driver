@@ -457,7 +457,7 @@ class ReferenceRepository {
       return;
     }
     if (action == ReferenceAction.addAvailabilityWindow) {
-      final day = int.tryParse('\${fields?['dayOfWeek'] ?? ''}');
+      final day = int.tryParse('${fields?['dayOfWeek'] ?? ''}');
       final start = fields?['startTime']?.toString().trim() ?? '';
       final end = fields?['endTime']?.toString().trim() ?? '';
       final timeFormat = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$');
