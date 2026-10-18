@@ -34,6 +34,8 @@ void main() {
     expect(find.byKey(const Key('emailField')), findsOneWidget);
     expect(find.byKey(const Key('passwordField')), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('loginButton')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('loginButton')));
     await tester.pump();
     expect(find.text('أدخل بريدًا صحيحًا'), findsOneWidget);
