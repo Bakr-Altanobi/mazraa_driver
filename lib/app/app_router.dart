@@ -4,6 +4,7 @@ import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/auth/driver_application_screen.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
@@ -27,7 +28,8 @@ String? resolveAuthRedirect({
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
-      location == '/onboarding';
+      location == '/onboarding' ||
+      location == '/apply';
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
     return location == '/splash' ? null : '/splash';
@@ -70,6 +72,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/apply', builder: (_, _) => const DriverApplicationScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
