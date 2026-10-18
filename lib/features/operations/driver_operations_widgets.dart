@@ -301,3 +301,35 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList> {
     );
   }
 }
+
+class DriverOffersScreen extends ConsumerWidget {
+  const DriverOffersScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ar = isArabic(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ar ? 'عروض التوصيل' : 'Delivery offers'),
+        actions: [
+          IconButton(
+            tooltip: ar ? 'تحديث' : 'Refresh',
+            onPressed: () => ref.invalidate(driverOffersProvider),
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(driverOffersProvider);
+          await ref.read(driverOffersProvider.future);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+          children: const [DriverOfferList()],
+        ),
+      ),
+    );
+  }
+}
