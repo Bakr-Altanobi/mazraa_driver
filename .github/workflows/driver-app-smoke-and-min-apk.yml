@@ -278,10 +278,10 @@ jobs:
           if [[ "${{ steps.compiled-state.outputs.reuse }}" == "true" ]]; then
             cp .ci-apks/app-arm64-debug.apk artifacts/mazraa-driver-arm64-debug.apk
           else
-            flutter build apk \\
-              --debug \\
-              --no-pub \\
-              --target-platform android-arm64 \\
+            flutter build apk \
+              --debug \
+              --no-pub \
+              --target-platform android-arm64 \
               --dart-define=ENABLE_GOOGLE_MAPS=true
             cp build/app/outputs/flutter-apk/app-debug.apk artifacts/mazraa-driver-arm64-debug.apk
           fi
