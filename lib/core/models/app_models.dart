@@ -408,9 +408,3 @@ double? _asNullableDouble(Object? value) => value == null
     : (value is num ? value.toDouble() : double.tryParse('$value'));
 DateTime? _asDate(Object? value) =>
     value == null ? null : DateTime.tryParse(value.toString());
-String _enumLabel(Object? value, List<String> labels) {
-  if (value is num && value.toInt() >= 0 && value.toInt() < labels.length) {
-    return labels[value.toInt()];
-  }
-  return value?.toString() ?? labels.first;
-}
