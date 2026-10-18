@@ -48,7 +48,10 @@ bool referenceActionNeedsTarget(ReferenceAction action) => switch (action) {
   ReferenceAction.withdrawScheduledTrip ||
   ReferenceAction.acceptReturn ||
   ReferenceAction.pickupReturn ||
-  ReferenceAction.completeReturn => true,
+  ReferenceAction.completeReturn ||
+  ReferenceAction.addPickupProof ||
+  ReferenceAction.addDeliveryProof ||
+  ReferenceAction.requestPayout => true,
   _ => false,
 };
 
@@ -92,6 +95,8 @@ int? selectShipmentIdForAction(
         'pickedup',
         'nearcustomer',
       },
+    ReferenceAction.addPickupProof => const {'5', '6', 'accepted', 'pickedup'},
+    ReferenceAction.addDeliveryProof => const {'7', 'nearcustomer'},
     ReferenceAction.startShift ||
     ReferenceAction.endShift ||
     ReferenceAction.acceptOffer ||
@@ -103,7 +108,10 @@ int? selectShipmentIdForAction(
     ReferenceAction.withdrawScheduledTrip ||
     ReferenceAction.acceptReturn ||
     ReferenceAction.pickupReturn ||
-    ReferenceAction.completeReturn => const <String>{},
+    ReferenceAction.completeReturn ||
+    ReferenceAction.saveBankAccount ||
+    ReferenceAction.requestPayout ||
+    ReferenceAction.markAllNotificationsRead => const <String>{},
   };
   for (final row in rows) {
     if (row is! Map || row['id'] == null) continue;
@@ -243,6 +251,17 @@ class ReferenceRepository {
     ReferenceAction action,
   ) async {
     if (!referenceActionNeedsTarget(action)) return const [];
+    if (action == ReferenceAction.requestPayout) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/bank-accounts');
+      return [
+        for (final row in rows)
+          if (row is Map && int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'حساب ${row['bankName'] ?? ''} · ${row['isVerified'] == true ? 'موثّق' : 'ينتظر التوثيق'}',
+            ),
+      ];
+    }
     if (action == ReferenceAction.acceptOffer ||
         action == ReferenceAction.rejectOffer) {
       final rows = await _client.get<List<dynamic>>('api/driver-journey/offers');
@@ -314,9 +333,42 @@ class ReferenceRepository {
     ReferenceAction action, {
     int? targetId,
     String? reason,
+    Map<String, dynamic>? fields,
   }) async {
     if (referenceActionNeedsTarget(action) && targetId == null) {
       throw StateError('حدد العرض أو الشحنة أو الرحلة أو المرتجع قبل تنفيذ الإجراء.');
+    }
+    if (action == ReferenceAction.markAllNotificationsRead) {
+      await _client.post<dynamic>('api/notifications/mark-all-read');
+      return;
+    }
+    if (action == ReferenceAction.saveBankAccount) {
+      final data = fields ?? const <String, dynamic>{};
+      if (['bankName', 'accountHolderName', 'iban'].any(
+        (key) => (data[key]?.toString().trim().isEmpty ?? true),
+      )) {
+        throw StateError('بيانات الحساب البنكي غير مكتملة.');
+      }
+      await _client.put<dynamic>('api/driver-journey/bank-account', data: data);
+      return;
+    }
+    if (action == ReferenceAction.requestPayout) {
+      final amount = num.tryParse('${fields?['amount'] ?? ''}');
+      if (amount == null || amount <= 0) {
+        throw StateError('أدخل مبلغ سحب صالحًا أكبر من الصفر.');
+      }
+      final wallet = await _client.get<Map<String, dynamic>>('api/wallets/me');
+      final currency = wallet['currency']?.toString() ??
+          wallet['currencyCode']?.toString();
+      if (currency == null || currency.isEmpty) {
+        throw StateError('تعذر تحديد عملة المحفظة من السيرفر.');
+      }
+      await _client.post<dynamic>('api/driver-journey/payouts', data: {
+        'bankAccountId': targetId,
+        'amount': amount,
+        'currency': currency,
+      });
+      return;
     }
     if (action == ReferenceAction.goOnline ||
         action == ReferenceAction.goOffline) {
@@ -376,6 +428,22 @@ class ReferenceRepository {
         row is Map && int.tryParse('${row['id'] ?? ''}') == targetId);
     if (selectShipmentIdForAction(selected, action) != targetId) {
       throw StateError('تغيرت حالة الشحنة أو لم تعد مؤهلة لهذا الإجراء. حدّث الشاشة.');
+    }
+    if (action == ReferenceAction.addPickupProof ||
+        action == ReferenceAction.addDeliveryProof) {
+      final reference = fields?['verificationReference']?.toString().trim() ?? '';
+      final recipient = fields?['recipientName']?.toString().trim() ?? '';
+      if (reference.isEmpty &&
+          (action == ReferenceAction.addPickupProof || recipient.isEmpty)) {
+        throw StateError('أدخل مرجع التحقق أو اسم المستلم قبل حفظ الإثبات.');
+      }
+      await _client.post<dynamic>('api/Shipments/$targetId/proof', data: {
+        'type': action == ReferenceAction.addPickupProof ? 0 : 1,
+        if (reference.isNotEmpty) 'verificationReference': reference,
+        if (recipient.isNotEmpty) 'recipientName': recipient,
+        'notes': fields?['notes']?.toString().trim(),
+      });
+      return;
     }
     final actionName = switch (action) {
       ReferenceAction.acceptShipment => 'accept',
