@@ -88,6 +88,48 @@ class _ReferenceJourneyScreenState
   ) async {
     if (_actionBusy) return;
 
+    int? targetId;
+    String? targetLabel;
+    if (referenceActionNeedsTarget(action)) {
+      try {
+        final options = await ref.read(referenceRepositoryProvider)
+            .targetsForAction(action);
+        if (!mounted) return;
+        if (options.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا توجد مهمة مؤهلة لهذا الإجراء في بيانات السيرفر الحالية.')),
+          );
+          return;
+        }
+        final selected = await showDialog<ReferenceActionTarget>(
+          context: context,
+          builder: (dialogContext) => SimpleDialog(
+            title: const Text('حدد المهمة المقصودة'),
+            children: [
+              for (final option in options)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, option),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(option.label),
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (!mounted || selected == null) return;
+        targetId = selected.id;
+        targetLabel = selected.label;
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحميل الخيارات: $error')),
+          );
+        }
+        return;
+      }
+    }
+
     String? reason;
     String? subject;
     String? message;
@@ -108,8 +150,10 @@ class _ReferenceJourneyScreenState
             context: context,
             builder: (dialogContext) => AlertDialog(
               title: Text(_actionTitle(action)),
-              content: const Text(
-                'سيتم تنفيذ العملية فقط على بيانات حقيقية مؤهلة حسب قواعد السيرفر. إذا لم توجد شحنة أو وردية أو عرض مؤهل فلن يتم إرسال تعديل غير صالح.',
+              content: Text(
+                targetLabel == null
+                  ? 'سيتم إرسال العملية إلى السيرفر الحقيقي بعد التأكيد.'
+                  : 'ستنفذ هذه العملية على $targetLabel فقط. هل تؤكد؟',
               ),
               actions: [
                 TextButton(
@@ -136,7 +180,7 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        await repository.runShipmentAction(action, targetId: targetId, reason: reason);
       }
       if (key != null) {
         ref.invalidate(referenceScreenPayloadProvider(key));
@@ -251,4 +295,11 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ',
+      ReferenceAction.goOnline => 'تفعيل استقبال الطلبات',
+      ReferenceAction.goOffline => 'إيقاف استقبال الطلبات',
+      ReferenceAction.joinScheduledTrip => 'طلب الانضمام لرحلة مجدولة',
+      ReferenceAction.withdrawScheduledTrip => 'سحب طلب الانضمام',
+      ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
+      ReferenceAction.pickupReturn => 'استلام المرتجع',
+      ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
     };
