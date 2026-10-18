@@ -42,11 +42,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     return Scaffold(
       key: const Key('splashScreen'),
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFFCF5), Color(0xFFF4EBD9)],
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? const [Color(0xFF101B18), Color(0xFF21352C)]
+                : const [Color(0xFFFFFCF5), Color(0xFFF4EBD9)],
           ),
         ),
         child: SafeArea(
@@ -67,7 +69,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   Text(
                     'مزرعتي',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: MazraaColors.forest,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : MazraaColors.forest,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -75,7 +79,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     ar ? 'رفيقك في كل رحلة' : 'Your companion on every trip',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: MazraaColors.forest.withValues(alpha: .72),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : MazraaColors.forest.withValues(alpha: .72),
                     ),
                   ),
                   const SizedBox(height: 34),
@@ -161,15 +167,18 @@ class OnboardingScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Image.asset(
-                        ReferenceAssets.brandLeaf,
-                        width: 52,
-                        height: 52,
-                        fit: BoxFit.contain,
-                        cacheWidth: 180,
-                      ),
+                    Row(
+                      children: [
+                        Image.asset(
+                          ReferenceAssets.brandLeaf,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.contain,
+                          cacheWidth: 180,
+                        ),
+                        const Spacer(),
+                        const _WelcomeAppearanceControls(),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
@@ -386,12 +395,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: IconButton.filledTonal(
-                        onPressed: () => context.go('/onboarding'),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                      ),
+                    Row(
+                      children: [
+                        IconButton.filledTonal(
+                          onPressed: () => context.go('/onboarding'),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                        const Spacer(),
+                        const _WelcomeAppearanceControls(),
+                      ],
                     ),
                     SizedBox(
                       height: 145,
@@ -591,6 +603,37 @@ class _ReferenceAssetRow extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Appearance controls remain available *before* authentication too.
+class _WelcomeAppearanceControls extends ConsumerWidget {
+  const _WelcomeAppearanceControls();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final ar = settings.locale.languageCode == 'ar';
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton(
+          key: const Key('welcomeLanguageToggle'),
+          onPressed: () => settings.setLocale(Locale(ar ? 'en' : 'ar')),
+          child: Text(ar ? 'English' : 'العربية'),
+        ),
+        IconButton(
+          key: const Key('welcomeThemeToggle'),
+          tooltip: dark ? (ar ? 'الوضع الفاتح' : 'Light mode')
+              : (ar ? 'الوضع الداكن' : 'Dark mode'),
+          onPressed: () => settings.setThemeMode(
+            dark ? ThemeMode.light : ThemeMode.dark,
+          ),
+          icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+        ),
+      ],
     );
   }
 }
