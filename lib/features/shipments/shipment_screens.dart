@@ -7,6 +7,7 @@ import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
+import 'package:mazraa_driver/features/shipments/live_location_switch.dart';
 import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
@@ -600,6 +601,13 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+              if (!shipment.status.isClosed) ...[
+                LiveLocationSwitch(
+                  key: ValueKey('live-tracking-${shipment.id}'),
+                  shipment: shipment,
+                ),
+                const SizedBox(height: 12),
+              ],
               SectionHeader(
                 title: ar ? 'معلومات الرحلة' : 'Trip information',
                 icon: Icons.route_outlined,
