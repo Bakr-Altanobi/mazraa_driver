@@ -265,6 +265,69 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
     }
   }
 
+  Future<void> _showOfferDetails(DriverOffer offer) async {
+    final ar = isArabic(context);
+    if (!offer.expiresAt.isAfter(DateTime.now().toUtc())) {
+      ref.invalidate(driverOffersProvider);
+      return;
+    }
+    try {
+      final details = await ref.read(driverApiProvider).getOfferDetails(offer.id);
+      if (!mounted) return;
+      final rawItems = details['items'];
+      final items = rawItems is List ? rawItems.whereType<Map>().toList() : <Map>[];
+      final payment = details['payment'] is Map ? details['payment'] as Map : const {};
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(ar ? 'تفاصيل عرض التوصيل' : 'Delivery offer details'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Text(details['shipmentNumber']?.toString() ?? offer.shipmentNumber),
+                const SizedBox(height: 8),
+                Text(ar ? 'المنتجات والكمية الفعلية:' : 'Actual products and quantities:'),
+                if (items.isEmpty)
+                  Text(ar ? 'لا توجد بنود متاحة للعرض.' : 'No item details available.'),
+                for (final item in items)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(item['productName']?.toString() ?? item['sku']?.toString() ?? '—'),
+                    subtitle: Text('SKU: ${item['sku'] ?? '—'}'),
+                    trailing: Text('× ${item['quantity'] ?? '—'}'),
+                  ),
+                const Divider(),
+                Text(payment['requiresCashCollection'] == true
+                    ? (ar
+                        ? 'تحصيل عند التسليم: ${payment['amountToCollect']} ${payment['currency'] ?? ''}'
+                        : 'Collect on delivery: ${payment['amountToCollect']} ${payment['currency'] ?? ''}')
+                    : (ar ? 'لا يوجد تحصيل نقدي عند التسليم.' : 'No cash collection at delivery.')),
+                const SizedBox(height: 8),
+                Text(ar
+                    ? 'انتهاء العرض: ${offer.expiresAt.toLocal()}'
+                    : 'Offer expires: ${offer.expiresAt.toLocal()}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(ar ? 'إغلاق' : 'Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ref.invalidate(driverOffersProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
@@ -356,7 +419,13 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
                       ]),
                     );
                   }),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: pendingId != null ? null : () => _showOfferDetails(offer),
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    label: Text(ar ? 'تفاصيل المنتجات والرحلة' : 'Review items and trip'),
+                  ),
+                  const SizedBox(height: 8),
                   Row(children: [
                     Expanded(child: OutlinedButton(
                       onPressed: pendingId != null ? null : () => _take(offer, accept: false),
