@@ -75,11 +75,14 @@ class _MapPanelState extends State<MapPanel> {
     final points = _points;
     if (!mounted || controller == null || points.isEmpty) return;
     if (points.length == 1) {
-      controller.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(points.first.latitude, points.first.longitude), 15,
-        ),
-      ).catchError((Object _) {});
+      controller
+          .animateCamera(
+            CameraUpdate.newLatLngZoom(
+              LatLng(points.first.latitude, points.first.longitude),
+              15,
+            ),
+          )
+          .catchError((Object _) {});
       return;
     }
     final south = points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
@@ -87,15 +90,17 @@ class _MapPanelState extends State<MapPanel> {
     final west = points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
     final east = points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
     // Fit actual locations; never display a straight line as a road route.
-    controller.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(south, west),
-          northeast: LatLng(north, east),
-        ),
-        68,
-      ),
-    ).catchError((Object _) {});
+    controller
+        .animateCamera(
+          CameraUpdate.newLatLngBounds(
+            LatLngBounds(
+              southwest: LatLng(south, west),
+              northeast: LatLng(north, east),
+            ),
+            68,
+          ),
+        )
+        .catchError((Object _) {});
   }
 
   @override
@@ -113,103 +118,128 @@ class _MapPanelState extends State<MapPanel> {
       borderRadius: BorderRadius.circular(26),
       child: SizedBox(
         height: widget.height,
-        child: Stack(children: [
-          Positioned.fill(
-            child: ready
-                ? GoogleMap(
-                    key: const ValueKey('google-driver-map'),
-                    onMapCreated: _onMapCreated,
-                    style: Theme.of(context).brightness == Brightness.dark
-                        ? _darkGoogleMapStyle
-                        : null,
-                    trafficEnabled: true,
-                    mapType: MapType.normal,
-                    initialCameraPosition: CameraPosition(
-                      target: LatLng(center!.latitude, center.longitude),
-                      zoom: 13.6,
-                    ),
-                    myLocationButtonEnabled: false,
-                    myLocationEnabled: false,
-                    zoomControlsEnabled: false,
-                    compassEnabled: true,
-                    mapToolbarEnabled: true,
-                    markers: {
-                      if (widget.driver != null)
-                        Marker(
-                          markerId: const MarkerId('driver'),
-                          position: LatLng(widget.driver!.latitude, widget.driver!.longitude),
-                          infoWindow: InfoWindow(title: ar ? 'موقعي' : 'My location'),
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                        ),
-                      if (widget.store != null)
-                        Marker(
-                          markerId: const MarkerId('store'),
-                          position: LatLng(widget.store!.latitude, widget.store!.longitude),
-                          infoWindow: InfoWindow(title: ar ? 'الاستلام' : 'Pickup'),
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-                        ),
-                      if (widget.customer != null)
-                        Marker(
-                          markerId: const MarkerId('customer'),
-                          position: LatLng(widget.customer!.latitude, widget.customer!.longitude),
-                          infoWindow: InfoWindow(title: ar ? 'العميل' : 'Customer'),
-                        ),
-                    },
-                  )
-                : ColoredBox(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              ReferenceAssets.routeMap,
-                              width: 96,
-                              height: 96,
-                              fit: BoxFit.contain,
-                              cacheWidth: 240,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ready
+                  ? GoogleMap(
+                      key: const ValueKey('google-driver-map'),
+                      onMapCreated: _onMapCreated,
+                      style: Theme.of(context).brightness == Brightness.dark
+                          ? _darkGoogleMapStyle
+                          : null,
+                      trafficEnabled: true,
+                      mapType: MapType.normal,
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(center!.latitude, center.longitude),
+                        zoom: 13.6,
+                      ),
+                      myLocationButtonEnabled: false,
+                      myLocationEnabled: false,
+                      zoomControlsEnabled: false,
+                      compassEnabled: true,
+                      mapToolbarEnabled: true,
+                      markers: {
+                        if (widget.driver != null)
+                          Marker(
+                            markerId: const MarkerId('driver'),
+                            position: LatLng(
+                              widget.driver!.latitude,
+                              widget.driver!.longitude,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              !_hasLocations
-                                  ? (ar ? 'لا توجد إحداثيات متاحة بعد' : 'No location coordinates available yet')
-                                  : (ar ? 'مفتاح خرائط Google غير مهيأ في هذه النسخة' : 'Google Maps key is not configured in this build'),
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                            infoWindow: InfoWindow(
+                              title: ar ? 'موقعي' : 'My location',
                             ),
-                          ],
+                            icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueGreen,
+                            ),
+                          ),
+                        if (widget.store != null)
+                          Marker(
+                            markerId: const MarkerId('store'),
+                            position: LatLng(
+                              widget.store!.latitude,
+                              widget.store!.longitude,
+                            ),
+                            infoWindow: InfoWindow(
+                              title: ar ? 'الاستلام' : 'Pickup',
+                            ),
+                            icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueOrange,
+                            ),
+                          ),
+                        if (widget.customer != null)
+                          Marker(
+                            markerId: const MarkerId('customer'),
+                            position: LatLng(
+                              widget.customer!.latitude,
+                              widget.customer!.longitude,
+                            ),
+                            infoWindow: InfoWindow(
+                              title: ar ? 'العميل' : 'Customer',
+                            ),
+                          ),
+                      },
+                    )
+                  : ColoredBox(
+                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                ReferenceAssets.routeMap,
+                                width: 96,
+                                height: 96,
+                                fit: BoxFit.contain,
+                                cacheWidth: 240,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                !_hasLocations
+                                    ? (ar
+                                          ? 'لا توجد إحداثيات متاحة بعد'
+                                          : 'No location coordinates available yet')
+                                    : (ar
+                                          ? 'الخريطة غير متاحة حاليًا'
+                                          : 'Map is currently unavailable'),
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-          ),
-          if (ready)
-            PositionedDirectional(
-              top: 12,
-              start: 12,
-              child: StatusPill(
-                label: ar ? 'خرائط Google' : 'Google Maps',
-                icon: Icons.map_outlined,
-              ),
             ),
-          if (widget.onLocate != null)
-            PositionedDirectional(
-              end: 14,
-              bottom: 14,
-              child: FloatingActionButton.small(
-                heroTag: null,
-                onPressed: () {
-                  widget.onLocate?.call();
-                  _frameAllPoints();
-                },
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                child: const Icon(Icons.my_location_rounded),
+            if (ready)
+              PositionedDirectional(
+                top: 12,
+                start: 12,
+                child: StatusPill(
+                  label: ar ? 'خرائط Google' : 'Google Maps',
+                  icon: Icons.map_outlined,
+                ),
               ),
-            ),
-        ]),
+            if (widget.onLocate != null)
+              PositionedDirectional(
+                end: 14,
+                bottom: 14,
+                child: FloatingActionButton.small(
+                  heroTag: null,
+                  onPressed: () {
+                    widget.onLocate?.call();
+                    _frameAllPoints();
+                  },
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  child: const Icon(Icons.my_location_rounded),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

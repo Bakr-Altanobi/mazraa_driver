@@ -1,0 +1,44 @@
+name: Delivery platform verification
+on:
+  push:
+    branches: [chatgpt/delivery-platform-20261020]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: delivery-platform-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: beta
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib test --no-fatal-infos --no-fatal-warnings
+      - run: flutter test --reporter expanded
+      - name: Configure existing Google client settings
+        shell: bash
+        run: |
+          if [ -n "$GOOGLE_MAPS_API_KEY" ]; then
+            echo "MAPS_ENABLED=true" >> "$GITHUB_ENV"
+          else
+            echo "MAPS_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+      - name: Build ARM64 test APK
+        run: flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mazraa_driver-delivery-test-arm64
+          path: build/app/outputs/flutter-apk/app-debug.apk
