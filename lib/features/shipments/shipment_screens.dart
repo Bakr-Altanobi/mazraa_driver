@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'shipment_handoff_dialogs.dart';
+import 'driver_location_session.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -395,6 +396,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         cashReceivedConfirmed: delivery?.cashConfirmed ?? false,
         cashReceivedAmount: delivery?.cashAmount,
       );
+      if (action == 'deliver' || action == 'fail' || action == 'reject') ref.read(driverLocationSessionProvider).disable(shipment.id);
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));

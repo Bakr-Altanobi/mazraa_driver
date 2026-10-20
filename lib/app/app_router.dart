@@ -16,6 +16,7 @@ import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/support/driver_support_screen.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
+import 'package:mazraa_driver/features/wallet/cash_custody_screen.dart';
 import 'package:mazraa_driver/features/wallet/driver_payout_screen.dart';
 
 const _ciSmokeHome = bool.fromEnvironment(
@@ -75,6 +76,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/cash-custody', builder: (_, _) => const CashCustodyScreen()),
       GoRoute(path: '/apply', builder: (_, _) => const DriverApplicationScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

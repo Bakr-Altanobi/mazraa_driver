@@ -65,10 +65,22 @@ class DriverApi {
     }
   }
 
+  String? _registeredPushToken;
+  Future<void> registerPushToken(String token) async {
+    await _client.post<Object?>('api/device-tokens/register', data: {
+      'token': token, 'deviceType': 'android', 'deviceName': 'mazraa_driver'});
+    _registeredPushToken = token;
+  }
+
   Future<void> logout() async {
     final session = await _store.read();
     try {
       if (session != null) {
+        final pushToken = _registeredPushToken;
+        if (pushToken != null) {
+          try { await _client.post<Object?>('api/device-tokens/unregister', data: {'token': pushToken}); } catch (_) {}
+          _registeredPushToken = null;
+        }
         await _client.post<Object?>(
           ApiEndpoints.logout,
           data: {'refreshToken': session.refreshToken},

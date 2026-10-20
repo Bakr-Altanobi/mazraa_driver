@@ -9,6 +9,7 @@ import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
+import 'package:mazraa_driver/features/shipments/driver_location_session.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 /// Driver status and shift actions are backed by driver-journey endpoints.
@@ -86,6 +87,12 @@ class _DriverControlPanelState extends ConsumerState<DriverControlPanel> {
       ref.invalidate(driverShiftsProvider);
       ref.invalidate(driverOffersProvider);
       await ref.read(authControllerProvider).refreshProfile();
+      final location = ref.read(driverLocationSessionProvider);
+      if (ref.read(authControllerProvider).profile?.isAcceptingOrders == true) {
+        await location.enableAvailability(arabic: ar);
+      } else {
+        location.disableAvailability();
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)

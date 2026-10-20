@@ -53,12 +53,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('cash-amount')), '149');
       await tester.enterText(find.byKey(const Key('delivery-code')), '123456');
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Confirm delivery'));
       await tester.pumpAndSettle();
       expect(result, isNull);
       expect(find.text('Collect the exact amount due'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('cash-amount')), '150');
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Confirm delivery'));
       await tester.pumpAndSettle();
       expect(result?.cashAmount, 150);
       expect(result?.cashConfirmed, true);

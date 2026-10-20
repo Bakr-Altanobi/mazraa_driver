@@ -47,6 +47,9 @@ class WalletScreen extends ConsumerWidget {
             children: [
               _WalletHero(summary: summary),
               const SizedBox(height: 12),
+              OutlinedButton.icon(onPressed: () => context.push('/cash-custody'),
+                icon: const Icon(Icons.payments_outlined), label: Text(ar ? 'عهدة التحصيل وسندات التوريد' : 'Cash custody and remittance receipts')),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(

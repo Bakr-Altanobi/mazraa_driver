@@ -15,6 +15,10 @@ jobs:
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FIREBASE_API_KEY: ${{ secrets.DRIVER_FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ secrets.DRIVER_FIREBASE_APP_ID }}
+      FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.DRIVER_FIREBASE_MESSAGING_SENDER_ID }}
+      FIREBASE_PROJECT_ID: ${{ secrets.DRIVER_FIREBASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,13 +36,26 @@ jobs:
       - name: Configure existing Google client settings
         shell: bash
         run: |
+          if [ -z "$GOOGLE_MAPS_API_KEY" ] && [ -n "$MAPS_API_KEY" ]; then
+            echo "GOOGLE_MAPS_API_KEY=$MAPS_API_KEY" >> "$GITHUB_ENV"
+            GOOGLE_MAPS_API_KEY="$MAPS_API_KEY"
+          fi
           if [ -n "$GOOGLE_MAPS_API_KEY" ]; then
             echo "MAPS_ENABLED=true" >> "$GITHUB_ENV"
           else
             echo "MAPS_ENABLED=false" >> "$GITHUB_ENV"
           fi
+      - name: Configure optional registered driver push application
+        shell: bash
+        run: |
+          python3 - <<'CONFIG'
+          import os,json,pathlib
+          values={k:os.getenv(k,'') for k in ['FIREBASE_API_KEY','FIREBASE_APP_ID','FIREBASE_MESSAGING_SENDER_ID','FIREBASE_PROJECT_ID']}
+          pathlib.Path('/tmp/driver-client-defines.json').write_text(json.dumps(values))
+          print('Driver FCM client configuration present.' if all(values.values()) else 'Driver FCM requires its registered Firebase app configuration; foreground refresh remains active.')
+          CONFIG
       - name: Build ARM64 test APK
-        run: flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED"
+        run: flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED" --dart-define-from-file=/tmp/driver-client-defines.json
       - uses: actions/upload-artifact@v4
         with:
           name: mazraa_driver-delivery-test-arm64
