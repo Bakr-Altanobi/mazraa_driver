@@ -277,19 +277,52 @@ class DriverApi {
     String? reason,
     String? numericCode,
     String? qrToken,
+    bool cashReceivedConfirmed = false,
+    double? cashReceivedAmount,
   }) async {
     Object? data;
     if (action == 'fail') {
       data = {'reason': reason};
-    } else if (action == 'deliver' &&
-        (numericCode != null || qrToken != null)) {
-      data = {'numericCode': numericCode, 'qrToken': qrToken};
+    } else if (action == 'deliver') {
+      data = {
+        'numericCode': numericCode,
+        'qrToken': qrToken,
+        'cashReceivedConfirmed': cashReceivedConfirmed,
+        'cashReceivedAmount': cashReceivedAmount,
+      };
     }
     await _client.post<Object?>(
       '${ApiEndpoints.shipments}/$id/$action',
       data: data,
     );
   }
+
+  Future<Map<String, dynamic>> getDeliveryCapabilities() =>
+      _client.get<Map<String, dynamic>>('api/driver-journey/capabilities');
+
+  Future<Map<String, dynamic>> getShipmentManifest(int id) => _client
+      .get<Map<String, dynamic>>('api/driver-journey/shipments/$id/manifest');
+
+  Future<Map<String, dynamic>> getPickupChecklist(int id) =>
+      _client.get<Map<String, dynamic>>(
+        'api/driver-journey/shipments/$id/pickup-checklist',
+      );
+
+  Future<void> submitPickupChecklist(int id, Map<String, dynamic> data) async {
+    await _client.post<Object?>(
+      'api/driver-journey/shipments/$id/pickup-checklist',
+      data: data,
+    );
+  }
+
+  Future<void> requestDeliveryCode(int id) async {
+    await _client.post<Object?>(
+      'api/shipments/$id/delivery-proof/request-code',
+    );
+  }
+
+  Future<List<dynamic>> getCashCustody() =>
+      _client.get<List<dynamic>>('api/driver-journey/cash/me');
 
   Future<void> acceptShipment(int id) => changeShipmentStatus(id, 'accept');
   Future<void> rejectShipment(int id) => changeShipmentStatus(id, 'reject');

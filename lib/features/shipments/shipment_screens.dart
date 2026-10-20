@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'shipment_handoff_dialogs.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -116,48 +119,47 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                     ),
                   )
                 : state.when(
-              loading: LoadingList.new,
-              error: (error, _) => ErrorState(
-                error: error,
-                onRetry: () => ref.invalidate(shipmentsProvider),
-              ),
-              data: (items) {
-                final query = _search.text.trim().toLowerCase();
-                final filtered = items.where((item) {
-                  final matchesFilter = switch (_filter) {
-                    _ShipmentFilter.all => true,
-                    _ShipmentFilter.active => item.status.isActive,
-                    _ShipmentFilter.completed => item.status.isClosed,
-                    _ShipmentFilter.available => false,
-                  };
-                  return matchesFilter &&
-                      (query.isEmpty ||
-                          item.number.toLowerCase().contains(query) ||
-                          item.orderId.toString().contains(query));
-                }).toList();
-                if (filtered.isEmpty) {
-                  return EmptyState(
-                    title: ar ? 'لا توجد شحنات' : 'No shipments',
-                    message: ar
-                        ? 'لا توجد نتائج مطابقة في هذا القسم.'
-                        : 'There are no matching shipments in this section.',
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(shipmentsProvider);
-                    await ref.read(shipmentsProvider.future);
-                  },
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 11),
-                    itemBuilder: (context, index) =>
-                        _ShipmentCard(shipment: filtered[index]),
+                    loading: LoadingList.new,
+                    error: (error, _) => ErrorState(
+                      error: error,
+                      onRetry: () => ref.invalidate(shipmentsProvider),
+                    ),
+                    data: (items) {
+                      final query = _search.text.trim().toLowerCase();
+                      final filtered = items.where((item) {
+                        final matchesFilter = switch (_filter) {
+                          _ShipmentFilter.all => true,
+                          _ShipmentFilter.active => item.status.isActive,
+                          _ShipmentFilter.completed => item.status.isClosed,
+                          _ShipmentFilter.available => false,
+                        };
+                        return matchesFilter &&
+                            (query.isEmpty ||
+                                item.number.toLowerCase().contains(query) ||
+                                item.orderId.toString().contains(query));
+                      }).toList();
+                      if (filtered.isEmpty) {
+                        return EmptyState(
+                          title: ar ? 'لا توجد شحنات' : 'No shipments',
+                          message: ar ? 'لا توجد نتائج مطابقة في هذا القسم.' : 'There are no matching shipments in this section.',
+                        );
+                      }
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(shipmentsProvider);
+                          await ref.read(shipmentsProvider.future);
+                        },
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 11),
+                          itemBuilder: (context, index) =>
+                              _ShipmentCard(shipment: filtered[index]),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -214,7 +216,11 @@ class _ShipmentCard extends StatelessWidget {
                       color: color.withValues(alpha: .12),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Image.asset(ReferenceAssets.deliveryParcel, fit: BoxFit.contain, cacheWidth: 160),
+                    child: Image.asset(
+                      ReferenceAssets.deliveryParcel,
+                      fit: BoxFit.contain,
+                      cacheWidth: 160,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -229,9 +235,9 @@ class _ShipmentCard extends StatelessWidget {
                           '${ar ? 'طلب' : 'Order'} #${shipment.orderId}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                       ],
@@ -297,95 +303,134 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
   bool _sendingLocation = false;
 
   Future<void> _runAction(String action, Shipment shipment) async {
-    final ar = isArabic(context);
-    final label = _actionLabel(action, ar);
-    final confirmed = await confirmAction(
-      context,
-      title: label,
-      message: ar
-          ? 'سيتم إرسال العملية مباشرة إلى السيرفر. هل تريد المتابعة؟'
-          : 'This action will be sent directly to the server. Continue?',
-      confirmLabel: label,
-      destructive: action == 'reject' || action == 'fail',
-    );
-    if (!confirmed || !mounted) return;
-    String? reason;
-    String? numericCode;
-    if (action == 'deliver') {
-      numericCode = await _deliveryCode();
-      if (numericCode == null || !mounted) return;
-    }
-    if (action == 'fail') {
-      reason = await _failureReason();
-      if (reason == null || !mounted) return;
-    }
+    if (_acting) return;
     setState(() => _acting = true);
+    final ar = isArabic(context);
+    final api = ref.read(driverApiProvider);
     try {
-      await ref
-          .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason, numericCode: numericCode?.isEmpty == true ? null : numericCode);
+      DeliveryConfirmation? delivery;
+      if (action == 'pickup') {
+        final capabilities = await api.getDeliveryCapabilities();
+        final manifest = await api.getShipmentManifest(shipment.id);
+        if (!mounted) return;
+        if (capabilities['pickupChecklistAvailable'] == true) {
+          final saved = await api.getPickupChecklist(shipment.id);
+          if (!mounted) return;
+          if (saved['submitted'] == true) {
+            final checklist = saved['checklist'] as Map<String, dynamic>?;
+            if (checklist?['hasDiscrepancy'] == true) {
+              throw StateError(
+                ar ? 'يوجد نقص أو تلف مسجل. راجع الدعم قبل الاستلام.' : 'A discrepancy is recorded. Contact support before pickup.',
+              );
+            }
+          } else {
+            final payload = await showDialog<Map<String, dynamic>>(
+              context: context,
+              builder: (_) => PickupChecklistDialog(manifest: manifest),
+            );
+            if (payload == null) return;
+            await api.submitPickupChecklist(shipment.id, payload);
+            final lines = (payload['lines'] as List)
+                .cast<Map<String, dynamic>>();
+            if (lines.any(
+              (x) =>
+                  (x['missingQuantity'] as int) > 0 ||
+                  (x['damagedQuantity'] as int) > 0,
+            )) {
+              throw StateError(
+                ar ? 'تم حفظ النقص أو التلف. أبلغ الدعم قبل تحريك الشحنة.' : 'Discrepancy saved. Report it to support before moving the shipment.',
+              );
+            }
+          }
+        } else if (capabilities['pickupChecklistRequired'] == true) {
+          throw StateError(
+            ar
+                ? 'قائمة الاستلام غير متاحة حاليًا.'
+                : 'Pickup verification is currently unavailable.',
+          );
+        } else {
+          if (!mounted) return;
+          final reviewed = await showDialog<bool>(
+            context: context,
+            builder: (_) =>
+                ShipmentManifestDialog(manifest: manifest, confirmPickup: true),
+          );
+          if (reviewed != true) return;
+        }
+      } else if (action == 'deliver') {
+        final manifest = await api.getShipmentManifest(shipment.id);
+        if (!mounted) return;
+        delivery = await showDialog<DeliveryConfirmation>(
+          context: context,
+          builder: (_) => DeliveryConfirmationDialog(
+            manifest: manifest,
+            requestCode: () => api.requestDeliveryCode(shipment.id),
+          ),
+        );
+        if (delivery == null) return;
+      } else {
+        final label = _actionLabel(action, ar);
+        final confirmed = await confirmAction(
+          context,
+          title: label,
+          message: ar
+              ? 'تأكيد الانتقال إلى الخطوة التالية؟'
+              : 'Confirm the next step?',
+          confirmLabel: label,
+          destructive: action == 'reject' || action == 'fail',
+        );
+        if (!confirmed) return;
+      }
+      if (!mounted) return;
+      String? reason;
+      if (action == 'fail') {
+        reason = await _failureReason();
+        if (reason == null || !mounted) return;
+      }
+      await api.changeShipmentStatus(
+        shipment.id,
+        action,
+        reason: reason,
+        numericCode: delivery?.numericCode,
+        cashReceivedConfirmed: delivery?.cashConfirmed ?? false,
+        cashReceivedAmount: delivery?.cashAmount,
+      );
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(ar ? 'تم تحديث الشحنة بنجاح' : 'Shipment updated'),
           ),
         );
-      }
     } catch (error) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString()),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
-      }
     } finally {
       if (mounted) setState(() => _acting = false);
     }
   }
 
-  Future<String?> _deliveryCode() async {
-    final controller = TextEditingController();
+  Future<void> _showManifest(int shipmentId) async {
     try {
-      return await showDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(isArabic(context) ? 'تأكيد التسليم' : 'Confirm delivery'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(isArabic(context)
-                  ? 'إذا طلب السيرفر رمز تسليم، أدخل الرمز الذي استلمه العميل. اتركه فارغًا فقط إذا لم يتطلب الطلب رمزًا.'
-                  : 'Enter the customer delivery code when required by the server. Leave blank only for deliveries without verification.'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                textDirection: TextDirection.ltr,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: isArabic(context) ? 'رمز التسليم' : 'Delivery code',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(isArabic(context) ? 'إلغاء' : 'Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-              child: Text(isArabic(context) ? 'متابعة' : 'Continue'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
+      final manifest = await ref
+          .read(driverApiProvider)
+          .getShipmentManifest(shipmentId);
+      if (mounted)
+        await showDialog<void>(
+          context: context,
+          builder: (_) => ShipmentManifestDialog(manifest: manifest),
+        );
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -471,9 +516,8 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) setState(() => _sendingLocation = false);
@@ -548,9 +592,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                           '${ar ? 'الطلب' : 'Order'} #${shipment.orderId}',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                       ],
@@ -600,20 +644,37 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _acting ? null : () => _showManifest(shipment.id),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: Text(
+                  ar
+                      ? 'المنتجات وتعليمات التسليم'
+                      : 'Items and delivery instructions',
+                ),
+              ),
               const SizedBox(height: 20),
               if (shipment.status == ShipmentStatus.accepted ||
                   shipment.status == ShipmentStatus.pickedUp ||
                   shipment.status == ShipmentStatus.nearCustomer) ...[
                 OutlinedButton.icon(
-                  onPressed: () => context.push('/shipments/${shipment.id}/evidence')
+                  onPressed: () => context
+                      .push('/shipments/${shipment.id}/evidence')
                       .then((_) {
                         if (mounted) {
-                          ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
-                          ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+                          ref.invalidate(
+                            shipmentDetailsProvider(widget.shipmentId),
+                          );
+                          ref.invalidate(
+                            shipmentTrackingProvider(widget.shipmentId),
+                          );
                         }
                       }),
                   icon: const Icon(Icons.add_a_photo_outlined),
-                  label: Text(ar ? 'إضافة صورة إثبات حقيقية' : 'Upload real proof photo'),
+                  label: Text(
+                    ar ? 'إضافة صورة إثبات حقيقية' : 'Upload real proof photo',
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -688,7 +749,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               ),
               const SizedBox(height: 10),
               _ShipmentTimeline(status: shipment.status),
-const SizedBox(height: 22),
+              const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
           );
@@ -843,9 +904,9 @@ class _ShipmentTimeline extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: i <= current
                               ? MazraaColors.forest
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
+                              : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
