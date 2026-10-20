@@ -88,6 +88,61 @@ class _ReferenceJourneyScreenState
   ) async {
     if (_actionBusy) return;
 
+    int? targetId;
+    String? targetLabel;
+    if (referenceActionNeedsTarget(action)) {
+      try {
+        final options = await ref.read(referenceRepositoryProvider)
+            .targetsForAction(action);
+        if (!mounted) return;
+        if (options.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا توجد مهمة مؤهلة لهذا الإجراء في بيانات السيرفر الحالية.')),
+          );
+          return;
+        }
+        final selected = await showDialog<ReferenceActionTarget>(
+          context: context,
+          builder: (dialogContext) => SimpleDialog(
+            title: const Text('حدد المهمة المقصودة'),
+            children: [
+              for (final option in options)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, option),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(option.label),
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (!mounted || selected == null) return;
+        targetId = selected.id;
+        targetLabel = selected.label;
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحميل الخيارات: $error')),
+          );
+        }
+        return;
+      }
+    }
+
+    Map<String, dynamic>? fields;
+    if (action == ReferenceAction.addPickupProof ||
+        action == ReferenceAction.addDeliveryProof ||
+        action == ReferenceAction.saveBankAccount ||
+        action == ReferenceAction.requestPayout ||
+        action == ReferenceAction.addAvailabilityWindow ||
+        action == ReferenceAction.sendChatMessage ||
+        action == ReferenceAction.createSupportTicket ||
+        action == ReferenceAction.replySupportTicket) {
+      fields = await _fieldsDialog(action);
+      if (!mounted || fields == null) return;
+    }
+
     String? reason;
     String? subject;
     String? message;
@@ -108,8 +163,10 @@ class _ReferenceJourneyScreenState
             context: context,
             builder: (dialogContext) => AlertDialog(
               title: Text(_actionTitle(action)),
-              content: const Text(
-                'سيتم تنفيذ العملية فقط على بيانات حقيقية مؤهلة حسب قواعد السيرفر. إذا لم توجد شحنة أو وردية أو عرض مؤهل فلن يتم إرسال تعديل غير صالح.',
+              content: Text(
+                targetLabel == null
+                  ? 'سيتم إرسال العملية إلى السيرفر الحقيقي بعد التأكيد.'
+                  : 'ستنفذ هذه العملية على $targetLabel فقط. هل تؤكد؟',
               ),
               actions: [
                 TextButton(
@@ -136,10 +193,16 @@ class _ReferenceJourneyScreenState
           message: message!,
         );
       } else {
-        await repository.runShipmentAction(action, reason: reason);
+        await repository.runShipmentAction(action, targetId: targetId, reason: reason, fields: fields);
       }
       if (key != null) {
-        ref.invalidate(referenceScreenPayloadProvider(key));
+        // A mutation may affect more than its current screen: online status,
+        // offers, shipments, payouts and shift summaries share server data.
+        for (final screen in ReferenceCatalog.screens) {
+          ref.invalidate(referenceScreenPayloadProvider(
+            ReferenceLoadKey(screen.number, key.userId),
+          ));
+        }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,6 +217,113 @@ class _ReferenceJourneyScreenState
       }
     } finally {
       if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fieldsDialog(ReferenceAction action) async {
+    final inputs = switch (action) {
+      ReferenceAction.saveBankAccount => const <String, String>{
+          'bankName': 'اسم البنك',
+          'accountHolderName': 'اسم صاحب الحساب',
+          'iban': 'رقم IBAN',
+          'accountNumber': 'رقم الحساب (اختياري)',
+        },
+      ReferenceAction.requestPayout => const <String, String>{
+          'amount': 'مبلغ السحب بالعملة المسجلة في المحفظة',
+        },
+      ReferenceAction.addPickupProof => const <String, String>{
+          'verificationReference': 'رقم التحقق عند الاستلام',
+          'notes': 'ملاحظات (اختياري)',
+        },
+      ReferenceAction.sendChatMessage ||
+      ReferenceAction.replySupportTicket => const <String, String>{
+          'message': 'نص الرسالة',
+        },
+      ReferenceAction.createSupportTicket => const <String, String>{
+          'subject': 'عنوان التذكرة',
+          'message': 'تفاصيل طلب الدعم',
+        },
+      ReferenceAction.addAvailabilityWindow => const <String, String>{
+          'dayOfWeek': 'يوم الأسبوع (0 الأحد إلى 6 السبت)',
+          'startTime': 'وقت البداية HH:mm',
+          'endTime': 'وقت النهاية HH:mm',
+        },
+      ReferenceAction.addDeliveryProof => const <String, String>{
+          'recipientName': 'اسم المستلم',
+          'verificationReference': 'رمز/مرجع التحقق (اختياري)',
+          'notes': 'ملاحظات (اختياري)',
+        },
+      _ => const <String, String>{},
+    };
+    final controllers = {
+      for (final key in inputs.keys) key: TextEditingController(),
+    };
+    try {
+      return await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(_actionTitle(action)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in inputs.entries) ...[
+                  TextField(
+                    controller: controllers[field.key],
+                    keyboardType: field.key == 'amount'
+                        ? const TextInputType.numberWithOptions(decimal: true)
+                        : TextInputType.text,
+                    textDirection: field.key == 'iban' || field.key == 'amount'
+                        ? TextDirection.ltr
+                        : null,
+                    decoration: InputDecoration(labelText: field.value),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final data = {
+                  for (final field in controllers.entries)
+                    field.key: field.value.text.trim(),
+                };
+                final required = switch (action) {
+                  ReferenceAction.saveBankAccount =>
+                    const ['bankName', 'accountHolderName', 'iban'],
+                  ReferenceAction.requestPayout => const ['amount'],
+                  ReferenceAction.addPickupProof =>
+                    const ['verificationReference'],
+                  ReferenceAction.addDeliveryProof => const ['recipientName'],
+                  ReferenceAction.addAvailabilityWindow => const ['dayOfWeek', 'startTime', 'endTime'],
+                  ReferenceAction.createSupportTicket => const ['subject', 'message'],
+                  ReferenceAction.sendChatMessage ||
+                  ReferenceAction.replySupportTicket => const ['message'],
+                  _ => const <String>[],
+                };
+                if (required.any((key) => (data[key] ?? '').isEmpty)) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('أكمل الحقول المطلوبة أولًا.')),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, data);
+              },
+              child: const Text('التالي'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
     }
   }
 
@@ -251,4 +421,24 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ',
+      ReferenceAction.goOnline => 'تفعيل استقبال الطلبات',
+      ReferenceAction.goOffline => 'إيقاف استقبال الطلبات',
+      ReferenceAction.joinScheduledTrip => 'طلب الانضمام لرحلة مجدولة',
+      ReferenceAction.withdrawScheduledTrip => 'سحب طلب الانضمام',
+      ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
+      ReferenceAction.pickupReturn => 'استلام المرتجع',
+      ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
+      ReferenceAction.addPickupProof => 'تسجيل مرجع إثبات الاستلام',
+      ReferenceAction.addDeliveryProof => 'تسجيل إثبات التسليم',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب الرصيد',
+      ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
+      ReferenceAction.toggleOffersPreference => 'تبديل استقبال عروض التوصيل',
+      ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
+      ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
+      ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
+      ReferenceAction.sendChatMessage => 'إرسال رسالة في المحادثة',
+      ReferenceAction.createSupportTicket => 'فتح تذكرة دعم',
+      ReferenceAction.replySupportTicket => 'الرد على تذكرة دعم',
+      ReferenceAction.startSupportChat => 'بدء محادثة مع الدعم',
     };

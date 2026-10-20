@@ -1,14 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/auth/auth_screens.dart';
+import 'package:mazraa_driver/features/auth/driver_application_screen.dart';
 import 'package:mazraa_driver/features/home/home_screen.dart';
 import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
-import 'package:mazraa_driver/features/profile/profile_screen.dart';
+import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
+import 'package:mazraa_driver/features/operations/driver_services_screen.dart';
+import 'package:mazraa_driver/features/operations/driver_media_screens.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
+import 'package:mazraa_driver/features/support/driver_support_screen.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
+import 'package:mazraa_driver/features/wallet/driver_payout_screen.dart';
 
 const _ciSmokeHome = bool.fromEnvironment(
   'CI_SMOKE_HOME',
@@ -18,15 +26,13 @@ const _ciSmokeHome = bool.fromEnvironment(
 String? resolveAuthRedirect({
   required AuthState authState,
   required String location,
+  bool hasSeenOnboarding = false,
 }) {
-  final isJourneyPublic =
-      location == '/journey/01' || location == '/journey/1' ||
-      location == '/journey/02' || location == '/journey/2';
   final isPublic =
       location == '/login' ||
       location == '/splash' ||
       location == '/onboarding' ||
-      isJourneyPublic;
+      location == '/apply';
 
   if (authState == AuthState.initial || authState == AuthState.restoring) {
     return location == '/splash' ? null : '/splash';
@@ -42,18 +48,19 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    if (location == '/splash') return '/onboarding';
+    if (location == '/splash') return hasSeenOnboarding ? '/login' : '/onboarding';
     return isPublic ? null : '/login';
   }
 
-  return isPublic ? '/journey/03' : null;
+  return isPublic ? '/home' : null;
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
+  final settings = ref.read(appSettingsProvider);
   return GoRouter(
     initialLocation: _ciSmokeHome ? '/home' : '/splash',
-    refreshListenable: auth,
+    refreshListenable: Listenable.merge([auth, settings]),
     redirect: (context, state) {
       if (_ciSmokeHome) {
         return state.matchedLocation == '/home' ? null : '/home';
@@ -61,21 +68,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return resolveAuthRedirect(
         authState: auth.state,
         location: state.matchedLocation,
+        hasSeenOnboarding: settings.onboardingCompleted,
       );
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(
-        path: '/journey/:screen',
-        builder: (context, state) {
-          final raw = state.pathParameters['screen'] ?? '1';
-          final parsed = int.tryParse(raw) ?? 1;
-          final int number = parsed < 1 ? 1 : (parsed > 48 ? 48 : parsed);
-          return ReferenceJourneyScreen(screenNumber: number);
-        },
-      ),
+      GoRoute(path: '/apply', builder: (_, _) => const DriverApplicationScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -123,7 +123,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-      GoRoute(path: '/support', builder: (_, _) => const SupportScreen()),
+      GoRoute(path: '/support', builder: (_, _) => const DriverSupportScreen()),
+      GoRoute(
+        path: '/chats/:id',
+        builder: (context, state) => DriverChatScreen(
+          chatId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(path: '/offers', builder: (_, _) => const DriverOffersScreen()),
+      GoRoute(path: '/payouts', builder: (_, _) => const DriverPayoutScreen()),
+      GoRoute(path: '/services', builder: (_, _) => const DriverServicesScreen()),
+      GoRoute(path: '/upload-document', builder: (_, _) => const DriverDocumentUploadScreen()),
+      GoRoute(
+        path: '/shipments/:id/evidence',
+        builder: (_, state) => DriverProofPhotoScreen(
+          shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/journey/:number',
+        builder: (_, state) {
+          final number = int.tryParse(state.pathParameters['number'] ?? '');
+          if (number == null || number < 1 || number > 48) {
+            return const DriverServicesScreen();
+          }
+          return ReferenceJourneyScreen(screenNumber: number);
+        },
+      ),
     ],
   );
 });

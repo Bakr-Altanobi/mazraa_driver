@@ -3,6 +3,7 @@ import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_catalog.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_repository.dart';
+import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
 
 class ReferenceProductionBody extends StatelessWidget {
   const ReferenceProductionBody({
@@ -266,6 +267,14 @@ class ReferenceProductionBody extends StatelessWidget {
   }
 
   List<Widget> _ordersList(BuildContext context, _ReferenceData data) => [
+        _SectionTitle('عروض التوصيل الجديدة', Icons.notifications_active_outlined),
+        const SizedBox(height: 8),
+        // Reuse the existing working accept/reject widget; its offers,
+        // countdown and manifest are all backed by authenticated APIs.
+        const DriverOfferList(compact: true),
+        const SizedBox(height: 16),
+        _SectionTitle('الشحنات المسندة', Icons.local_shipping_outlined),
+        const SizedBox(height: 8),
         _ShipmentList(shipments: data.shipments),
       ];
 
@@ -1843,6 +1852,26 @@ IconData _actionIcon(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => Icons.thumb_up_alt_outlined,
       ReferenceAction.rejectOffer => Icons.thumb_down_alt_outlined,
       ReferenceAction.createIncident => Icons.support_agent_rounded,
+      ReferenceAction.goOnline => Icons.wifi_rounded,
+      ReferenceAction.goOffline => Icons.wifi_off_rounded,
+      ReferenceAction.joinScheduledTrip => Icons.event_available_outlined,
+      ReferenceAction.withdrawScheduledTrip => Icons.event_busy_outlined,
+      ReferenceAction.acceptReturn => Icons.assignment_turned_in_outlined,
+      ReferenceAction.pickupReturn => Icons.inventory_outlined,
+      ReferenceAction.completeReturn => Icons.check_circle_outline_rounded,
+      ReferenceAction.addPickupProof => Icons.fact_check_outlined,
+      ReferenceAction.addDeliveryProof => Icons.draw_outlined,
+      ReferenceAction.saveBankAccount => Icons.account_balance_outlined,
+      ReferenceAction.requestPayout => Icons.payments_outlined,
+      ReferenceAction.markAllNotificationsRead => Icons.mark_email_read_outlined,
+      ReferenceAction.toggleOffersPreference => Icons.tune_rounded,
+      ReferenceAction.toggleScheduledTripsPreference => Icons.event_repeat_outlined,
+      ReferenceAction.addAvailabilityWindow => Icons.edit_calendar_outlined,
+      ReferenceAction.removeAvailabilityWindow => Icons.event_busy_outlined,
+      ReferenceAction.sendChatMessage => Icons.send_outlined,
+      ReferenceAction.createSupportTicket => Icons.confirmation_number_outlined,
+      ReferenceAction.replySupportTicket => Icons.reply_outlined,
+      ReferenceAction.startSupportChat => Icons.forum_outlined,
     };
 
 String _actionTitle(ReferenceAction action) => switch (action) {
@@ -1857,4 +1886,24 @@ String _actionTitle(ReferenceAction action) => switch (action) {
       ReferenceAction.acceptOffer => 'قبول عرض التوصيل',
       ReferenceAction.rejectOffer => 'رفض عرض التوصيل',
       ReferenceAction.createIncident => 'رفع بلاغ حقيقي',
+      ReferenceAction.goOnline => 'تفعيل استقبال الطلبات',
+      ReferenceAction.goOffline => 'إيقاف استقبال الطلبات',
+      ReferenceAction.joinScheduledTrip => 'طلب الانضمام لرحلة مجدولة',
+      ReferenceAction.withdrawScheduledTrip => 'سحب طلب الانضمام',
+      ReferenceAction.acceptReturn => 'قبول مهمة المرتجع',
+      ReferenceAction.pickupReturn => 'استلام المرتجع',
+      ReferenceAction.completeReturn => 'تسليم المرتجع للمتجر',
+      ReferenceAction.addPickupProof => 'تسجيل مرجع إثبات الاستلام',
+      ReferenceAction.addDeliveryProof => 'تسجيل إثبات التسليم',
+      ReferenceAction.saveBankAccount => 'حفظ الحساب البنكي',
+      ReferenceAction.requestPayout => 'طلب سحب الرصيد',
+      ReferenceAction.markAllNotificationsRead => 'تحديد كل الإشعارات كمقروءة',
+      ReferenceAction.toggleOffersPreference => 'تبديل استقبال عروض التوصيل',
+      ReferenceAction.toggleScheduledTripsPreference => 'تبديل الرحلات المجدولة',
+      ReferenceAction.addAvailabilityWindow => 'إضافة فترة توفر أسبوعية',
+      ReferenceAction.removeAvailabilityWindow => 'حذف فترة التوفر المحددة',
+      ReferenceAction.sendChatMessage => 'إرسال رسالة في المحادثة',
+      ReferenceAction.createSupportTicket => 'فتح تذكرة دعم',
+      ReferenceAction.replySupportTicket => 'الرد على تذكرة دعم',
+      ReferenceAction.startSupportChat => 'بدء محادثة مع الدعم',
     };

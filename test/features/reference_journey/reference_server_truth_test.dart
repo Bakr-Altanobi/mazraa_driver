@@ -24,9 +24,10 @@ void main() {
       'lib/features/reference_journey/reference_production_body.dart',
     ).readAsStringSync();
 
-    expect(catalog, isNot(contains('ReferenceDataSource.returns')));
-    expect(repository, isNot(contains("api/returns")));
-    expect(body, isNot(contains('data.returns')));
-    expect(body, contains('استلام المرتجع ينتظر دعم السيرفر'));
+    expect(catalog, contains('ReferenceDataSource.returns'));
+    expect(repository, contains('api/driver-journey/returns'));
+    expect(repository, isNot(contains("'api/returns'")));
+    expect(body, contains('data.returns'));
+    expect(catalog, contains('ReferenceAction.completeReturn'));
   });
 }

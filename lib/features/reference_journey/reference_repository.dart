@@ -27,6 +27,37 @@ class ReferenceScreenPayload {
   final List<ReferenceSourceResult> results;
 }
 
+class ReferenceActionTarget {
+  const ReferenceActionTarget({required this.id, required this.label});
+  final int id;
+  final String label;
+}
+
+/// A mutating operation must always identify the server record chosen by
+/// the driver. In particular it must never silently use the first offer.
+bool referenceActionNeedsTarget(ReferenceAction action) => switch (action) {
+  ReferenceAction.acceptShipment ||
+  ReferenceAction.pickupShipment ||
+  ReferenceAction.startTransit ||
+  ReferenceAction.nearCustomer ||
+  ReferenceAction.deliverShipment ||
+  ReferenceAction.failShipment ||
+  ReferenceAction.acceptOffer ||
+  ReferenceAction.rejectOffer ||
+  ReferenceAction.joinScheduledTrip ||
+  ReferenceAction.withdrawScheduledTrip ||
+  ReferenceAction.acceptReturn ||
+  ReferenceAction.pickupReturn ||
+  ReferenceAction.completeReturn ||
+  ReferenceAction.addPickupProof ||
+  ReferenceAction.addDeliveryProof ||
+  ReferenceAction.requestPayout ||
+  ReferenceAction.removeAvailabilityWindow ||
+  ReferenceAction.sendChatMessage ||
+  ReferenceAction.replySupportTicket => true,
+  _ => false,
+};
+
 class ReferenceLoadKey {
   const ReferenceLoadKey(this.screenNumber, this.userId);
 
@@ -67,11 +98,31 @@ int? selectShipmentIdForAction(
         'pickedup',
         'nearcustomer',
       },
+    ReferenceAction.addPickupProof => const {'5', '6', 'accepted', 'pickedup'},
+    ReferenceAction.addDeliveryProof => const {'7', 'nearcustomer'},
     ReferenceAction.startShift ||
     ReferenceAction.endShift ||
     ReferenceAction.acceptOffer ||
     ReferenceAction.rejectOffer ||
-    ReferenceAction.createIncident => const <String>{},
+    ReferenceAction.createIncident ||
+    ReferenceAction.goOnline ||
+    ReferenceAction.goOffline ||
+    ReferenceAction.joinScheduledTrip ||
+    ReferenceAction.withdrawScheduledTrip ||
+    ReferenceAction.acceptReturn ||
+    ReferenceAction.pickupReturn ||
+    ReferenceAction.completeReturn ||
+    ReferenceAction.saveBankAccount ||
+    ReferenceAction.requestPayout ||
+    ReferenceAction.markAllNotificationsRead ||
+    ReferenceAction.toggleOffersPreference ||
+    ReferenceAction.toggleScheduledTripsPreference ||
+    ReferenceAction.addAvailabilityWindow ||
+    ReferenceAction.removeAvailabilityWindow ||
+    ReferenceAction.createSupportTicket ||
+    ReferenceAction.startSupportChat ||
+    ReferenceAction.sendChatMessage ||
+    ReferenceAction.replySupportTicket => const <String>{},
   };
   for (final row in rows) {
     if (row is! Map || row['id'] == null) continue;
@@ -91,12 +142,10 @@ class ReferenceRepository {
     ReferenceScreenSpec spec,
     int userId,
   ) async {
-    List<dynamic>? shipmentsCache;
+    Future<List<dynamic>>? shipmentsFuture;
 
-    Future<List<dynamic>> shipments() async {
-      return shipmentsCache ??=
-          await _client.get<List<dynamic>>('api/Shipments');
-    }
+    Future<List<dynamic>> shipments() =>
+        shipmentsFuture ??= _client.get<List<dynamic>>('api/Shipments');
 
     Future<int?> preferredShipmentId() async {
       final rows = await shipments();
@@ -198,47 +247,309 @@ class ReferenceRepository {
       }
     }
 
-    final results = <ReferenceSourceResult>[];
-    for (final source in spec.sources) {
-      results.add(await loadOne(source));
-    }
+    // Different endpoints load concurrently; failures remain isolated per
+    // source and the shipment list is fetched at most once per screen load.
+    final results = await Future.wait(
+      spec.sources.map(loadOne),
+    );
     return ReferenceScreenPayload(results: results);
+  }
+
+  /// Reads only the current driver's records. The server is authoritative
+  /// for ownership, expiry and valid state transitions.
+  Future<List<ReferenceActionTarget>> targetsForAction(
+    ReferenceAction action,
+  ) async {
+    if (!referenceActionNeedsTarget(action)) return const [];
+    if (action == ReferenceAction.sendChatMessage) {
+      final rows = await _client.get<List<dynamic>>('api/chats');
+      return [
+        for (final row in rows)
+          if (row is Map &&
+              row['isClosed'] != true &&
+              int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'محادثة #${row['id']} · ${(row['otherUser'] is Map ? (row['otherUser'] as Map)['name'] : null) ?? (row['isSupport'] == true ? 'الدعم' : 'المستلم')}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.replySupportTicket) {
+      final rows = await _client.get<List<dynamic>>('api/support/tickets');
+      return [
+        for (final row in rows)
+          if (row is Map &&
+              row['status'] != 'closed' &&
+              int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'تذكرة ${row['number'] ?? row['id']} · ${row['subject'] ?? ''}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.removeAvailabilityWindow) {
+      final rows = await _client.get<List<dynamic>>(
+        'api/driver-journey/me/availability',
+      );
+      return [
+        for (final row in rows)
+          if (row is Map && int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'يوم ${row['dayOfWeek']} · ${row['startTime']} - ${row['endTime']}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.requestPayout) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/bank-accounts');
+      return [
+        for (final row in rows)
+          if (row is Map && int.tryParse('${row['id'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'حساب ${row['bankName'] ?? ''} · ${row['isVerified'] == true ? 'موثّق' : 'ينتظر التوثيق'}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.acceptOffer ||
+        action == ReferenceAction.rejectOffer) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/offers');
+      return [
+        for (final row in rows)
+          if (row is Map && int.tryParse('${row['offerId'] ?? ''}') != null)
+            ReferenceActionTarget(
+              id: int.parse('${row['offerId']}'),
+              label: 'عرض ${row['shipmentNumber'] ?? row['shipmentId'] ?? row['offerId']} · ينتهي ${row['expiresAt'] ?? 'حسب السيرفر'}',
+            ),
+      ];
+    }
+    if (action == ReferenceAction.joinScheduledTrip ||
+        action == ReferenceAction.withdrawScheduledTrip) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/scheduled-trips');
+      return [
+        for (final row in rows)
+          if (row is Map && row['trip'] is Map)
+            if (int.tryParse('${(row['trip'] as Map)['id'] ?? ''}') != null)
+              if (action == ReferenceAction.joinScheduledTrip
+                  ? (row['participation'] == null ||
+                      {'3', 'withdrawn', '2', 'rejected'}.contains(
+                        _normalizedStatus((row['participation'] as Map?)?['status']),
+                      ))
+                  : (row['participation'] is Map &&
+                      !{'1', 'approved', '3', 'withdrawn'}.contains(
+                        _normalizedStatus((row['participation'] as Map)['status']),
+                      )))
+                ReferenceActionTarget(
+                  id: int.parse('${(row['trip'] as Map)['id']}'),
+                  label: 'رحلة ${(row['trip'] as Map)['id']} · ${(row['trip'] as Map)['plannedDepartureAt'] ?? ''}',
+                ),
+      ];
+    }
+    if (action == ReferenceAction.acceptReturn ||
+        action == ReferenceAction.pickupReturn ||
+        action == ReferenceAction.completeReturn) {
+      final rows = await _client.get<List<dynamic>>('api/driver-journey/returns');
+      final allowed = switch (action) {
+        ReferenceAction.acceptReturn => const {'0', 'assigned'},
+        ReferenceAction.pickupReturn => const {'1', 'accepted'},
+        ReferenceAction.completeReturn => const {'2', 'pickedup'},
+        _ => const <String>{},
+      };
+      return [
+        for (final row in rows)
+          if (row is Map &&
+              int.tryParse('${row['id'] ?? ''}') != null &&
+              allowed.contains(_normalizedStatus(row['status'])))
+            ReferenceActionTarget(
+              id: int.parse('${row['id']}'),
+              label: 'مرتجع #${row['id']} · الحالة ${row['status']}',
+            ),
+      ];
+    }
+    final rows = await _client.get<List<dynamic>>('api/Shipments');
+    return [
+      for (final row in rows)
+        if (row is Map &&
+            selectShipmentIdForAction([row], action) != null)
+          ReferenceActionTarget(
+            id: selectShipmentIdForAction([row], action)!,
+            label: 'شحنة ${row['shipmentNumber'] ?? row['id']} · الحالة ${row['status']}',
+          ),
+    ];
   }
 
   Future<void> runShipmentAction(
     ReferenceAction action, {
+    int? targetId,
     String? reason,
+    Map<String, dynamic>? fields,
   }) async {
-    if (action == ReferenceAction.startShift) {
+    if (referenceActionNeedsTarget(action) && targetId == null) {
+      throw StateError('حدد العرض أو الشحنة أو الرحلة أو المرتجع قبل تنفيذ الإجراء.');
+    }
+    if (action == ReferenceAction.startSupportChat) {
+      await _client.post<dynamic>('api/support/live-chat');
+      return;
+    }
+    if (action == ReferenceAction.createSupportTicket) {
+      final subject = fields?['subject']?.toString().trim() ?? '';
+      final message = fields?['message']?.toString().trim() ?? '';
+      if (subject.isEmpty || message.isEmpty) {
+        throw StateError('عنوان وتفاصيل التذكرة مطلوبان.');
+      }
+      final options = await _client.get<Map<String, dynamic>>(
+        'api/support/ticket-options',
+      );
+      final priority = options['defaultPriority']?.toString();
+      if (priority == null || priority.isEmpty) {
+        throw StateError('تعذر جلب أولوية التذاكر من السيرفر.');
+      }
+      await _client.post<dynamic>('api/support/tickets', data: {
+        'subject': subject,
+        'message': message,
+        'priority': priority,
+      });
+      return;
+    }
+    if (action == ReferenceAction.sendChatMessage ||
+        action == ReferenceAction.replySupportTicket) {
+      final message = fields?['message']?.toString().trim() ?? '';
+      if (message.isEmpty) throw StateError('لا يمكن إرسال رسالة فارغة.');
+      final chat = action == ReferenceAction.sendChatMessage;
       await _client.post<dynamic>(
-        'api/driver-journey/shifts/start',
-        data: const {'latitude': null, 'longitude': null},
+        chat ? 'api/chats/$targetId/messages' : 'api/support/tickets/$targetId/messages',
+        data: {'body': message},
       );
       return;
     }
-    if (action == ReferenceAction.endShift) {
+    if (action == ReferenceAction.toggleOffersPreference ||
+        action == ReferenceAction.toggleScheduledTripsPreference) {
+      final preference = await _client.get<Map<String, dynamic>>(
+        'api/driver-journey/me/preferences',
+      );
+      const keys = [
+        'acceptScheduledTrips',
+        'acceptPrivateDeliveries',
+        'acceptBatchDeliveries',
+        'isAvailableForOffers',
+        'offerRadiusKm',
+        'offerTimeoutSeconds',
+      ];
+      if (keys.any((key) => !preference.containsKey(key))) {
+        throw StateError('رد تفضيلات السائق غير مكتمل؛ لن يتم استبداله بقيم افتراضية.');
+      }
+      final body = {for (final key in keys) key: preference[key]};
+      if (action == ReferenceAction.toggleOffersPreference) {
+        body['isAvailableForOffers'] =
+            preference['isAvailableForOffers'] != true;
+      } else {
+        body['acceptScheduledTrips'] =
+            preference['acceptScheduledTrips'] != true;
+      }
+      await _client.put<dynamic>(
+        'api/driver-journey/me/preferences',
+        data: body,
+      );
+      return;
+    }
+    if (action == ReferenceAction.removeAvailabilityWindow) {
+      await _client.delete('api/driver-journey/me/availability/$targetId');
+      return;
+    }
+    if (action == ReferenceAction.addAvailabilityWindow) {
+      final day = int.tryParse('${fields?['dayOfWeek'] ?? ''}');
+      final start = fields?['startTime']?.toString().trim() ?? '';
+      final end = fields?['endTime']?.toString().trim() ?? '';
+      final timeFormat = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$');
+      if (day == null || day < 0 || day > 6 ||
+          !timeFormat.hasMatch(start) || !timeFormat.hasMatch(end) ||
+          start.compareTo(end) >= 0) {
+        throw StateError('حدد يومًا 0–6 ووقت بداية ونهاية بصيغة HH:mm مرتبين.');
+      }
+      await _client.post<dynamic>('api/driver-journey/me/availability', data: {
+        'dayOfWeek': day,
+        'startTime': '$start:00',
+        'endTime': '$end:00',
+        'isActive': true,
+      });
+      return;
+    }
+    if (action == ReferenceAction.markAllNotificationsRead) {
+      await _client.post<dynamic>('api/notifications/mark-all-read');
+      return;
+    }
+    if (action == ReferenceAction.saveBankAccount) {
+      final data = fields ?? const <String, dynamic>{};
+      if (['bankName', 'accountHolderName', 'iban'].any(
+        (key) => (data[key]?.toString().trim().isEmpty ?? true),
+      )) {
+        throw StateError('بيانات الحساب البنكي غير مكتملة.');
+      }
+      await _client.put<dynamic>('api/driver-journey/bank-account', data: data);
+      return;
+    }
+    if (action == ReferenceAction.requestPayout) {
+      final amount = num.tryParse('${fields?['amount'] ?? ''}');
+      if (amount == null || amount <= 0) {
+        throw StateError('أدخل مبلغ سحب صالحًا أكبر من الصفر.');
+      }
+      final wallet = await _client.get<Map<String, dynamic>>('api/wallets/me');
+      final currency = wallet['currency']?.toString() ??
+          wallet['currencyCode']?.toString();
+      if (currency == null || currency.isEmpty) {
+        throw StateError('تعذر تحديد عملة المحفظة من السيرفر.');
+      }
+      await _client.post<dynamic>('api/driver-journey/payouts', data: {
+        'bankAccountId': targetId,
+        'amount': amount,
+        'currency': currency,
+      });
+      return;
+    }
+    if (action == ReferenceAction.goOnline ||
+        action == ReferenceAction.goOffline) {
+      final online = action == ReferenceAction.goOnline;
+      await _client.put<dynamic>(
+        'api/driver-journey/me/status',
+        data: {'operationalStatus': online ? 3 : 1, 'isAcceptingOrders': online},
+      );
+      return;
+    }
+    if (action == ReferenceAction.startShift ||
+        action == ReferenceAction.endShift) {
+      final verb = action == ReferenceAction.startShift ? 'start' : 'end';
       await _client.post<dynamic>(
-        'api/driver-journey/shifts/end',
+        'api/driver-journey/shifts/$verb',
         data: const {'latitude': null, 'longitude': null},
       );
       return;
     }
     if (action == ReferenceAction.acceptOffer ||
         action == ReferenceAction.rejectOffer) {
-      final offers =
-          await _client.get<List<dynamic>>('api/driver-journey/offers');
-      int? offerId;
-      for (final row in offers) {
-        if (row is! Map) continue;
-        offerId = int.tryParse('${row['offerId'] ?? row['id'] ?? ''}');
-        if (offerId != null) break;
-      }
-      if (offerId == null) {
-        throw StateError('لا يوجد عرض توصيل فعلي متاح للسائق الآن.');
-      }
       final verb = action == ReferenceAction.acceptOffer ? 'accept' : 'reject';
       await _client.post<dynamic>(
-        'api/driver-journey/offers/$offerId/$verb',
+        'api/driver-journey/offers/$targetId/$verb',
+      );
+      return;
+    }
+    if (action == ReferenceAction.joinScheduledTrip ||
+        action == ReferenceAction.withdrawScheduledTrip) {
+      final verb = action == ReferenceAction.joinScheduledTrip ? 'join' : 'withdraw';
+      await _client.post<dynamic>(
+        'api/driver-journey/scheduled-trips/$targetId/$verb',
+      );
+      return;
+    }
+    if (action == ReferenceAction.acceptReturn ||
+        action == ReferenceAction.pickupReturn ||
+        action == ReferenceAction.completeReturn) {
+      final verb = switch (action) {
+        ReferenceAction.acceptReturn => 'accept',
+        ReferenceAction.pickupReturn => 'pickup',
+        _ => 'complete',
+      };
+      await _client.post<dynamic>(
+        'api/driver-journey/returns/$targetId/$verb',
       );
       return;
     }
@@ -246,12 +557,29 @@ class ReferenceRepository {
       throw ArgumentError.value(action);
     }
 
+    // Re-read eligibility before the mutation; the API will independently
+    // enforce driver ownership and reject stale state/expired offers.
     final rows = await _client.get<List<dynamic>>('api/Shipments');
-    final shipmentId = selectShipmentIdForAction(rows, action);
-    if (shipmentId == null) {
-      throw StateError(
-        'لا توجد شحنة فعلية في حالة تسمح بتنفيذ هذه العملية حسب قواعد السيرفر.',
-      );
+    final selected = rows.where((row) =>
+        row is Map && int.tryParse('${row['id'] ?? ''}') == targetId);
+    if (selectShipmentIdForAction(selected, action) != targetId) {
+      throw StateError('تغيرت حالة الشحنة أو لم تعد مؤهلة لهذا الإجراء. حدّث الشاشة.');
+    }
+    if (action == ReferenceAction.addPickupProof ||
+        action == ReferenceAction.addDeliveryProof) {
+      final reference = fields?['verificationReference']?.toString().trim() ?? '';
+      final recipient = fields?['recipientName']?.toString().trim() ?? '';
+      if (reference.isEmpty &&
+          (action == ReferenceAction.addPickupProof || recipient.isEmpty)) {
+        throw StateError('أدخل مرجع التحقق أو اسم المستلم قبل حفظ الإثبات.');
+      }
+      await _client.post<dynamic>('api/Shipments/$targetId/proof', data: {
+        'type': action == ReferenceAction.addPickupProof ? 0 : 1,
+        if (reference.isNotEmpty) 'verificationReference': reference,
+        if (recipient.isNotEmpty) 'recipientName': recipient,
+        'notes': fields?['notes']?.toString().trim(),
+      });
+      return;
     }
     final actionName = switch (action) {
       ReferenceAction.acceptShipment => 'accept',
@@ -260,14 +588,10 @@ class ReferenceRepository {
       ReferenceAction.nearCustomer => 'near-customer',
       ReferenceAction.deliverShipment => 'deliver',
       ReferenceAction.failShipment => 'fail',
-      ReferenceAction.startShift ||
-      ReferenceAction.endShift ||
-      ReferenceAction.acceptOffer ||
-      ReferenceAction.rejectOffer ||
-      ReferenceAction.createIncident => throw ArgumentError.value(action),
+      _ => throw ArgumentError.value(action),
     };
     await _client.post<dynamic>(
-      'api/Shipments/$shipmentId/$actionName',
+      'api/Shipments/$targetId/$actionName',
       data: action == ReferenceAction.failShipment
           ? {
               'reason': reason?.trim().isEmpty ?? true
