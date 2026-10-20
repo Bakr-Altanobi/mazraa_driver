@@ -4,7 +4,7 @@ import 'package:mazraa_driver/core/network/api_client.dart';
 import 'package:mazraa_driver/core/storage/secure_session_store.dart';
 
 class DriverApi {
-  const DriverApi(this._client, this._store);
+  DriverApi(this._client, this._store);
 
   final ApiClient _client;
   final SecureSessionStore _store;

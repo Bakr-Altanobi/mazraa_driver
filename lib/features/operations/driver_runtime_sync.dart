@@ -100,6 +100,10 @@ class _DriverRuntimeSyncState extends ConsumerState<DriverRuntimeSync>
                   latitude: point.latitude,
                   longitude: point.longitude,
                 );
+            if (mounted && _foreground && ref.read(authControllerProvider).session?.userId == userId) {
+              await ref.read(driverLocationSessionProvider).enableAvailability(
+                  arabic: Localizations.localeOf(context).languageCode == 'ar');
+            }
           }
         }
       }
@@ -120,7 +124,7 @@ class _DriverRuntimeSyncState extends ConsumerState<DriverRuntimeSync>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<Shipment>>>(shipmentsProvider, (before, after) {
+    if (ref.watch(authControllerProvider.select((a) => a.isAuthenticated))) ref.listen<AsyncValue<List<Shipment>>>(shipmentsProvider, (before, after) {
       if (after.hasValue && !after.isLoading) {
         ref.read(driverLocationSessionProvider).retainActive(after.requireValue.where((s) => !s.status.isClosed).map((s) => s.id).toSet());
       }
