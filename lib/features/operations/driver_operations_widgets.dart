@@ -172,11 +172,17 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
     with WidgetsBindingObserver {
   int? pendingId;
   Timer? _offerTimer;
+  Timer? _countdownTimer;
+  DateTime _now = DateTime.now().toUtc();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // The offer expiry is server-owned; only the countdown clock is local.
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now().toUtc());
+    });
     _offerTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (mounted && pendingId == null) ref.invalidate(driverOffersProvider);
     });
@@ -186,7 +192,10 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _offerTimer?.cancel();
     if (state == AppLifecycleState.resumed) {
-      if (mounted) ref.invalidate(driverOffersProvider);
+      if (mounted) {
+        setState(() => _now = DateTime.now().toUtc());
+        ref.invalidate(driverOffersProvider);
+      }
       _offerTimer = Timer.periodic(const Duration(seconds: 12), (_) {
         if (mounted && pendingId == null) ref.invalidate(driverOffersProvider);
       });
@@ -196,12 +205,22 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
   @override
   void dispose() {
     _offerTimer?.cancel();
+    _countdownTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   Future<void> _take(DriverOffer offer, {required bool accept}) async {
     if (pendingId != null) return;
+    if (!offer.expiresAt.isAfter(DateTime.now().toUtc())) {
+      ref.invalidate(driverOffersProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('انتهت مهلة العرض. جارٍ تحديث العروض من السيرفر.'),
+        ));
+      }
+      return;
+    }
     final ar = isArabic(context);
     final verb = accept
         ? (ar ? 'قبول العرض' : 'Accept offer')
@@ -216,6 +235,14 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
       destructive: !accept,
     );
     if (!ok || !mounted) return;
+    // The confirmation dialog may be open past the expiry time.
+    if (!offer.expiresAt.isAfter(DateTime.now().toUtc())) {
+      ref.invalidate(driverOffersProvider);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('انتهت مهلة قبول العرض.'),
+      ));
+      return;
+    }
     setState(() => pendingId = offer.id);
     try {
       if (accept) {
@@ -275,7 +302,8 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
             ]),
           ));
         }
-        final visible = widget.compact ? items.take(2).toList() : items;
+        final unexpired = items.where((offer) => offer.expiresAt.isAfter(_now)).toList();
+        final visible = widget.compact ? unexpired.take(2).toList() : unexpired;
         return Column(children: [
           for (final offer in visible) Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -308,6 +336,26 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
                        TimeOfDay.fromDateTime(offer.expiresAt.toLocal()))}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  const SizedBox(height: 4),
+                  Builder(builder: (context) {
+                    final seconds = offer.expiresAt.difference(_now).inSeconds;
+                    final time = Duration(seconds: seconds > 0 ? seconds : 0);
+                    final remaining = '${time.inMinutes.toString().padLeft(2, '0')}:${(time.inSeconds % 60).toString().padLeft(2, '0')}';
+                    return Semantics(
+                      liveRegion: false,
+                      label: ar ? 'مهلة قبول العرض $remaining' : 'Offer expires in $remaining',
+                      child: Row(children: [
+                        Icon(Icons.timer_outlined, size: 18,
+                            color: seconds <= 15 ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(ar ? 'متبقي $remaining' : '$remaining remaining',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: seconds <= 15 ? Theme.of(context).colorScheme.error
+                                    : Theme.of(context).colorScheme.primary)),
+                      ]),
+                    );
+                  }),
                   const SizedBox(height: 12),
                   Row(children: [
                     Expanded(child: OutlinedButton(
