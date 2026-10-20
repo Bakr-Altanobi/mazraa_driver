@@ -128,6 +128,13 @@ class DriverApi {
   Future<List<dynamic>> getOffers() =>
       _client.get<List<dynamic>>('api/driver-journey/offers');
 
+  /// Before acceptance, the API exposes only this driver's unexpired offer
+  /// manifest: actual products/quantities, pickup/dropoff coordinates and COD.
+  Future<Map<String, dynamic>> getOfferDetails(int offerId) =>
+      _client.get<Map<String, dynamic>>(
+        'api/driver-journey/offers/$offerId/details',
+      );
+
   Future<void> acceptOffer(int offerId) =>
       _client.post<Object?>('api/driver-journey/offers/$offerId/accept');
 
