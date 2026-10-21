@@ -19,7 +19,7 @@ class _DriverDocumentUploadScreenState extends ConsumerState<DriverDocumentUploa
   final _picker = ImagePicker();
   final _number = TextEditingController();
   XFile? _image;
-  late int _type = widget.initialType;
+  int _type = 0;
   DateTime? _expires;
   bool _saving = false;
 

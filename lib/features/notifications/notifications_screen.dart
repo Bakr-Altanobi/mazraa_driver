@@ -91,6 +91,22 @@ class _NotificationCard extends ConsumerWidget {
     }
     if (context.mounted && notification.shipmentId != null) {
       context.push('/shipments/${notification.shipmentId}');
+    } else if (context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text(notification.title),
+          content: SingleChildScrollView(
+            child: SelectableText(notification.message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: Text(isArabic(c) ? 'إغلاق' : 'Close'),
+            ),
+          ],
+        ),
+      );
     }
   }
 

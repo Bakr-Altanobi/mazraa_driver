@@ -7,6 +7,10 @@ void main() {
   testWidgets('scanned QR cannot bypass full cash collection confirmation', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     DeliveryConfirmation? result;
     await tester.pumpWidget(
       host(

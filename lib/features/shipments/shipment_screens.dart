@@ -636,6 +636,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   for (final entry in <String, String>{
                     'navigation': ar ? 'الخريطة والمسار' : 'Map & route',
                     'proofs': ar ? 'الإثباتات والتوقيع' : 'Proofs & signature',
+                    'contacts': ar ? 'التواصل والاتصال' : 'Contacts & calls',
                     'fees': ar ? 'الرسوم' : 'Fees',
                     if (!shipment.status.isClosed)
                       'unavailable': ar ? 'مشكلة التسليم' : 'Delivery issue',
@@ -726,7 +727,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   shipment.status == ShipmentStatus.nearCustomer) ...[
                 OutlinedButton.icon(
                   onPressed: () => context
-                      .push('/shipments/${shipment.id}/evidence?type=${shipment.status == ShipmentStatus.nearCustomer ? 1 : 0}')
+                      .push(
+                        '/shipments/${shipment.id}/evidence?type=${shipment.status == ShipmentStatus.nearCustomer ? 1 : 0}',
+                      )
                       .then((_) {
                         if (mounted) {
                           ref.invalidate(

@@ -152,6 +152,14 @@ final shipmentProofsProvider = FutureProvider.autoDispose
           .watch(apiClientProvider)
           .get<List<dynamic>>('api/Shipments/$id/proofs'),
     );
+final shipmentContactsProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, int>(
+      (ref, id) => ref
+          .watch(apiClientProvider)
+          .get<Map<String, dynamic>>(
+            'api/driver-journey/shipments/$id/contacts',
+          ),
+    );
 final waitingSinceProvider = StateProvider.family<DateTime?, int>(
   (ref, id) => null,
 );
@@ -270,6 +278,7 @@ class _DriverShipmentToolScreenState
   Widget build(BuildContext c) {
     final state = ref.watch(shipmentDetailsProvider(widget.shipmentId));
     final title = switch (widget.tool) {
+      'contacts' => toolText(c, 'التواصل والاتصال', 'Contacts & calls'),
       'navigation' => toolText(c, 'الملاحة والمسار', 'Navigation & route'),
       'pickup' => toolText(c, 'فحص الاستلام', 'Pickup checklist'),
       'fees' => toolText(c, 'تفاصيل رسوم الشحنة', 'Shipment fee breakdown'),
@@ -317,6 +326,40 @@ class _DriverShipmentToolScreenState
               Text(s.number, style: Theme.of(c).textTheme.titleLarge),
               Text(s.status.label(isArabic(c))),
               const SizedBox(height: 14),
+              if (widget.tool == 'contacts') ...[
+                ref
+                    .watch(shipmentContactsProvider(s.id))
+                    .when(
+                      loading: () => const LinearProgressIndicator(),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          toolText(
+                            c,
+                            'أرقام الاتصال غير متاحة من السيرفر حاليًا. يمكنك استخدام المحادثة أو الدعم.',
+                            'Contact numbers are not available from the server yet. Use chat or support.',
+                          ),
+                        ),
+                      ),
+                      data: (contacts) => Column(
+                        children: [
+                          for (final who in ['customer', 'pickup'])
+                            _DriverContactCard(
+                              contact: recordMap(contacts[who]),
+                              customer: who == 'customer',
+                            ),
+                        ],
+                      ),
+                    ),
+                OutlinedButton(
+                  onPressed: () => c.push('/tools/chats'),
+                  child: Text(toolText(c, 'المحادثات', 'Conversations')),
+                ),
+                OutlinedButton(
+                  onPressed: () => c.push('/support'),
+                  child: Text(toolText(c, 'الدعم', 'Support')),
+                ),
+              ],
               if (widget.tool == 'navigation') ...[
                 MapPanel(
                   driver: s.driverLocation,
@@ -975,4 +1018,55 @@ class _DriverQrDeliveryScreenState
       ],
     ),
   );
+}
+
+class _DriverContactCard extends StatelessWidget {
+  const _DriverContactCard({required this.contact, required this.customer});
+  final Map<String, dynamic> contact;
+  final bool customer;
+  @override
+  Widget build(BuildContext c) {
+    final phone = '${contact['phone'] ?? ''}';
+    final valid = RegExp(r'^\+?[0-9][0-9 ()-]{4,24}$').hasMatch(phone);
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.phone_outlined),
+        title: Text(
+          '${contact['name'] ?? (customer ? toolText(c, 'العميل', 'Customer') : toolText(c, 'نقطة الاستلام', 'Pickup'))}',
+        ),
+        subtitle: Text(
+          phone.isEmpty
+              ? toolText(c, 'رقم غير متاح', 'Phone unavailable')
+              : phone,
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.call),
+          onPressed: !valid
+              ? null
+              : () async {
+                  try {
+                    final ok = await launchUrl(Uri(scheme: 'tel', path: phone));
+                    if (!ok && c.mounted)
+                      ScaffoldMessenger.of(c).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            toolText(
+                              c,
+                              'تعذر فتح الاتصال',
+                              'Could not open dialer',
+                            ),
+                          ),
+                        ),
+                      );
+                  } catch (e) {
+                    if (c.mounted)
+                      ScaffoldMessenger.of(
+                        c,
+                      ).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                },
+        ),
+      ),
+    );
+  }
 }

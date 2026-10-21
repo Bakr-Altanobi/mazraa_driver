@@ -182,6 +182,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         'proofs',
         'fees',
         'unavailable',
+        'contacts',
       ])
         GoRoute(
           path: '/shipments/:id/$tool',
