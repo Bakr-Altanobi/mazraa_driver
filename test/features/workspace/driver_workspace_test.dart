@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mazraa_driver/features/operations/driver_account_cache.dart';
+import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,6 +69,34 @@ Future<void> loadDriverFonts() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadDriverFonts);
+  test(
+    'switching accounts clears cached bank records and phone verification state',
+    () async {
+      var actor = 11;
+      var calls = 0;
+      final container = ProviderContainer(
+        overrides: [
+          driverBankAccountsProvider.overrideWith((ref) async {
+            calls++;
+            return [
+              {'id': actor, 'bankName': 'Bank $actor'},
+            ];
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      final first = await container.read(toolDataProvider('bank').future);
+      expect(recordRows(first).single['id'], 11);
+      container.read(phoneVerificationTargetProvider.notifier).state =
+          '123456789';
+      actor = 22;
+      container.read(resetDriverAccountCacheProvider)();
+      final next = await container.read(toolDataProvider('bank').future);
+      expect(recordRows(next).single['id'], 22);
+      expect(container.read(phoneVerificationTargetProvider), isNull);
+      expect(calls, 2);
+    },
+  );
   test('all 48 existing design destinations lead to operational routes', () {
     expect(journeyDestinations.length, 48);
     expect(journeyDestinations.keys.toSet(), {for (var i = 1; i <= 48; i++) i});
