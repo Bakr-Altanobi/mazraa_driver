@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mazraa_driver/core/network/api_exception.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
+import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'driver_workspace_repository.dart';
 
@@ -459,6 +460,9 @@ class _DriverToolFormScreenState extends ConsumerState<DriverToolFormScreen> {
       await ref
           .read(workspaceRepositoryProvider)
           .submit(widget.form, normalizeToolForm(widget.form, data));
+      if (widget.form == 'phone-request')
+        ref.read(phoneVerificationTargetProvider.notifier).state =
+            '${data['phone']}';
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted)

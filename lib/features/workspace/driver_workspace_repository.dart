@@ -3,6 +3,8 @@ import 'package:mazraa_driver/core/network/api_client.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'driver_tool_catalog.dart';
 
+final phoneVerificationTargetProvider = StateProvider<String?>((ref) => null);
+
 final workspaceRepositoryProvider = Provider(
   (ref) => DriverWorkspaceRepository(ref.watch(apiClientProvider)),
 );

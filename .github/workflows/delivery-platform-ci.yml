@@ -33,6 +33,13 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze lib test --no-fatal-infos --no-fatal-warnings
       - run: flutter test --dart-define=ENABLE_GOOGLE_MAPS=false --reporter expanded
+      - name: Save screen previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: driver-screen-previews
+          path: build/driver-qa/
+          if-no-files-found: ignore
       - name: Configure existing Google client settings
         shell: bash
         run: |
@@ -56,6 +63,22 @@ jobs:
           CONFIG
       - name: Build ARM64 test APK
         run: flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED" --dart-define-from-file=/tmp/driver-client-defines.json
+      - name: Verify native Maps configuration in APK
+        shell: bash
+        run: |
+          python3 - <<'VERIFY'
+          import pathlib, subprocess
+          root=pathlib.Path('/usr/local/lib/android/sdk/build-tools')
+          candidates=list(root.glob('*/aapt'))
+          if not candidates:
+              import os
+              candidates=list(pathlib.Path(os.environ['ANDROID_HOME']).glob('build-tools/*/aapt'))
+          xml=subprocess.check_output([str(sorted(candidates)[-1]),'dump','xmltree','build/app/outputs/flutter-apk/app-debug.apk','AndroidManifest.xml'],text=True)
+          at=xml.index('com.google.android.geo.API_KEY')
+          assert 'AIza' in xml[at:at+1000], 'Native Maps key missing from APK'
+          assert 'com.mazraa.driver' in xml, 'Unexpected Android package'
+          print('Verified Maps SDK key is packaged for com.mazraa.driver; no key printed.')
+          VERIFY
       - uses: actions/upload-artifact@v4
         with:
           name: mazraa_driver-delivery-test-arm64

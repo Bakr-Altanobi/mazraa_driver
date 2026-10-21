@@ -293,6 +293,8 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
             'تعذر تحميل كل التفضيلات الحالية. حدّث الصفحة أولًا. / Current preferences are incomplete. Refresh first.',
           );
       }
+      if (tool.id == 'phone-confirm')
+        initial = {'phone': ref.read(phoneVerificationTargetProvider) ?? ''};
       if (tool.id == 'bank') {
         final rows = recordRows(payload);
         initial = rows.isEmpty
@@ -327,6 +329,14 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
         if (tool.id == 'security') {
           await ref.read(authControllerProvider).logout();
           return;
+        }
+        if (tool.id == 'phone-change' && mounted) {
+          context.push('/tools/phone-confirm');
+          return;
+        }
+        if (tool.id == 'phone-confirm') {
+          ref.read(phoneVerificationTargetProvider.notifier).state = null;
+          await ref.read(authControllerProvider).refreshProfile();
         }
         if (tool.id == 'edit-profile')
           await ref.read(authControllerProvider).refreshProfile();
