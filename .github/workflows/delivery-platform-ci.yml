@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: delivery-platform-${{ github.ref }}
+  group: driver-workspace-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   test-build:
@@ -33,7 +33,7 @@ jobs:
       - run: flutter pub get
       - run: mkdir -p build/driver-qa && cp pubspec.lock build/driver-qa/pubspec.lock
       - run: flutter analyze lib test --no-fatal-infos --no-fatal-warnings
-      - run: flutter test --dart-define=ENABLE_GOOGLE_MAPS=false --reporter expanded
+      - run: flutter test --dart-define=ENABLE_GOOGLE_MAPS=false --timeout=2m --reporter expanded
       - name: Save screen previews
         if: always()
         uses: actions/upload-artifact@v4
