@@ -45,6 +45,7 @@ Widget host(
   bool dark = false,
   List<Override> overrides = const [],
 }) => ProviderScope(
+  key: UniqueKey(),
   overrides: overrides,
   child: MaterialApp(
     locale: Locale(language),

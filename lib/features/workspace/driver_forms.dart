@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mazraa_driver/core/network/api_exception.dart';
+import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'driver_workspace_repository.dart';
 
@@ -30,6 +31,33 @@ const _notes = ToolField(
   required: false,
 );
 const toolForms = <String, List<ToolField>>{
+  'phone-request': [
+    ToolField('phone', 'رقم الهاتف الجديد', 'New phone number', kind: 'phone'),
+  ],
+  'phone-confirm': [
+    ToolField(
+      'phone',
+      'الهاتف الذي وصله الرمز',
+      'Phone that received the code',
+      kind: 'phone',
+    ),
+    ToolField('code', 'رمز التحقق', 'Verification code'),
+  ],
+  'vehicle-change': [
+    ToolField(
+      'vehicleType',
+      'نوع المركبة المطلوب',
+      'Requested vehicle type',
+      kind: 'choice',
+      options: {
+        '0': 'سيارة / Car',
+        '1': 'دراجة / Bike',
+        '2': 'فان / Van',
+        '3': 'شاحنة / Truck',
+      },
+    ),
+    ToolField('reason', 'سبب طلب التغيير', 'Reason', kind: 'multiline'),
+  ],
   'availability': [
     ToolField(
       'dayOfWeek',
@@ -323,7 +351,8 @@ class _DriverToolFormScreenState extends ConsumerState<DriverToolFormScreen> {
     _values.addAll(widget.initial);
     for (final f in toolForms[widget.form]!) {
       if (f.kind == 'bool' || f.kind == 'confirm') {
-        if (!_values.containsKey(f.key)) _values[f.key] = false;
+        if (!_values.containsKey(f.key))
+          _values[f.key] = widget.form == 'availability' && f.key == 'isActive';
       } else {
         _text[f.key] = TextEditingController(
           text: '${widget.initial[f.key] ?? ''}',
@@ -365,6 +394,41 @@ class _DriverToolFormScreenState extends ConsumerState<DriverToolFormScreen> {
       if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _selectShipment() async {
+    if (_saving) return;
+    try {
+      final rows = await ref.read(driverApiProvider).getShipments();
+      if (!mounted) return;
+      final id = await showDialog<int>(
+        context: context,
+        builder: (c) => SimpleDialog(
+          title: Text(
+            isArabic(c) ? 'ربط البلاغ بشحنة' : 'Link report to shipment',
+          ),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, 0),
+              child: Text(
+                isArabic(c)
+                    ? 'بلاغ عام بدون شحنة'
+                    : 'General report, no shipment',
+              ),
+            ),
+            for (final s in rows)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(c, s.id),
+                child: Text('${s.number} · ${s.status.label(isArabic(c))}'),
+              ),
+          ],
+        ),
+      );
+      if (mounted && id != null)
+        setState(() => _values['shipmentId'] = id == 0 ? null : id);
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
     }
   }
 
@@ -537,6 +601,12 @@ class _DriverToolFormScreenState extends ConsumerState<DriverToolFormScreen> {
                             : null,
                         validator: (v) {
                           final s = v?.trim() ?? '';
+                          if (f.kind == 'email' &&
+                              s.isNotEmpty &&
+                              !RegExp(
+                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                              ).hasMatch(s))
+                            return ar ? 'بريد غير صالح' : 'Invalid email';
                           if (s.isEmpty)
                             return f.required
                                 ? (ar ? 'مطلوب' : 'Required')
@@ -562,6 +632,18 @@ class _DriverToolFormScreenState extends ConsumerState<DriverToolFormScreen> {
                           return null;
                         },
                       ),
+              ),
+            if (widget.form == 'incident' || widget.form == 'emergency')
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _selectShipment,
+                icon: const Icon(Icons.local_shipping_outlined),
+                label: Text(
+                  _values['shipmentId'] == null
+                      ? (ar
+                            ? 'ربط البلاغ بشحنة (اختياري)'
+                            : 'Link a shipment (optional)')
+                      : '#${_values['shipmentId']}',
+                ),
               ),
             if (widget.form == 'incident' || widget.form == 'emergency')
               OutlinedButton.icon(

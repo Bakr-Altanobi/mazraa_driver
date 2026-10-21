@@ -52,6 +52,12 @@ class DriverWorkspaceRepository {
         );
   Future<void> submit(String form, Map<String, dynamic> values) async {
     final (method, path) = switch (form) {
+      'phone-request' => ('POST', 'api/users/me/phone/change-request'),
+      'phone-confirm' => ('POST', 'api/users/me/phone/change-confirm'),
+      'vehicle-change' => (
+        'POST',
+        'api/driver-journey/me/vehicle-change-requests',
+      ),
       'availability' => ('POST', 'api/driver-journey/me/availability'),
       'preferences' => ('PUT', 'api/driver-journey/me/preferences'),
       'notifications' => (

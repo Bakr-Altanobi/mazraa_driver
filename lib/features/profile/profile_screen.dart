@@ -155,6 +155,10 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 14),
                 for (final link in <String, String>{
                   '/tools/edit-profile': ar ? 'تعديل بياناتي' : 'Edit profile',
+                  '/tools/avatar': ar ? 'الصورة الشخصية' : 'Profile photo',
+                  '/tools/phone-change': ar
+                      ? 'تغيير الهاتف والتحقق'
+                      : 'Change phone & verify',
                   '/tools/preferences': ar
                       ? 'تفضيلات العمل'
                       : 'Work preferences',
@@ -389,6 +393,7 @@ class SettingsScreen extends ConsumerWidget {
                 ? 'تفضيلات الإشعارات'
                 : 'Notification preferences',
             '/tools/security': ar ? 'تغيير كلمة المرور' : 'Change password',
+            '/tools/sessions': ar ? 'الأجهزة والجلسات' : 'Devices & sessions',
             '/tools/privacy': ar ? 'الخصوصية' : 'Privacy',
             '/tools/health': ar
                 ? 'الأذونات والاتصال'

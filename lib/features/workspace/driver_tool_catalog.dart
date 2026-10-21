@@ -22,6 +22,46 @@ class DriverTool {
 
 const driverTools = <DriverTool>[
   DriverTool(
+    'avatar',
+    'الصورة الشخصية',
+    'Profile photo',
+    Icons.account_circle_outlined,
+    'api/users/me',
+  ),
+  DriverTool(
+    'phone-change',
+    'تغيير الهاتف والتحقق',
+    'Change phone & verify',
+    Icons.phone_outlined,
+    'api/users/me',
+    form: 'phone-request',
+  ),
+  DriverTool(
+    'phone-confirm',
+    'تأكيد رمز الهاتف',
+    'Confirm phone code',
+    Icons.sms_outlined,
+    'api/users/me',
+    form: 'phone-confirm',
+  ),
+  DriverTool(
+    'sessions',
+    'الأجهزة والجلسات',
+    'Devices & sessions',
+    Icons.devices,
+    'api/users/me/sessions',
+  ),
+  DriverTool(
+    'vehicle-change',
+    'طلب تغيير المركبة',
+    'Request vehicle change',
+    Icons.car_rental,
+    'api/driver-journey/me/vehicle-change-requests',
+    group: 'vehicle',
+    form: 'vehicle-change',
+    pending: true,
+  ),
+  DriverTool(
     'scheduled-trips',
     'الرحلات المجدولة',
     'Scheduled trips',

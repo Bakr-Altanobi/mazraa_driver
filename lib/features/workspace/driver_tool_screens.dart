@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,6 +22,16 @@ const _fields = <String, (String, String)>{
   'code': ('الرمز', 'Code'),
   'driverCode': ('رمز السائق', 'Driver code'),
   'phone': ('الهاتف', 'Phone'),
+  'deviceName': ('الجهاز', 'Device'),
+  'deviceType': ('نوع الجهاز', 'Device type'),
+  'platform': ('النظام', 'Platform'),
+  'ipAddress': ('عنوان الاتصال', 'IP address'),
+  'emailVerified': ('البريد موثق', 'Email verified'),
+  'phoneVerified': ('الهاتف موثق', 'Phone verified'),
+  'registrationNumber': ('رقم التسجيل', 'Registration number'),
+  'registrationExpiryDate': ('انتهاء التسجيل', 'Registration expiry'),
+  'insuranceNumber': ('رقم التأمين', 'Insurance number'),
+  'insuranceExpiryDate': ('انتهاء التأمين', 'Insurance expiry'),
   'email': ('البريد', 'Email'),
   'status': ('الحالة', 'Status'),
   'type': ('النوع', 'Type'),
@@ -53,6 +64,11 @@ const _fields = <String, (String, String)>{
   'category': ('الفئة', 'Category'),
   'isEmergency': ('عاجل', 'Urgent'),
   'providerReference': ('مرجع التحويل', 'Transfer reference'),
+  'baseFee': ('الرسوم الأساسية', 'Base fee'),
+  'perKmFee': ('رسوم الكيلومتر', 'Fee per km'),
+  'minDeliveryFee': ('الحد الأدنى للرسوم', 'Minimum delivery fee'),
+  'maxDeliveryFee': ('الحد الأعلى للرسوم', 'Maximum delivery fee'),
+  'radiusKm': ('النطاق كلم', 'Radius (km)'),
   'requestedAt': ('تاريخ الطلب', 'Requested'),
   'processedAt': ('تاريخ المعالجة', 'Processed'),
   'startedAt': ('البداية', 'Started'),
@@ -150,7 +166,29 @@ String _value(BuildContext c, String key, dynamic value) {
       'الجمعة / Friday',
       'السبت / Saturday',
     ][int.tryParse('$value')?.clamp(0, 6) ?? 0];
-  if (key.endsWith('At')) {
+  final enums = <String, Map<String, (String, String)>>{
+    'approvalStatus': {
+      '1': ('قيد المراجعة', 'Pending'),
+      '2': ('معتمد', 'Approved'),
+      '3': ('مرفوض', 'Rejected'),
+      '4': ('موقوف', 'Suspended'),
+    },
+    'operationalStatus': {
+      '1': ('غير متصل', 'Offline'),
+      '2': ('متصل', 'Online'),
+      '3': ('متاح', 'Available'),
+      '4': ('مشغول', 'Busy'),
+    },
+    'vehicleType': {
+      '0': ('سيارة', 'Car'),
+      '1': ('دراجة', 'Bike'),
+      '2': ('فان', 'Van'),
+      '3': ('شاحنة', 'Truck'),
+    },
+  };
+  final label = enums[key]?['$value'];
+  if (label != null) return toolText(c, label.$1, label.$2);
+  if (key.endsWith('At') || key.endsWith('Date')) {
     final d = DateTime.tryParse('$value')?.toLocal();
     if (d != null)
       return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} ${TimeOfDay.fromDateTime(d).format(c)}';
@@ -244,6 +282,17 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
         'edit-profile',
       }.contains(tool.id))
         initial = recordMap(payload);
+      if ({
+        'preferences',
+        'notification-preferences',
+        'privacy',
+      }.contains(tool.id)) {
+        final fields = toolForms[tool.form!]!;
+        if (fields.any((f) => !initial.containsKey(f.key)))
+          throw StateError(
+            'تعذر تحميل كل التفضيلات الحالية. حدّث الصفحة أولًا. / Current preferences are incomplete. Refresh first.',
+          );
+      }
       if (tool.id == 'bank') {
         final rows = recordRows(payload);
         initial = rows.isEmpty
@@ -292,6 +341,44 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
             ),
           );
       }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _avatar(ImageSource source) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final image = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (image == null) return;
+      await ref
+          .read(apiClientProvider)
+          .uploadFile(
+            'api/users/me/avatar',
+            filePath: image.path,
+            fileName: image.name,
+            fields: const {},
+          );
+      ref.invalidate(toolDataProvider(tool.id));
+      await ref.read(authControllerProvider).refreshProfile();
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              toolText(context, 'تم تحديث الصورة', 'Profile photo updated'),
+            ),
+          ),
+        );
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(
@@ -409,6 +496,18 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                 ),
               ),
             ..._links(context),
+            if (tool.id == 'avatar') ...[
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _avatar(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: Text(ar ? 'التقاط صورة' : 'Take photo'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _avatar(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: Text(ar ? 'اختيار صورة' : 'Choose photo'),
+              ),
+            ],
             if (tool.id == 'health') const _PermissionChecks(),
             if (tool.id == 'shifts') const DriverControlPanel(),
             if (tool.id == 'training')
@@ -457,7 +556,14 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
 
   List<Widget> _links(BuildContext c) {
     final links = switch (tool.id) {
+      'phone-change' => {
+        '/tools/phone-confirm': ('لدي رمز التحقق', 'Enter verification code'),
+      },
       'vehicle' => {
+        '/tools/vehicle-change': (
+          'طلب تغيير المركبة',
+          'Request vehicle change',
+        ),
         '/tools/maintenance': ('سجل الصيانة', 'Maintenance history'),
         '/tools/documents': ('وثائق المركبة', 'Vehicle documents'),
       },
@@ -632,6 +738,30 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                   ),
                 ),
               DriverRecordFields(record: row),
+              if (tool.id == 'sessions' && row['id'] is String)
+                TextButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => _mutate(
+                          () => ref
+                              .read(apiClientProvider)
+                              .delete(
+                                'api/users/me/sessions/${Uri.encodeComponent(row['id'] as String)}',
+                              ),
+                        ),
+                  icon: const Icon(Icons.logout),
+                  label: Text(
+                    toolText(c, 'إلغاء هذه الجلسة', 'Revoke this session'),
+                  ),
+                ),
+              if (tool.id == 'chats') ...[
+                Text('${recordMap(row['otherUser'])['name'] ?? ''}'),
+                Text('${recordMap(row['lastMessage'])['body'] ?? ''}'),
+                if (row['unreadCount'] != null)
+                  Text(
+                    '${toolText(c, 'غير مقروءة', 'Unread')}: ${row['unreadCount']}',
+                  ),
+              ],
               if (row['route'] is Map)
                 DriverRecordFields(record: recordMap(row['route'])),
               if (tool.id == 'incentives' &&
@@ -808,14 +938,18 @@ class _PermissionChecksState extends State<_PermissionChecks> {
   }
 
   Future<void> _refresh() async {
-    final entries = await Future.wait(
-      [
-        Permission.locationWhenInUse,
-        Permission.camera,
-        Permission.notification,
-      ].map((p) async => MapEntry(p, await p.status)),
-    );
-    if (mounted) setState(() => _permissions = Map.fromEntries(entries));
+    try {
+      final entries = await Future.wait(
+        [
+          Permission.locationWhenInUse,
+          Permission.camera,
+          Permission.notification,
+        ].map((p) async => MapEntry(p, await p.status)),
+      );
+      if (mounted) setState(() => _permissions = Map.fromEntries(entries));
+    } catch (_) {
+      if (mounted) setState(() => _permissions = {});
+    }
   }
 
   @override
