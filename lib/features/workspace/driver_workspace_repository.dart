@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/network/api_client.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'driver_tool_catalog.dart';
+import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 
 final phoneVerificationTargetProvider = StateProvider<String?>((ref) => null);
 
@@ -9,7 +10,13 @@ final workspaceRepositoryProvider = Provider(
   (ref) => DriverWorkspaceRepository(ref.watch(apiClientProvider)),
 );
 final toolDataProvider = FutureProvider.autoDispose.family<dynamic, String>(
-  (ref, id) => ref.watch(workspaceRepositoryProvider).load(driverTool(id)),
+  (ref, id) => switch (id) {
+    'bank' => ref.watch(driverBankAccountsProvider.future),
+    'shifts' => ref.watch(driverShiftsProvider.future),
+    'payout-status' => ref.watch(driverPayoutsProvider.future),
+    'account-status' => ref.watch(driverJourneyProvider.future),
+    _ => ref.watch(workspaceRepositoryProvider).load(driverTool(id)),
+  },
 );
 
 List<Map<String, dynamic>> recordRows(dynamic data) {

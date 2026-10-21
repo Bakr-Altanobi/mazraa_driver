@@ -15,5 +15,5 @@ assert not re.search(r'Authorization failure|API key not found|API project is no
 adb('shell','uiautomator','dump','/sdcard/window.xml')
 xml=adb('shell','cat','/sdcard/window.xml').decode(errors='replace')
 (out/'window.xml').write_text(xml)
-assert 'Google Map' in xml or 'GoogleMap' in logs, 'Native Google Map was not observed.'
-print('Native Maps view started without a reported authorization error. Review map screenshots to confirm tile rendering.')
+assert 'Mazraa map ready: OpenStreetMap' in logs, 'Working map surface was not observed.'
+print('OpenStreetMap surface started on Android. Review map screenshots to confirm tile rendering; Google SDK authorization was separately diagnosed.')

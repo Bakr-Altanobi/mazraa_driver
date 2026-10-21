@@ -239,19 +239,19 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
   DriverTool get tool => driverTool(widget.toolId);
   Future<void> _mutate(Future<void> Function() work) async {
     if (_busy) return;
-    final yes = await confirmAction(
-      context,
-      title: toolText(context, 'تأكيد الإجراء', 'Confirm action'),
-      message: toolText(
-        context,
-        'تنفيذ هذا الإجراء على المهمة المحددة؟',
-        'Perform this action on the selected record?',
-      ),
-      confirmLabel: toolText(context, 'تأكيد', 'Confirm'),
-    );
-    if (!yes || !mounted) return;
     setState(() => _busy = true);
     try {
+      final yes = await confirmAction(
+        context,
+        title: toolText(context, 'تأكيد الإجراء', 'Confirm action'),
+        message: toolText(
+          context,
+          'تنفيذ هذا الإجراء على المهمة المحددة؟',
+          'Perform this action on the selected record?',
+        ),
+        confirmLabel: toolText(context, 'تأكيد', 'Confirm'),
+      );
+      if (!yes || !mounted) return;
       await work();
       ref.invalidate(toolDataProvider(tool.id));
       if (mounted)
@@ -331,7 +331,8 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
           return;
         }
         if (tool.id == 'phone-change' && mounted) {
-          context.push('/tools/phone-confirm');
+          await context.push('/tools/phone-confirm');
+          if (mounted) ref.invalidate(toolDataProvider(tool.id));
           return;
         }
         if (tool.id == 'phone-confirm') {
@@ -605,7 +606,10 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: OutlinedButton.icon(
-            onPressed: () => c.push(e.key),
+            onPressed: () async {
+              await c.push(e.key);
+              if (mounted) ref.invalidate(toolDataProvider(tool.id));
+            },
             icon: const Icon(Icons.arrow_outward),
             label: Text(toolText(c, e.value.$1, e.value.$2)),
           ),

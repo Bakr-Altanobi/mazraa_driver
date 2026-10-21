@@ -6,9 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mazraa_driver/features/workspace/driver_tool_screens.dart';
 import 'package:mazraa_driver/features/workspace/driver_forms.dart';
 import 'package:mazraa_driver/features/workspace/driver_workspace_repository.dart';
-import 'driver_workspace_test.dart' show host;
+import 'driver_workspace_test.dart' show host, loadDriverFonts;
+import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadDriverFonts);
   testWidgets('capture driver operational screens in Arabic light and dark', (
     tester,
   ) async {
@@ -48,6 +51,16 @@ void main() {
             ],
           ),
         );
+        await tester.runAsync(() async {
+          await precacheImage(
+            const AssetImage(ReferenceAssets.deliveryParcel),
+            key.currentContext!,
+          );
+          await precacheImage(
+            const AssetImage(ReferenceAssets.deliveryScooter),
+            key.currentContext!,
+          );
+        });
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await tester.runAsync(() async {

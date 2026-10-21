@@ -9,3 +9,10 @@ The native map displays actual driver, pickup and customer coordinates, traffic 
 Widget tests disable native map surfaces with `ENABLE_GOOGLE_MAPS=false`; APK and unsigned iOS builds enable them. Compilation and a packaged key do not prove Google authorization or tile rendering on a real device. Device validation should confirm map tiles, live permission grants, GPS, QR camera and push delivery. Driver Firebase app configuration is separate from the existing Google key.
 
 Google setup reference: https://developers.google.com/maps/flutter-package/config
+
+
+## Device verification on 2026-10-21
+
+The Android emulator confirmed a Google SDK `Authorization failure` for the existing key and package `com.mazraa.driver`. A blank Google surface is not treated as working maps. OpenStreetMap is therefore the default real map, with real coordinates and the same road polylines/markers; the map's provider menu retains Google for a replacement/authorized key. Set `MAP_PROVIDER=google` at build time to choose Google by default after credentials are fixed.
+
+OpenStreetMap requests identify `com.mazraa.driver` and display permanent attribution. `MAP_TILE_URL` supports replacing the tile provider for deployment scale. The app does not implement bulk tile downloads or offline prefetch. Policy: https://operations.osmfoundation.org/policies/tiles/ . The native emulator smoke test now verifies the working default surface; the failed Google check remains recorded in run 39533037791 and its redacted device artifact.

@@ -365,6 +365,7 @@ class _DriverChatScreenState extends ConsumerState<DriverChatScreen> {
     super.initState();
     _poll = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed)
         ref.invalidate(driverChatMessagesProvider(widget.chatId));
     });

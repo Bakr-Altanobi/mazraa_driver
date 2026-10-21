@@ -323,6 +323,15 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(ar ? 'حول التطبيق والتراخيص' : 'About & licenses'),
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: ar ? 'مزرعتي للسائق' : 'Mazraa Driver',
+              applicationVersion: '1.1.0',
+            ),
+          ),
           const SizedBox(height: 20),
           SectionHeader(
             title: ar ? 'المظهر' : 'Appearance',
@@ -375,15 +384,15 @@ class SettingsScreen extends ConsumerWidget {
               ),
               title: Text(
                 AppEnvironment.mapsEnabled
-                    ? (ar ? 'Google Maps مفعلة' : 'Google Maps enabled')
-                    : (ar
-                          ? 'Google Maps غير مهيأة'
-                          : 'Google Maps not configured'),
+                    ? (ar
+                          ? 'الخرائط التفاعلية مفعلة'
+                          : 'Interactive maps enabled')
+                    : (ar ? 'الخرائط غير مفعلة' : 'Maps not enabled'),
               ),
               subtitle: Text(
                 ar
-                    ? 'الخريطة تعرض المواقع الفعلية؛ يتوفر المسار عند دعم خدمة الطرق.'
-                    : 'Maps show actual locations; road routes depend on the routing service.',
+                    ? 'اختر OpenStreetMap أو Google من الخريطة؛ المسار يعتمد على خدمة الطرق.'
+                    : 'Choose OpenStreetMap or Google on the map; road routes depend on the routing service.',
               ),
             ),
           ),

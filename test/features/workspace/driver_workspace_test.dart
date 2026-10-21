@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,7 +56,17 @@ Widget host(
     home: child,
   ),
 );
+Future<void> loadDriverFonts() async {
+  final arabic = FontLoader('NotoSansArabic')
+    ..addFont(rootBundle.load('assets/fonts/NotoSansArabic.ttf'));
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+  await Future.wait([arabic.load(), icons.load()]);
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadDriverFonts);
   test('all 48 existing design destinations lead to operational routes', () {
     expect(journeyDestinations.length, 48);
     expect(journeyDestinations.keys.toSet(), {for (var i = 1; i <= 48; i++) i});

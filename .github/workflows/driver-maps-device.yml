@@ -1,4 +1,4 @@
-name: Driver native Maps device verification
+name: Driver map device verification
 on:
   push:
     branches: [chatgpt/delivery-platform-20261020]

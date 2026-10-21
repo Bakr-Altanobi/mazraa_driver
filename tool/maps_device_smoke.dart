@@ -9,7 +9,7 @@ void main() => runApp(
   MaterialApp(
     theme: AppTheme.light(),
     home: Scaffold(
-      appBar: AppBar(title: const Text('Maps SDK verification')),
+      appBar: AppBar(title: const Text('Driver map verification')),
       body: const Padding(
         padding: EdgeInsets.all(16),
         child: MapPanel(

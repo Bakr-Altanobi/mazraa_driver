@@ -21,6 +21,8 @@ dependencies:
   flutter_svg: ^2.2.0
   geolocator: ^14.0.1
   go_router: ^15.1.2
+  flutter_map: ^8.3.2
+  latlong2: ^0.9.1
   google_maps_flutter: ^2.12.2
   mobile_scanner: ^7.4.2
   image_picker: ^1.1.2
@@ -38,6 +40,7 @@ flutter:
   uses-material-design: true
   generate: true
   assets:
+    - assets/fonts/OFL.txt
     - assets/branding/
     - assets/illustrations/
     - assets/maps/
@@ -45,3 +48,8 @@ flutter:
     # Runtime-sized derivatives of the exact ASSET_INDEX artwork. Original
     # reference PNG files remain untouched under refrinces/assets_primary/.
     - assets/reference_runtime/
+
+  fonts:
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic.ttf
