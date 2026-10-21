@@ -100,10 +100,10 @@ class _MapPanelState extends State<MapPanel> {
         );
       } else {
         _osmController.fitCamera(
-          fm.CameraFit.coordinates(
-            coordinates: points
-                .map((p) => ll.LatLng(p.latitude, p.longitude))
-                .toList(),
+          fm.CameraFit.bounds(
+            bounds: fm.LatLngBounds.fromPoints(
+              points.map((p) => ll.LatLng(p.latitude, p.longitude)).toList(),
+            ),
             padding: const EdgeInsets.all(58),
             maxZoom: 16,
           ),
@@ -170,12 +170,35 @@ class _MapPanelState extends State<MapPanel> {
       options: fm.MapOptions(
         initialCenter: ll.LatLng(center.latitude, center.longitude),
         initialZoom: 13.6,
+        initialCameraFit: _points.length < 2
+            ? null
+            : fm.CameraFit.bounds(
+                bounds: fm.LatLngBounds.fromPoints(
+                  _points
+                      .map((p) => ll.LatLng(p.latitude, p.longitude))
+                      .toList(),
+                ),
+                padding: const EdgeInsets.all(58),
+                maxZoom: 16,
+              ),
+        onPositionChanged: (camera, gesture) {
+          if (const bool.fromEnvironment('MAP_DEVICE_VERIFICATION'))
+            debugPrint(
+              'MAP_VIEWPORT ${camera.center.latitude}|${camera.center.longitude}|${camera.zoom}',
+            );
+        },
         onMapReady: () {
           _osmReady = true;
           debugPrint('Mazraa map ready: OpenStreetMap');
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _frameAllPoints(),
-          );
+          if (const bool.fromEnvironment('MAP_DEVICE_VERIFICATION'))
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _osmReady) {
+                final camera = _osmController.camera;
+                debugPrint(
+                  'MAP_VIEWPORT ${camera.center.latitude}|${camera.center.longitude}|${camera.zoom}',
+                );
+              }
+            });
         },
       ),
       children: [

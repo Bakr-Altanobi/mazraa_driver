@@ -16,4 +16,8 @@ adb('shell','uiautomator','dump','/sdcard/window.xml')
 xml=adb('shell','cat','/sdcard/window.xml').decode(errors='replace')
 (out/'window.xml').write_text(xml)
 assert 'Mazraa map ready: OpenStreetMap' in logs, 'Working map surface was not observed.'
+viewports=re.findall(r'MAP_VIEWPORT ([0-9.+-]+)\|([0-9.+-]+)\|([0-9.+-]+)',logs)
+assert viewports, 'No rendered map viewport reported.'
+lat,lon,zoom=map(float,viewports[-1])
+assert 15.2 < lat < 15.5 and 44.1 < lon < 44.3 and 10 < zoom < 17, f'Unexpected trip viewport: {lat},{lon},zoom={zoom}'
 print('OpenStreetMap surface started on Android. Review map screenshots to confirm tile rendering; Google SDK authorization was separately diagnosed.')
