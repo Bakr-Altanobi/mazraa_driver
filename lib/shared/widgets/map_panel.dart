@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:latlong2/latlong.dart' as ll;
@@ -46,11 +47,12 @@ class MapPanel extends StatefulWidget {
   State<MapPanel> createState() => _MapPanelState();
 }
 
-class _MapPanelState extends State<MapPanel> {
+class _MapPanelState extends State<MapPanel> with WidgetsBindingObserver {
   GoogleMapController? _controller;
   final _osmController = fm.MapController();
   bool _osmReady = false;
   bool _tileError = false;
+  final _tileReset = StreamController<void>.broadcast();
   bool _google =
       const String.fromEnvironment(
         'MAP_PROVIDER',
@@ -67,6 +69,23 @@ class _MapPanelState extends State<MapPanel> {
     if (widget.store != null) widget.store!,
     if (widget.customer != null) widget.customer!,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _retryTiles() {
+    if (!mounted || _google || !_osmReady) return;
+    setState(() => _tileError = false);
+    _tileReset.add(null);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _tileError) _retryTiles();
+  }
 
   @override
   void didUpdateWidget(covariant MapPanel oldWidget) {
@@ -203,6 +222,8 @@ class _MapPanelState extends State<MapPanel> {
       ),
       children: [
         fm.TileLayer(
+          reset: _tileReset.stream,
+          evictErrorTileStrategy: fm.EvictErrorTileStrategy.dispose,
           urlTemplate: const String.fromEnvironment(
             'MAP_TILE_URL',
             defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -270,6 +291,8 @@ class _MapPanelState extends State<MapPanel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tileReset.close();
     _controller = null;
     _osmController.dispose();
     super.dispose();
@@ -431,10 +454,22 @@ class _MapPanelState extends State<MapPanel> {
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Text(
-                      ar
-                          ? 'تعذر تحميل بعض أجزاء الخريطة. تحقق من الاتصال.'
-                          : 'Some map tiles could not load. Check your connection.',
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          ar
+                              ? 'تعذر تحميل بعض أجزاء الخريطة. تحقق من الاتصال.'
+                              : 'Some map tiles could not load. Check your connection.',
+                        ),
+                        TextButton.icon(
+                          onPressed: _retryTiles,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(
+                            ar ? 'إعادة تحميل الخريطة' : 'Retry map tiles',
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

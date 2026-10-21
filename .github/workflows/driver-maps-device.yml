@@ -35,6 +35,8 @@ jobs:
       - run: flutter build apk --debug --target-platform android-x64 -t tool/maps_device_smoke.dart --dart-define=ENABLE_GOOGLE_MAPS=true --dart-define=MAP_DEVICE_VERIFICATION=true
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
+      - name: Install screenshot inspection dependency
+        run: python3 -m pip install pillow
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
