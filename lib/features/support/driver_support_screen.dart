@@ -417,6 +417,7 @@ class _DriverChatScreenState extends ConsumerState<DriverChatScreen> {
           'api/chats/${widget.chatId}/messages/$_pendingMessageId/attachment',
           filePath: _image!.path,
           fileName: _image!.name,
+          fields: const {},
         );
       _message.clear();
       if (mounted)

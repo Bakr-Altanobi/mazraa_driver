@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart' hide GeoPoint;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
 import 'package:mazraa_driver/core/network/providers.dart';

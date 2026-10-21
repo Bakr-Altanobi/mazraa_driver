@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:mazraa_driver/core/network/api_exception.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
+import 'package:mazraa_driver/features/auth/auth_controller.dart';
+import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
 import 'package:mazraa_driver/features/reference_journey/reference_assets.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
@@ -115,6 +117,8 @@ const _fields = <String, (String, String)>{
   'isAvailableForOffers': ('استقبال العروض', 'Receive offers'),
   'offerRadiusKm': ('نطاق العروض كلم', 'Offer radius (km)'),
   'offerTimeoutSeconds': ('مهلة العرض ثانية', 'Offer timeout (seconds)'),
+  'shareAnalytics': ('تحليلات الاستخدام', 'Usage analytics'),
+  'profileVisible': ('إظهار الملف الشخصي', 'Profile visible'),
   'recipientName': ('اسم المستلم', 'Recipient'),
   'verificationReference': ('مرجع التحقق', 'Verification reference'),
   'temperatureCelsius': ('الحرارة مئوية', 'Temperature °C'),
@@ -232,7 +236,14 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
     if (_busy || tool.form == null) return;
     setState(() => _busy = true);
     try {
-      var initial = recordMap(payload);
+      var initial = <String, dynamic>{};
+      if ({
+        'preferences',
+        'notification-preferences',
+        'privacy',
+        'edit-profile',
+      }.contains(tool.id))
+        initial = recordMap(payload);
       if (tool.id == 'bank') {
         final rows = recordRows(payload);
         initial = rows.isEmpty
@@ -264,6 +275,13 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
         ),
       );
       if (result == true) {
+        if (tool.id == 'security') {
+          await ref.read(authControllerProvider).logout();
+          return;
+        }
+        if (tool.id == 'edit-profile')
+          await ref.read(authControllerProvider).refreshProfile();
+        if (tool.id == 'bank') ref.invalidate(driverBankAccountsProvider);
         ref.invalidate(toolDataProvider(tool.id));
         if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
@@ -291,7 +309,12 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
     final canEdit =
         tool.form != null &&
         (tool.pending ||
-            !{'preferences', 'notification-preferences'}.contains(tool.id) ||
+            !{
+              'preferences',
+              'notification-preferences',
+              'privacy',
+              'edit-profile',
+            }.contains(tool.id) ||
             data.hasValue);
     return Scaffold(
       key: Key('tool-${tool.id}'),

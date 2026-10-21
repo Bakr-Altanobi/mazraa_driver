@@ -61,9 +61,9 @@ class DriverWorkspaceRepository {
       'maintenance' => ('POST', 'api/driver-journey/vehicle-maintenance'),
       'bank' => ('PUT', 'api/driver-journey/bank-account'),
       'incident' || 'emergency' => ('POST', 'api/driver-journey/incidents'),
-      'profile' => ('PUT', 'api/driver-journey/me/profile'),
-      'password' => ('PUT', 'api/driver-journey/me/password'),
-      'privacy' => ('PUT', 'api/driver-journey/me/privacy'),
+      'profile' => ('PUT', 'api/users/me'),
+      'password' => ('PUT', 'api/users/me/password'),
+      'privacy' => ('PUT', 'api/users/me/privacy'),
       'deletion' => ('POST', 'api/driver-journey/me/deletion-request'),
       _ => throw ArgumentError.value(form),
     };

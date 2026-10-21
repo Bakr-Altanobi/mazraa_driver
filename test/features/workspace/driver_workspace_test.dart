@@ -247,6 +247,10 @@ void main() {
         'Driver Name',
       );
       await tester.enterText(find.byKey(const Key('field-phone')), '123456789');
+      await tester.enterText(
+        find.byKey(const Key('field-email')),
+        'driver@example.test',
+      );
       await tester.tap(find.byKey(const Key('submit-tool-form')));
       await tester.pumpAndSettle();
       expect(find.text('Driver Name'), findsOneWidget);

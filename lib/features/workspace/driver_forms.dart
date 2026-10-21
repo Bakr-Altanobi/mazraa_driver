@@ -88,8 +88,8 @@ const toolForms = <String, List<ToolField>>{
       'مهلة العرض بالثواني',
       'Offer timeout (seconds)',
       kind: 'integer',
-      min: 15,
-      max: 300,
+      min: 30,
+      max: 180,
     ),
   ],
   'notifications': [
@@ -193,6 +193,7 @@ const toolForms = <String, List<ToolField>>{
   ],
   'profile': [
     ToolField('name', 'الاسم', 'Name'),
+    ToolField('email', 'البريد الإلكتروني', 'Email', kind: 'email'),
     ToolField('phone', 'رقم الهاتف', 'Phone', kind: 'phone'),
   ],
   'password': [
@@ -217,15 +218,15 @@ const toolForms = <String, List<ToolField>>{
   ],
   'privacy': [
     ToolField(
-      'analyticsConsent',
+      'shareAnalytics',
       'الموافقة على تحليلات الاستخدام الاختيارية',
       'Optional usage analytics consent',
       kind: 'bool',
     ),
     ToolField(
-      'shareArrivalUpdates',
-      'مشاركة تحديثات الوصول مع العميل',
-      'Share arrival updates with customer',
+      'profileVisible',
+      'إظهار الملف الشخصي',
+      'Profile visible',
       kind: 'bool',
     ),
   ],
