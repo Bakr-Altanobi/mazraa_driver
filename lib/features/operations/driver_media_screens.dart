@@ -19,7 +19,7 @@ class _DriverDocumentUploadScreenState extends ConsumerState<DriverDocumentUploa
   final _picker = ImagePicker();
   final _number = TextEditingController();
   XFile? _image;
-  int _type = 0;
+  late int _type = widget.initialType;
   DateTime? _expires;
   bool _saving = false;
 
@@ -145,7 +145,8 @@ class _DriverDocumentUploadScreenState extends ConsumerState<DriverDocumentUploa
 }
 
 class DriverProofPhotoScreen extends ConsumerStatefulWidget {
-  const DriverProofPhotoScreen({required this.shipmentId, super.key});
+  const DriverProofPhotoScreen({required this.shipmentId, this.initialType = 0, super.key});
+  final int initialType;
   final int shipmentId;
   @override
   ConsumerState<DriverProofPhotoScreen> createState() => _DriverProofPhotoScreenState();
@@ -153,7 +154,7 @@ class DriverProofPhotoScreen extends ConsumerStatefulWidget {
 
 class _DriverProofPhotoScreenState extends ConsumerState<DriverProofPhotoScreen> {
   XFile? _image;
-  int _type = 0;
+  late int _type = widget.initialType;
   final _recipient = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;

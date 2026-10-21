@@ -50,13 +50,13 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        final image =
-            await (key.currentContext!.findRenderObject()
-                    as RenderRepaintBoundary)
-                .toImage();
-        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        image.dispose();
         await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          image.dispose();
           final f = File(
             'build/driver-qa/$screen-${dark ? 'dark' : 'light'}.png',
           );

@@ -747,7 +747,49 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                     'Participation: ${recordMap(r['participation'])['status']}',
                   ),
                 ),
-              DriverRecordFields(record: row),
+              DriverRecordFields(
+                record:
+                    widget.recordId == null &&
+                        {
+                          'returns',
+                          'documents',
+                          'maintenance',
+                          'payout-status',
+                          'scheduled-trips',
+                          'current-trips',
+                          'incidents',
+                        }.contains(tool.id)
+                    ? {
+                        for (final key in switch (tool.id) {
+                          'scheduled-trips' || 'current-trips' => [
+                            'plannedDepartureAt',
+                            'plannedArrivalAt',
+                            'dropoffName',
+                            'status',
+                          ],
+                          'documents' => ['type', 'status', 'expiresAt'],
+                          'maintenance' => [
+                            'serviceAt',
+                            'odometerKm',
+                            'nextServiceAt',
+                          ],
+                          'payout-status' => [
+                            'amount',
+                            'currency',
+                            'status',
+                            'requestedAt',
+                          ],
+                          'returns' => [
+                            'returnRequestId',
+                            'status',
+                            'returnedAt',
+                          ],
+                          _ => ['category', 'status', 'createdAt'],
+                        })
+                          if (row[key] != null) key: row[key],
+                      }
+                    : row,
+              ),
               if (tool.id == 'sessions' && row['id'] is String)
                 TextButton.icon(
                   onPressed: _busy

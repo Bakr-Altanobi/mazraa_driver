@@ -1,37 +1,11 @@
-# Maps configuration
+# Driver maps
 
-Google Maps is enabled in the ARM64 Debug APK only when the build is supplied a valid restricted Android SDK key through the GitHub Actions secret `GOOGLE_MAPS_API_KEY`, or via the untracked local Android properties and the `ENABLE_GOOGLE_MAPS=true` Flutter flag. The UI displays a branded map preview and can still open external Google Maps navigation when destination coordinates are available.
+The owner explicitly authorized reusing the development Google project key embedded in the customer app. Android reads it from `android/dev-maps.properties`; iOS reads `ios/Flutter/DevelopmentMaps.xcconfig`. Google Maps is enabled by default, including CI debug APKs. These are development settings, not a claim that the Google project enables every Maps API or permits every signing certificate.
 
-## Android
+Override the development key with `GOOGLE_MAPS_API_KEY`, or `MAPS_API_KEY` in `android/local.properties`. iOS `Secrets.xcconfig` overrides the checked-in development configuration. The package/bundle identifier is `com.mazraa.driver`. Maps SDK for Android/iOS and the appropriate Google project billing/credentials restrictions must permit that app. CI checks that a nonempty Google key is packaged in the native Android manifest without logging its value.
 
-Add a restricted Android SDK key to the untracked `android/local.properties`:
+The native map displays actual driver, pickup and customer coordinates, traffic and dark styling. `/shipments/{id}/navigation` requests the authenticated server endpoint `GET api/Shipments/{id}/road-route?to=pickup|customer`. Only a successful `isRoadRoute=true` response with a valid encoded polyline is drawn as a road route. An unavailable/unconfigured server Routes service produces an explicit message and external Google Maps navigation remains available. The SDK key is not used to make unauthenticated client Routes REST calls.
 
-```properties
-MAPS_API_KEY=YOUR_ANDROID_KEY
-```
+Widget tests disable native map surfaces with `ENABLE_GOOGLE_MAPS=false`; APK and unsigned iOS builds enable them. Compilation and a packaged key do not prove Google authorization or tile rendering on a real device. Device validation should confirm map tiles, live permission grants, GPS, QR camera and push delivery. Driver Firebase app configuration is separate from the existing Google key.
 
-Then run with the Dart feature flag:
-
-```powershell
-flutter run --dart-define=ENABLE_GOOGLE_MAPS=true
-```
-
-Restrict the key to package `com.mazraa.driver` and the correct SHA-1/SHA-256 signing certificates. Enable Maps SDK for Android. Do not use this key for server-side Routes REST calls.
-
-## iOS
-
-Copy `ios/Flutter/Secrets.xcconfig.example` to `ios/Flutter/Secrets.xcconfig`, set a restricted iOS key, and keep the file untracked. Restrict it to bundle ID `com.mazraa.driver`. `AppDelegate.swift` only initializes Google Maps when a non-placeholder key exists.
-
-An actual iOS build requires macOS, Xcode, CocoaPods or supported Swift Package Manager configuration, and Apple signing.
-
-## Routes and ETA
-
-The current backend tracking endpoint returns Haversine distance and an estimated time based on recent driver speed. It does not expose a Google Routes proxy or an encoded road polyline. The app labels these as estimates and never draws a straight line as if it were a road route.
-
-For production road routing, add an authenticated backend proxy that returns route distance, duration, encoded polyline, waypoint order, and traffic-aware ETA. Keep the server key restricted and never ship it in the application.
-
-
-
-## GitHub Actions Debug APK
-
-Set the repository Actions secret `GOOGLE_MAPS_API_KEY` to your restricted Android Maps SDK key. The key is read by Gradle from the build environment, not written into the Git repository or CI logs. The CI Flutter command enables Maps only when the secret exists. Confirm that the key allows package `com.mazraa.driver` and the **GitHub runner's debug signing certificate SHA-1**, which may differ from the local computer's debug key. Prefer a dedicated development key and restrict it by package and signing fingerprint; never commit the value. Enable billing and Maps SDK for Android on the Google Cloud project. Building with a secret does not itself prove tile rendering; verify it on a physical device.
+Google setup reference: https://developers.google.com/maps/flutter-package/config

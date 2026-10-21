@@ -472,20 +472,31 @@ class _DriverShipmentToolScreenState
               ],
               if (widget.tool == 'proofs') ...[
                 OutlinedButton.icon(
-                  onPressed: () => c
-                      .push('/shipments/${s.id}/evidence')
-                      .then(
-                        (_) => ref.invalidate(shipmentProofsProvider(s.id)),
-                      ),
+                  onPressed:
+                      (s.status != ShipmentStatus.accepted &&
+                          s.status != ShipmentStatus.pickedUp &&
+                          s.status != ShipmentStatus.nearCustomer)
+                      ? null
+                      : () => c
+                            .push(
+                              '/shipments/${s.id}/evidence?type=${s.status == ShipmentStatus.nearCustomer ? 1 : 0}',
+                            )
+                            .then(
+                              (_) =>
+                                  ref.invalidate(shipmentProofsProvider(s.id)),
+                            ),
                   icon: const Icon(Icons.photo_camera),
                   label: Text(toolText(c, 'إضافة صورة', 'Add photo')),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => c
-                      .push('/shipments/${s.id}/signature')
-                      .then(
-                        (_) => ref.invalidate(shipmentProofsProvider(s.id)),
-                      ),
+                  onPressed: s.status != ShipmentStatus.nearCustomer
+                      ? null
+                      : () => c
+                            .push('/shipments/${s.id}/signature')
+                            .then(
+                              (_) =>
+                                  ref.invalidate(shipmentProofsProvider(s.id)),
+                            ),
                   icon: const Icon(Icons.draw),
                   label: Text(
                     toolText(c, 'توقيع المستلم', 'Recipient signature'),

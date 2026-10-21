@@ -726,7 +726,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   shipment.status == ShipmentStatus.nearCustomer) ...[
                 OutlinedButton.icon(
                   onPressed: () => context
-                      .push('/shipments/${shipment.id}/evidence')
+                      .push('/shipments/${shipment.id}/evidence?type=${shipment.status == ShipmentStatus.nearCustomer ? 1 : 0}')
                       .then((_) {
                         if (mounted) {
                           ref.invalidate(

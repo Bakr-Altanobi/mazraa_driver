@@ -223,6 +223,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/shipments/:id/evidence',
         builder: (_, state) => DriverProofPhotoScreen(
+          initialType: state.uri.queryParameters['type'] == '1' ? 1 : 0,
           shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
         ),
       ),
