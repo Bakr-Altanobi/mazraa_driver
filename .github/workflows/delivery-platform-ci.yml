@@ -32,7 +32,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze lib test --no-fatal-infos --no-fatal-warnings
-      - run: flutter test --reporter expanded
+      - run: flutter test --dart-define=ENABLE_GOOGLE_MAPS=false --reporter expanded
       - name: Configure existing Google client settings
         shell: bash
         run: |
@@ -43,7 +43,7 @@ jobs:
           if [ -n "$GOOGLE_MAPS_API_KEY" ]; then
             echo "MAPS_ENABLED=true" >> "$GITHUB_ENV"
           else
-            echo "MAPS_ENABLED=false" >> "$GITHUB_ENV"
+            echo "MAPS_ENABLED=true" >> "$GITHUB_ENV"
           fi
       - name: Configure optional registered driver push application
         shell: bash

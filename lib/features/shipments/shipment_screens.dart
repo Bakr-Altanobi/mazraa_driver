@@ -142,7 +142,9 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                       if (filtered.isEmpty) {
                         return EmptyState(
                           title: ar ? 'لا توجد شحنات' : 'No shipments',
-                          message: ar ? 'لا توجد نتائج مطابقة في هذا القسم.' : 'There are no matching shipments in this section.',
+                          message: ar
+                              ? 'لا توجد نتائج مطابقة في هذا القسم.'
+                              : 'There are no matching shipments in this section.',
                         );
                       }
                       return RefreshIndicator(
@@ -236,9 +238,9 @@ class _ShipmentCard extends StatelessWidget {
                           '${ar ? 'طلب' : 'Order'} #${shipment.orderId}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                         ),
                       ],
@@ -321,7 +323,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
             final checklist = saved['checklist'] as Map<String, dynamic>?;
             if (checklist?['hasDiscrepancy'] == true) {
               throw StateError(
-                ar ? 'يوجد نقص أو تلف مسجل. راجع الدعم قبل الاستلام.' : 'A discrepancy is recorded. Contact support before pickup.',
+                ar
+                    ? 'يوجد نقص أو تلف مسجل. راجع الدعم قبل الاستلام.'
+                    : 'A discrepancy is recorded. Contact support before pickup.',
               );
             }
           } else {
@@ -339,7 +343,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   (x['damagedQuantity'] as int) > 0,
             )) {
               throw StateError(
-                ar ? 'تم حفظ النقص أو التلف. أبلغ الدعم قبل تحريك الشحنة.' : 'Discrepancy saved. Report it to support before moving the shipment.',
+                ar
+                    ? 'تم حفظ النقص أو التلف. أبلغ الدعم قبل تحريك الشحنة.'
+                    : 'Discrepancy saved. Report it to support before moving the shipment.',
               );
             }
           }
@@ -366,6 +372,8 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
           builder: (_) => DeliveryConfirmationDialog(
             manifest: manifest,
             requestCode: () => api.requestDeliveryCode(shipment.id),
+            scanQr: () =>
+                context.push<String>('/shipments/${shipment.id}/scan'),
           ),
         );
         if (delivery == null) return;
@@ -393,10 +401,12 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         action,
         reason: reason,
         numericCode: delivery?.numericCode,
+        qrToken: delivery?.qrToken,
         cashReceivedConfirmed: delivery?.cashConfirmed ?? false,
         cashReceivedAmount: delivery?.cashAmount,
       );
-      if (action == 'deliver' || action == 'fail' || action == 'reject') ref.read(driverLocationSessionProvider).disable(shipment.id);
+      if (action == 'deliver' || action == 'fail' || action == 'reject')
+        ref.read(driverLocationSessionProvider).disable(shipment.id);
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
@@ -431,8 +441,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         );
     } catch (error) {
       if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -518,8 +529,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) setState(() => _sendingLocation = false);
@@ -594,9 +606,9 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                           '${ar ? 'الطلب' : 'Order'} #${shipment.orderId}',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                         ),
                       ],
@@ -615,6 +627,26 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                 customer:
                     shipment.customerLocation ?? mapShipment.customerLocation,
                 height: 285,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final entry in <String, String>{
+                    'navigation': ar ? 'الخريطة والمسار' : 'Map & route',
+                    'proofs': ar ? 'الإثباتات والتوقيع' : 'Proofs & signature',
+                    'fees': ar ? 'الرسوم' : 'Fees',
+                    if (!shipment.status.isClosed)
+                      'unavailable': ar ? 'مشكلة التسليم' : 'Delivery issue',
+                  }.entries)
+                    ActionChip(
+                      label: Text(entry.value),
+                      onPressed: () => context.push(
+                        '/shipments/${shipment.id}/${entry.key}',
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 10),
               Row(
@@ -656,6 +688,38 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                       : 'Items and delivery instructions',
                 ),
               ),
+              if (shipment.customerId != null && !shipment.status.isClosed)
+                OutlinedButton.icon(
+                  onPressed: _acting
+                      ? null
+                      : () async {
+                          setState(() => _acting = true);
+                          try {
+                            final chat = await ref
+                                .read(apiClientProvider)
+                                .post<Map<String, dynamic>>(
+                                  'api/chats',
+                                  data: {
+                                    'recipientId': shipment.customerId,
+                                    'isSupport': false,
+                                  },
+                                );
+                            final id = (chat['id'] as num?)?.toInt();
+                            if (id == null)
+                              throw StateError('Chat ID unavailable');
+                            if (context.mounted) context.push('/chats/$id');
+                          } catch (e) {
+                            if (context.mounted)
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text('$e')));
+                          } finally {
+                            if (mounted) setState(() => _acting = false);
+                          }
+                        },
+                  icon: const Icon(Icons.chat_outlined),
+                  label: Text(ar ? 'محادثة العميل' : 'Chat with customer'),
+                ),
               const SizedBox(height: 20),
               if (shipment.status == ShipmentStatus.accepted ||
                   shipment.status == ShipmentStatus.pickedUp ||
@@ -906,9 +970,9 @@ class _ShipmentTimeline extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: i <= current
                               ? MazraaColors.forest
-                              : Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

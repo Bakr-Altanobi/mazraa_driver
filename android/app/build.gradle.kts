@@ -12,7 +12,11 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey = (System.getenv("GOOGLE_MAPS_API_KEY") ?: localProperties.getProperty("MAPS_API_KEY", "")).trim()
+val developmentMaps = Properties()
+rootProject.file("dev-maps.properties").takeIf { it.exists() }?.inputStream()?.use { developmentMaps.load(it) }
+val mapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: localProperties.getProperty("MAPS_API_KEY")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: developmentMaps.getProperty("MAPS_API_KEY", "")
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")

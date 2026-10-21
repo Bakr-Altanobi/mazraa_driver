@@ -117,7 +117,9 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.upload_file_outlined),
-                        title: Text(ar ? 'رفع مستندات السائق' : 'Upload driver documents'),
+                        title: Text(
+                          ar ? 'رفع مستندات السائق' : 'Upload driver documents',
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => context.push('/upload-document'),
                       ),
@@ -125,8 +127,11 @@ class ProfileScreen extends ConsumerWidget {
                       ListTile(
                         leading: const Icon(Icons.grid_view_rounded),
                         title: Text(ar ? 'كل خدمات السائق' : 'Driver services'),
-                        subtitle: Text(ar ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
-                            : 'Schedule, vehicle, returns, incidents and earnings'),
+                        subtitle: Text(
+                          ar
+                              ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
+                              : 'Schedule, vehicle, returns, incidents and earnings',
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => context.push('/services'),
                       ),
@@ -148,6 +153,20 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
+                for (final link in <String, String>{
+                  '/tools/edit-profile': ar ? 'تعديل بياناتي' : 'Edit profile',
+                  '/tools/preferences': ar
+                      ? 'تفضيلات العمل'
+                      : 'Work preferences',
+                  '/tools/account-status': ar
+                      ? 'حالة الاعتماد'
+                      : 'Approval status',
+                }.entries)
+                  ListTile(
+                    title: Text(link.value),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(link.key),
+                  ),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
@@ -359,11 +378,31 @@ class SettingsScreen extends ConsumerWidget {
               ),
               subtitle: Text(
                 ar
-                    ? 'تتم إدارة المفتاح خارج ملفات Dart عبر إعدادات البناء الآمنة.'
-                    : 'The key is managed outside Dart through secure build configuration.',
+                    ? 'الخريطة تعرض المواقع الفعلية؛ يتوفر المسار عند دعم خدمة الطرق.'
+                    : 'Maps show actual locations; road routes depend on the routing service.',
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          for (final link in <String, String>{
+            '/tools/notification-preferences': ar
+                ? 'تفضيلات الإشعارات'
+                : 'Notification preferences',
+            '/tools/security': ar ? 'تغيير كلمة المرور' : 'Change password',
+            '/tools/privacy': ar ? 'الخصوصية' : 'Privacy',
+            '/tools/health': ar
+                ? 'الأذونات والاتصال'
+                : 'Permissions & connection',
+            '/tools/delete-account': ar
+                ? 'طلب حذف الحساب'
+                : 'Request account deletion',
+            '/tools/training': ar ? 'دليل السائق' : 'Driver guide',
+          }.entries)
+            ListTile(
+              title: Text(link.value),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(link.key),
+            ),
           const SizedBox(height: 20),
           Card(
             child: Column(
@@ -373,8 +412,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: Text(ar ? 'الخصوصية' : 'Privacy'),
                   subtitle: Text(
                     ar
-                        ? 'لا يتم تتبع الموقع خارج مهمة نشطة.'
-                        : 'Location is not tracked outside an active mission.',
+                        ? 'تتم مشاركة الموقع أثناء التوفر للعروض أو تفعيل تتبع شحنة، وتتوقف عند إيقاف المشاركة أو تسجيل الخروج.'
+                        : 'Location is shared while available for offers or tracking a shipment, and stops when sharing is disabled or you sign out.',
                   ),
                 ),
                 const Divider(indent: 58, height: 1),

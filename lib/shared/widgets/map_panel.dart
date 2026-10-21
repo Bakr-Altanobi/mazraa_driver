@@ -27,9 +27,11 @@ class MapPanel extends StatefulWidget {
     this.customer,
     this.height = 310,
     this.onLocate,
+    this.route = const [],
     super.key,
   });
 
+  final List<GeoPoint> route;
   final GeoPoint? driver;
   final GeoPoint? store;
   final GeoPoint? customer;
@@ -47,6 +49,7 @@ class _MapPanelState extends State<MapPanel> {
   bool get _hasLocations => _center != null;
 
   List<GeoPoint> get _points => [
+    ...widget.route,
     if (widget.driver != null) widget.driver!,
     if (widget.store != null) widget.store!,
     if (widget.customer != null) widget.customer!,
@@ -55,7 +58,8 @@ class _MapPanelState extends State<MapPanel> {
   @override
   void didUpdateWidget(covariant MapPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.driver?.latitude != widget.driver?.latitude ||
+    if (oldWidget.route != widget.route ||
+        oldWidget.driver?.latitude != widget.driver?.latitude ||
         oldWidget.driver?.longitude != widget.driver?.longitude ||
         oldWidget.store?.latitude != widget.store?.latitude ||
         oldWidget.store?.longitude != widget.store?.longitude ||
@@ -139,6 +143,17 @@ class _MapPanelState extends State<MapPanel> {
                       zoomControlsEnabled: false,
                       compassEnabled: true,
                       mapToolbarEnabled: true,
+                      polylines: {
+                        if (widget.route.length > 1)
+                          Polyline(
+                            polylineId: const PolylineId("road-route"),
+                            points: widget.route
+                                .map((p) => LatLng(p.latitude, p.longitude))
+                                .toList(),
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 5,
+                          ),
+                      },
                       markers: {
                         if (widget.driver != null)
                           Marker(

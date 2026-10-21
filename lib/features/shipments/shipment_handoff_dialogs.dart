@@ -252,10 +252,12 @@ class _PickupChecklistDialogState extends State<PickupChecklistDialog> {
 class DeliveryConfirmation {
   const DeliveryConfirmation({
     this.numericCode,
+    this.qrToken,
     this.cashConfirmed = false,
     this.cashAmount,
   });
   final String? numericCode;
+  final String? qrToken;
   final bool cashConfirmed;
   final double? cashAmount;
 }
@@ -264,10 +266,12 @@ class DeliveryConfirmationDialog extends StatefulWidget {
   const DeliveryConfirmationDialog({
     required this.manifest,
     required this.requestCode,
+    this.scanQr,
     super.key,
   });
   final Map<String, dynamic> manifest;
   final Future<void> Function() requestCode;
+  final Future<String?> Function()? scanQr;
   @override
   State<DeliveryConfirmationDialog> createState() =>
       _DeliveryConfirmationDialogState();
@@ -279,6 +283,7 @@ class _DeliveryConfirmationDialogState
   final _code = TextEditingController(), _amount = TextEditingController();
   bool _cashConfirmed = false, _requesting = false;
   String? _message;
+  String? _qrToken;
   @override
   void dispose() {
     _code.dispose();
@@ -376,10 +381,34 @@ class _DeliveryConfirmationDialogState
                       ? 'رمز الاستلام من العميل'
                       : 'Customer delivery code',
                 ),
-                validator: (s) => contactless && (s?.trim().isEmpty ?? true)
+                validator: (s) =>
+                    contactless &&
+                        _qrToken == null &&
+                        (s?.trim().isEmpty ?? true)
                     ? (ar ? 'رمز العميل مطلوب' : 'Customer code required')
                     : null,
               ),
+              if (widget.scanQr != null)
+                OutlinedButton.icon(
+                  onPressed: _requesting
+                      ? null
+                      : () async {
+                          setState(() => _requesting = true);
+                          try {
+                            final token = await widget.scanQr!();
+                            if (mounted && token != null)
+                              setState(() => _qrToken = token);
+                          } finally {
+                            if (mounted) setState(() => _requesting = false);
+                          }
+                        },
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: Text(
+                    _qrToken != null
+                        ? (ar ? 'تمت قراءة QR' : 'QR scanned')
+                        : (ar ? 'مسح QR من العميل' : 'Scan customer QR'),
+                  ),
+                ),
               if (contactless)
                 TextButton(
                   onPressed: _requesting ? null : _requestCode,
@@ -403,6 +432,7 @@ class _DeliveryConfirmationDialogState
                   Navigator.pop(
                     context,
                     DeliveryConfirmation(
+                      qrToken: _qrToken,
                       numericCode: _code.text.trim().isEmpty
                           ? null
                           : _code.text.trim(),
