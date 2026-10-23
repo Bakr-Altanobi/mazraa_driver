@@ -122,7 +122,10 @@ class MetricCard extends StatelessWidget {
               ),
               child: Icon(icon, color: accent, size: 20),
             ),
-            const Spacer(),
+            // A MetricCard is used inside both fixed-height dashboards and
+            // vertically scrolling profile/tool pages. Spacer requires a
+            // bounded main axis and crashes the latter with unbounded height.
+            const SizedBox(height: 14),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
