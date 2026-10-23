@@ -54,7 +54,7 @@ class DriverWorkspaceRepository {
       : client.get<dynamic>(
           tool.endpoint,
           queryParameters: tool.id == 'earnings'
-              ? {'page': 1, 'perPage': 50}
+              ? {'page': 1}
               : tool.id == 'feedback'
               ? {'page': 1, 'pageSize': 100}
               : null,
