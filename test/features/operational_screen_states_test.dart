@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mazraa_driver/features/workspace/driver_tool_catalog.dart';
 import 'package:mazraa_driver/features/workspace/driver_tool_screens.dart';
 import 'package:mazraa_driver/features/workspace/driver_workspace_repository.dart';
-import 'driver_workspace_test.dart' show host, loadDriverFonts;
+import 'workspace/driver_workspace_test.dart' show host, loadDriverFonts;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
