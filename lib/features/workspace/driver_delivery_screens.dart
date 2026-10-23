@@ -183,21 +183,45 @@ class DriverShipmentToolScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverShipmentToolScreenState
-    extends ConsumerState<DriverShipmentToolScreen> {
+    extends ConsumerState<DriverShipmentToolScreen> with WidgetsBindingObserver {
   bool _busy = false;
+  bool _foreground = true;
   Timer? _timer;
+  void _refreshLiveNavigation() {
+    if (!mounted || !_foreground || widget.tool != 'navigation') return;
+    // A moved GPS point changes both the map marker and the road geometry.
+    // Poll the server's authenticated tracking and routing contracts; no fake
+    // GPS coordinates or straight-line polylines are substituted.
+    ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+    ref.invalidate(shipmentRoadProvider('${widget.shipmentId}:pickup'));
+    ref.invalidate(shipmentRoadProvider('${widget.shipmentId}:customer'));
+  }
+
   @override
   void initState() {
     super.initState();
-    if (widget.tool == 'unavailable')
+    WidgetsBinding.instance.addObserver(this);
+    if (widget.tool == 'unavailable') {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
+        if (mounted && _foreground) setState(() {});
       });
+    } else if (widget.tool == 'navigation') {
+      _timer = Timer.periodic(
+        const Duration(seconds: 15), (_) => _refreshLiveNavigation(),
+      );
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) _refreshLiveNavigation();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -325,7 +349,9 @@ class _DriverShipmentToolScreenState
 
   @override
   Widget build(BuildContext c) {
-    final state = ref.watch(shipmentDetailsProvider(widget.shipmentId));
+    final state = widget.tool == 'navigation'
+        ? ref.watch(shipmentTrackingProvider(widget.shipmentId))
+        : ref.watch(shipmentDetailsProvider(widget.shipmentId));
     final title = switch (widget.tool) {
       'contacts' => toolText(c, 'التواصل والاتصال', 'Contacts & calls'),
       'navigation' => toolText(c, 'الملاحة والمسار', 'Navigation & route'),
