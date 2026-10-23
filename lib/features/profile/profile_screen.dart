@@ -234,6 +234,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
+/// The media service may return relative image paths from uploaded files.
+String? _resolveProfileImage(String? raw) {
+  final image = raw?.trim();
+  if (image == null || image.isEmpty || image.startsWith('//')) return null;
+  final uri = Uri.tryParse(image);
+  if (uri == null) return null;
+  if (uri.hasScheme) {
+    return uri.scheme == 'https' || uri.scheme == 'http' ? image : null;
+  }
+  final base = Uri.tryParse(ApiEndpoints.baseUrl);
+  return base?.resolve(image).toString();
+}
+
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.profile});
   final DriverProfile profile;
@@ -241,7 +254,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    final image = profile.profileImageUrl;
+    final image = _resolveProfileImage(profile.profileImageUrl);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -255,16 +268,14 @@ class _ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white.withValues(alpha: .18),
-            foregroundImage: image == null || image.isEmpty
-                ? null
-                : NetworkImage(image),
-            child: image == null || image.isEmpty
-                ? const Icon(
-                    Icons.person_rounded,
-                    size: 38,
-                    color: Colors.white,
-                  )
-                : null,
+            // Server uploads may return a relative /images/... path. The
+            // fallback icon must remain visible when an image fetch fails.
+            foregroundImage: image == null ? null : NetworkImage(image),
+            child: const Icon(
+              Icons.person_rounded,
+              size: 38,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
