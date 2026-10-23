@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
@@ -33,7 +34,16 @@ void main() {
           throw StateError('test outage');
         }),
       ],
-      child: const MaterialApp(locale: Locale('ar'), home: ReferenceJourneyScreen(screenNumber: 12)),
+      child: const MaterialApp(
+        locale: Locale('ar'),
+        supportedLocales: [Locale('ar'), Locale('en')],
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: ReferenceJourneyScreen(screenNumber: 12),
+      ),
     ));
     await tester.pumpAndSettle();
     expect(find.byType(ErrorState), findsOneWidget);
