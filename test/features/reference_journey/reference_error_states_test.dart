@@ -33,7 +33,7 @@ void main() {
           throw StateError('test outage');
         }),
       ],
-      child: const MaterialApp(home: ReferenceJourneyScreen(screenNumber: 12)),
+      child: const MaterialApp(locale: Locale('ar'), home: ReferenceJourneyScreen(screenNumber: 12)),
     ));
     await tester.pumpAndSettle();
     expect(find.byType(ErrorState), findsOneWidget);
