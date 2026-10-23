@@ -98,9 +98,9 @@ jobs:
           flutter-version: '3.44.7'
           cache: true
       - run: flutter pub get
-      - name: Build unsigned iOS app
-        run: flutter build ios --debug --no-codesign --dart-define=ENABLE_GOOGLE_MAPS=true
+      - name: Build unsigned iOS simulator app
+        run: flutter build ios --simulator --debug --no-codesign --dart-define=ENABLE_GOOGLE_MAPS=true
       - uses: actions/upload-artifact@v4
         with:
-          name: mazraa-driver-ios-unsigned
-          path: build/ios/iphoneos/Runner.app
+          name: mazraa-driver-ios-simulator-unsigned
+          path: build/ios/iphonesimulator/Runner.app
