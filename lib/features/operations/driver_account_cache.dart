@@ -35,7 +35,7 @@ final resetDriverAccountCacheProvider = Provider<VoidCallback>(
     ref.invalidate(shipmentProofsProvider);
     ref.invalidate(shipmentContactsProvider);
     ref.invalidate(shipmentRoadProvider);
-    ref.invalidate(waitingSinceProvider);
+    ref.invalidate(shipmentWaitingProvider);
     ref.invalidate(phoneVerificationTargetProvider);
     ref.invalidate(referenceScreenPayloadProvider);
   },
