@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' hide GeoPoint;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
@@ -160,8 +161,12 @@ final shipmentContactsProvider = FutureProvider.autoDispose
             'api/driver-journey/shipments/$id/contacts',
           ),
     );
-final waitingSinceProvider = StateProvider.family<DateTime?, int>(
-  (ref, id) => null,
+// Waiting is authoritative on the server: timers survive process restarts and
+// cannot charge customers from local device time.
+final shipmentWaitingProvider = FutureProvider.autoDispose.family<List<dynamic>, int>(
+  (ref, id) => ref.watch(apiClientProvider).get<List<dynamic>>(
+    'api/driver-journey/shipments/$id/waiting',
+  ),
 );
 
 class DriverShipmentToolScreen extends ConsumerStatefulWidget {
@@ -194,6 +199,50 @@ class _DriverShipmentToolScreenState
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _toggleCustomerWait(int shipmentId, bool stopping) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final path = 'api/driver-journey/shipments/$shipmentId/waiting';
+      if (stopping) {
+        await api.post<dynamic>('$path/end', data: {'kind': 1});
+      } else {
+        if (!await Geolocator.isLocationServiceEnabled()) {
+          throw StateError('فعّل خدمات الموقع / Enable device location');
+        }
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          throw StateError('يلزم إذن GPS لتسجيل الانتظار / GPS permission required');
+        }
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 15),
+          ),
+        );
+        await api.post<dynamic>('$path/start', data: {
+          'kind': 1,
+          'latitude': pos.latitude,
+          'longitude': pos.longitude,
+        });
+      }
+      ref.invalidate(shipmentWaitingProvider(shipmentId));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _checklist() async {
@@ -316,10 +365,20 @@ class _DriverShipmentToolScreenState
               );
             } catch (_) {}
           }
-          final since = ref.watch(waitingSinceProvider(s.id));
-          final elapsed = since == null
-              ? Duration.zero
-              : DateTime.now().difference(since);
+          final waiting = widget.tool == 'unavailable'
+              ? ref.watch(shipmentWaitingProvider(s.id))
+              : null;
+          final waitRows = waiting?.valueOrNull ?? const <dynamic>[];
+          final activeWait = waitRows.whereType<Map>().map(
+            (x) => Map<String, dynamic>.from(x),
+          ).where((x) =>
+              (x['kind'] == 1 || x['kind'] == 'Customer') &&
+              x['endedAt'] == null
+          ).toList();
+          final startedAt = activeWait.isEmpty ? null :
+              DateTime.tryParse('${activeWait.last['startedAt']}')?.toUtc();
+          final elapsed = startedAt == null ? Duration.zero :
+              DateTime.now().toUtc().difference(startedAt);
           return ListView(
             padding: const EdgeInsets.all(18),
             children: [
@@ -476,41 +535,37 @@ class _DriverShipmentToolScreenState
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (waiting?.isLoading == true)
+                  const LinearProgressIndicator(),
+                if (waiting?.hasError == true)
+                  Text(
+                    toolText(c,
+                      'سجل الانتظار غير متاح. لن يُحتسب أي مؤقت محلي.',
+                      'Server waiting record unavailable. No local timer will be treated as a charge.',
+                    ),
+                  ),
                 Text(
                   '${elapsed.inMinutes.toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}',
                   style: Theme.of(c).textTheme.displayMedium,
                 ),
                 FilledButton(
-                  onPressed: s.status.isClosed
+                  onPressed: _busy || waiting?.isLoading == true ||
+                          waiting?.hasError == true ||
+                          (activeWait.isEmpty && s.status != ShipmentStatus.nearCustomer)
                       ? null
-                      : () =>
-                            ref
-                                .read(waitingSinceProvider(s.id).notifier)
-                                .state = since == null
-                            ? DateTime.now()
-                            : null,
+                      : () => _toggleCustomerWait(s.id, activeWait.isNotEmpty),
                   child: Text(
-                    toolText(
-                      c,
-                      since == null ? 'بدء مؤقت الانتظار' : 'إيقاف المؤقت',
-                      since == null ? 'Start waiting timer' : 'Stop timer',
+                    toolText(c,
+                      activeWait.isEmpty ? 'تسجيل بدء الانتظار' : 'تسجيل نهاية الانتظار',
+                      activeWait.isEmpty ? 'Start verified wait' : 'End verified wait',
                     ),
                   ),
                 ),
                 Text(
-                  toolText(
-                    c,
-                    'مؤقت محلي للمساعدة، لا يفرض رسومًا أو يغيّر حالة الشحنة.',
-                    'This local timer does not charge fees or change shipment state.',
+                  toolText(c,
+                    'يحدد السيرفر مدة الانتظار والرسوم وفق الموقع والحالة وسياسة التشغيل. لا يفرض التطبيق رسومًا من تلقاء نفسه.',
+                    'The server validates location, duration and fee policy. This app cannot impose waiting charges on its own.',
                   ),
-                ),
-                OutlinedButton(
-                  onPressed: () => c.push('/tools/chats'),
-                  child: Text(toolText(c, 'المحادثات', 'Conversations')),
-                ),
-                OutlinedButton(
-                  onPressed: () => c.push('/tools/incidents'),
-                  child: Text(toolText(c, 'رفع بلاغ', 'Report an issue')),
                 ),
               ],
               if (widget.tool == 'proofs') ...[
