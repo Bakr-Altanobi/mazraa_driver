@@ -59,7 +59,6 @@ const driverTools = <DriverTool>[
     'api/driver-journey/me/vehicle-change-requests',
     group: 'vehicle',
     form: 'vehicle-change',
-    pending: true,
   ),
   DriverTool(
     'scheduled-trips',
@@ -133,7 +132,7 @@ const driverTools = <DriverTool>[
     'الأرباح والحركات المالية',
     'Earnings & transactions',
     Icons.payments_outlined,
-    'api/wallets/transactions',
+    'api/driver-journey/earnings',
     group: 'money',
   ),
   DriverTool(
@@ -287,7 +286,6 @@ const driverTools = <DriverTool>[
     Icons.person_remove_outlined,
     'api/driver-journey/me/deletion-request',
     form: 'deletion',
-    pending: true,
   ),
   DriverTool(
     'training',
