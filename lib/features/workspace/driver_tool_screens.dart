@@ -619,6 +619,37 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
 
   Widget _content(BuildContext c, dynamic payload) {
     final map = recordMap(payload);
+    // A successful 200 with no fields is an empty server result, not a
+    // reason to render an invisible blank card. This matters especially for
+    // newly-approved drivers who have no sessions, earnings or vehicle yet.
+    if (payload == null || (payload is Map && payload.isEmpty)) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Icon(tool.icon, size: 48,
+                  color: Theme.of(c).colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(toolText(c, 'لا توجد بيانات متاحة بعد لهذه الخدمة.',
+                  'There is no account data for this service yet.'),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(toolText(c,
+                  'اسحب للأسفل للتحديث، أو تحقق من حالة الحساب والاتصال.',
+                  'Pull down to refresh or check your account and connection.'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(c).textTheme.bodySmall),
+              TextButton.icon(
+                onPressed: () => ref.invalidate(toolDataProvider(tool.id)),
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(toolText(c, 'إعادة التحميل', 'Refresh')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (tool.id == 'feedback')
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
