@@ -8,8 +8,25 @@ import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = ref.read(authControllerProvider);
+      if (auth.isAuthenticated && auth.profile == null) {
+        auth.refreshProfile();
+      }
+    });
+  }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final ar = isArabic(context);
@@ -26,7 +43,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ar = isArabic(context);
     final auth = ref.watch(authControllerProvider);
     final profile = auth.profile;
@@ -36,16 +53,47 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.read(authControllerProvider).refreshProfile(),
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed: auth.isRefreshingProfile
+                ? null
+                : () => ref.read(authControllerProvider).refreshProfile(),
+            icon: auth.isRefreshingProfile
+                ? const SizedBox(width: 22, height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
       body: profile == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+          ? auth.isRefreshingProfile
+              ? const Center(child: CircularProgressIndicator(
+                  key: Key('profileLoadingIndicator')))
+              : ErrorState(
+                  error: auth.profileError ??
+                      (ar ? 'تعذر الحصول على بيانات حساب السائق. أعد المحاولة.'
+                          : 'Your driver profile is not available. Try again.'),
+                  onRetry: () => ref.read(authControllerProvider).refreshProfile(),
+                )
+          : RefreshIndicator(
+              onRefresh: () => ref.read(authControllerProvider).refreshProfile(),
+              child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
               children: [
+                if (auth.profileError != null)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.cloud_off_outlined),
+                      title: Text(ar
+                          ? 'عرض آخر بيانات محفوظة؛ تعذر التحديث.'
+                          : 'Showing last loaded data; refresh failed.'),
+                      subtitle: Text(auth.profileError!),
+                      trailing: IconButton(
+                        tooltip: ar ? 'إعادة المحاولة' : 'Retry',
+                        onPressed: () => ref.read(authControllerProvider).refreshProfile(),
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ),
+                  ),
                 _ProfileHeader(profile: profile),
                 const SizedBox(height: 18),
                 SectionHeader(
@@ -180,6 +228,7 @@ class ProfileScreen extends ConsumerWidget {
                   label: Text(ar ? 'تسجيل الخروج' : 'Sign out'),
                 ),
               ],
+            ),
             ),
     );
   }
