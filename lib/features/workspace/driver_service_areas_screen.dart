@@ -3,6 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/features/workspace/driver_workspace_repository.dart';
 
+/// Deduplicate zone IDs supplied by the backend. Flutter dropdowns require
+/// exactly one matching value, otherwise editing a saved choice can crash.
+Map<int, String> serviceZoneOptions(List<dynamic> zones,
+    {int? selectedId, String? selectedLabel}) {
+  final options = <int, String>{};
+  for (final raw in zones.whereType<Map>()) {
+    final id = raw['id'];
+    if (id is num && id.toInt() > 0) {
+      options[id.toInt()] = '${raw['name'] ?? id}';
+    }
+  }
+  if (selectedId != null && selectedId > 0) {
+    options.putIfAbsent(selectedId, () => selectedLabel ?? '#$selectedId');
+  }
+  return options;
+}
+
 final availableDriverZonesProvider = FutureProvider.autoDispose<List<dynamic>>(
   (ref) => ref.watch(apiClientProvider)
       .get<List<dynamic>>('api/driver-journey/me/service-areas/available'),
@@ -95,23 +112,29 @@ class _DriverServiceAreasEditorState
                   error: (e, _) => Text(ar
                       ? 'تعذر تحميل المناطق. اسحب للأسفل لإعادة التحميل.'
                       : 'Cannot load zones. Pull down to retry.'),
-                  data: (zones) => DropdownButtonFormField<int>(
-                    key: ValueKey('zone-${_editingId ?? 'new'}'),
-                    initialValue: _zoneId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: ar ? 'منطقة الخدمة' : 'Service zone',
-                    ),
-                    items: [
-                      for (final raw in zones.whereType<Map>())
-                        if (raw['id'] is num)
-                          DropdownMenuItem(
-                            value: (raw['id'] as num).toInt(),
-                            child: Text('${raw['name'] ?? raw['id']}'),
+                  data: (zones) {
+                    final previous = widget.rows.where((row) =>
+                        row['id'] == _editingId).firstOrNull;
+                    final options = serviceZoneOptions(zones,
+                      selectedId: _zoneId,
+                      selectedLabel: previous?['zoneName']?.toString());
+                    return DropdownButtonFormField<int>(
+                      key: ValueKey('zone-${_editingId ?? 'new'}'),
+                      initialValue: _zoneId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: ar ? 'منطقة الخدمة' : 'Service zone',
+                      ),
+                      items: [
+                        for (final option in options.entries)
+                          DropdownMenuItem<int>(
+                            value: option.key,
+                            child: Text(option.value),
                           ),
-                    ],
-                    onChanged: _busy ? null : (v) => setState(() => _zoneId = v),
-                  ),
+                      ],
+                      onChanged: _busy ? null : (v) => setState(() => _zoneId = v),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextField(
