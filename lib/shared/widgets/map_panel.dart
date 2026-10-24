@@ -90,6 +90,11 @@ class _MapPanelState extends State<MapPanel> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant MapPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // A parent pull-to-refresh rebuilds its map location callback. Retry the
+    // actual OSM tile stream as part of that refresh without an extra button.
+    if (_tileError && oldWidget.onLocate != widget.onLocate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _retryTiles());
+    }
     if (oldWidget.route != widget.route ||
         oldWidget.driver?.latitude != widget.driver?.latitude ||
         oldWidget.driver?.longitude != widget.driver?.longitude ||
@@ -462,12 +467,11 @@ class _MapPanelState extends State<MapPanel> with WidgetsBindingObserver {
                               ? 'تعذر تحميل بعض أجزاء الخريطة. تحقق من الاتصال.'
                               : 'Some map tiles could not load. Check your connection.',
                         ),
-                        TextButton.icon(
-                          onPressed: _retryTiles,
-                          icon: const Icon(Icons.refresh),
-                          label: Text(
-                            ar ? 'إعادة تحميل الخريطة' : 'Retry map tiles',
-                          ),
+                        Text(
+                          ar
+                              ? 'اسحب الشاشة للأسفل لإعادة المحاولة أو ارجع إلى الخريطة بعد استعادة الاتصال.'
+                              : 'Pull down to retry, or return to the map after connectivity is restored.',
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
