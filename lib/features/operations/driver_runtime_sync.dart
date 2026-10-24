@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/features/notifications/notification_providers.dart';
+import 'package:mazraa_driver/features/notifications/notification_navigation.dart';
 import 'package:mazraa_driver/features/operations/driver_live_providers.dart';
 import 'package:mazraa_driver/features/shipments/shipment_providers.dart';
 import 'package:mazraa_driver/core/models/app_models.dart';
@@ -45,12 +46,13 @@ class _DriverRuntimeSyncState extends ConsumerState<DriverRuntimeSync>
     if (!mounted || !ref.read(authControllerProvider).isAuthenticated) return;
     _refreshFromPush(null, null);
     final shipmentId = int.tryParse(data['shipmentId']?.toString() ?? '');
-    final deepLink = data['deepLink']?.toString();
-    final route = deepLink == '/offers'
-        ? '/offers'
-        : shipmentId != null && shipmentId > 0
-        ? '/shipments/$shipmentId'
-        : '/notifications';
+    final chatId = int.tryParse(data['chatId']?.toString() ?? '');
+    final route = safeDriverNotificationRoute(
+      deepLink: data['deepLink']?.toString(),
+      eventType: data['eventType']?.toString(),
+      shipmentId: shipmentId,
+      chatId: chatId,
+    ) ?? '/notifications';
     ref.read(appRouterProvider).push(route);
   }
 
