@@ -55,8 +55,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.textContaining('controlled service failure'), findsOneWidget);
-    expect(find.text('إعادة المحاولة'), findsOneWidget);
-    await tester.tap(find.text('إعادة المحاولة'));
+    expect(find.text('اسحب للأسفل لإعادة المحاولة'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(callCount, greaterThanOrEqualTo(2));
     expect(find.textContaining('controlled service failure'), findsOneWidget);
