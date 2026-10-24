@@ -107,37 +107,45 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A horizontal metric keeps its label and amount visible in both fixed
+    // dashboard cards and unbounded profile lists. It does not use Spacer or
+    // a fixed vertical column that can overflow on compact/RTL devices.
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: accent.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: accent, size: 20),
+              child: Icon(icon, color: accent, size: 19),
             ),
-            // A MetricCard is used inside both fixed-height dashboards and
-            // vertically scrolling profile/tool pages. Spacer requires a
-            // bounded main axis and crashes the latter with unbounded height.
-            const SizedBox(height: 14),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(value, style: Theme.of(context).textTheme.titleLarge),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(value,
+                        style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
