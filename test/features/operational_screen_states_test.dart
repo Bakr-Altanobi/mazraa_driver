@@ -27,8 +27,15 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.byKey(Key('tool-${tool.id}')), findsOneWidget);
-      expect(find.text('لا توجد بيانات متاحة بعد لهذه الخدمة.'), findsOneWidget,
-          reason: 'Empty account response must be visible for ${tool.id}');
+      expect(
+        tool.id == 'scheduled-trips'
+            ? find.textContaining('لا توجد رحلات مجدولة')
+            : tool.id == 'availability'
+                ? find.textContaining('لم تُضف ساعات توفر')
+                : find.text('لا توجد بيانات متاحة بعد لهذه الخدمة.'),
+        findsOneWidget,
+        reason: 'Empty account response must be visible for ${tool.id}',
+      );
       expect(tester.takeException(), isNull,
           reason: 'UI exception for ${tool.id}');
     }
