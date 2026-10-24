@@ -5,6 +5,7 @@ import 'package:mazraa_driver/app/app_router.dart';
 import 'package:mazraa_driver/app/app_settings.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/operations/driver_runtime_sync.dart';
+import 'package:mazraa_driver/features/shell/driver_context_navigation.dart';
 
 class MazraaDriverApp extends ConsumerWidget {
   const MazraaDriverApp({super.key});
@@ -29,8 +30,12 @@ class MazraaDriverApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: router,
-      builder: (context, child) =>
-          DriverRuntimeSync(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => DriverRuntimeSync(
+        child: DriverContextNavigation(
+          router: router,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
     );
   }
 }
