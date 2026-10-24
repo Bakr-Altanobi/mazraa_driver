@@ -121,10 +121,6 @@ class _DriverControlPanelState extends ConsumerState<DriverControlPanel> {
             ar ? 'تعذر تحديث حالة السائق' : 'Cannot load driver status',
           ),
           subtitle: Text(error.toString(), maxLines: 2),
-          trailing: IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(driverJourneyProvider),
-          ),
         ),
       ),
       data: (data) {
@@ -646,13 +642,7 @@ class DriverOffersScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'عروض التوصيل' : 'Delivery offers'),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(driverOffersProvider),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: RefreshIndicator(
         onRefresh: () async {
