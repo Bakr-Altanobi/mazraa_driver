@@ -71,14 +71,15 @@ void main() {
     final api = _ProfileApi(_driver, failCount: 1);
     await tester.pumpWidget(_host(_controller(api)));
     await tester.pumpAndSettle();
-    expect(find.byType(ErrorState), findsOneWidget);
+    expect(find.text('تعذر تحميل الملف الشخصي'), findsOneWidget);
+    expect(find.text('اسحب للأسفل لإعادة المحاولة'), findsOneWidget);
     expect(find.byKey(const Key('profileLoadingIndicator')), findsNothing);
     expect(find.textContaining('test profile service unavailable'), findsOneWidget);
     await tester.drag(find.byType(ListView).first, const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(api.calls, 2);
     expect(find.text('سائق الاختبار'), findsOneWidget);
-    expect(find.byType(ErrorState), findsNothing);
+    expect(find.text('تعذر تحميل الملف الشخصي'), findsNothing);
   });
 
   testWidgets('refresh error preserves confirmed profile with visible retry', (tester) async {
