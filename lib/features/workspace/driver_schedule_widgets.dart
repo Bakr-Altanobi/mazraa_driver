@@ -24,7 +24,11 @@ class _DriverScheduledTripsTableState
     if (entry == null) return;
     final status = statusKey(recordMap(entry['participation'])['status']);
     final action = participationAction(status);
-    if (action == null) return;
+    final trip = recordMap(entry['trip']).isNotEmpty
+        ? recordMap(entry['trip']) : entry;
+    // An already assigned trip cannot accept a second driver's join request.
+    // Existing pending applicants retain the ability to withdraw.
+    if (action == null || (action == 'join' && trip['driverId'] != null)) return;
     setState(() => _busy = true);
     try {
       await ref.read(workspaceRepositoryProvider).tripAction(id, action);
@@ -106,9 +110,12 @@ class _DriverScheduledTripsTableState
         ? recordMap(entry['trip']) : entry;
     final id = int.tryParse('${trip['id'] ?? ''}');
     final status = statusKey(recordMap(entry['participation'])['status']);
+    final action = participationAction(status);
+    final selectable = id != null &&
+        action != null && !(action == 'join' && trip['driverId'] != null);
     return DataRow(
-      selected: id != null && id == _selectedId,
-      onSelectChanged: id == null ? null : (value) =>
+      selected: selectable && id == _selectedId,
+      onSelectChanged: !selectable ? null : (value) =>
           setState(() => _selectedId = value == true ? id : null),
       cells: [
         DataCell(Text('${trip['plannedDepartureAt'] ?? '—'}')),
