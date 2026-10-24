@@ -575,7 +575,16 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         data: (shipment) {
           final tracked = tracking.valueOrNull;
           final mapShipment = tracked ?? shipment;
-          return ListView(
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
+              ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+              try {
+                await ref.read(shipmentDetailsProvider(widget.shipmentId).future);
+              } catch (_) {}
+            },
+            child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
             children: [
               Row(
@@ -807,6 +816,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
+            ),
           );
         },
       ),
