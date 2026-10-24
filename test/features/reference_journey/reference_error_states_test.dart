@@ -48,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ErrorState), findsOneWidget);
     expect(find.textContaining('test outage'), findsOneWidget);
-    await tester.tap(find.text('إعادة المحاولة'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(fetchCount, greaterThanOrEqualTo(2));
     expect(find.byType(ErrorState), findsOneWidget);
