@@ -301,6 +301,34 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.event_available_outlined,
+                            label: ar ? 'الرحلات' : 'Scheduled',
+                            onTap: () => context.push('/tools/scheduled-trips'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.calendar_month_outlined,
+                            label: ar ? 'التوفر' : 'Availability',
+                            onTap: () => context.push('/tools/availability'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.chat_bubble_outline,
+                            label: ar ? 'المحادثات' : 'Chats',
+                            onTap: () => context.push('/tools/chats'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
