@@ -78,7 +78,15 @@ class _DriverTicketScreenState extends ConsumerState<DriverTicketScreen> {
           error: e,
           onRetry: () => ref.invalidate(driverTicketProvider(widget.ticketId)),
         ),
-        data: (ticket) => ListView(
+        data: (ticket) => RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(driverTicketProvider(widget.ticketId));
+            try {
+              await ref.read(driverTicketProvider(widget.ticketId).future);
+            } catch (_) {}
+          },
+          child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(18),
           children: [
             Text(
@@ -141,6 +149,7 @@ class _DriverTicketScreenState extends ConsumerState<DriverTicketScreen> {
                 style: TextStyle(color: Theme.of(c).colorScheme.error),
               ),
           ],
+          ),
         ),
       ),
     );
