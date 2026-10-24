@@ -426,7 +426,12 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(toolDataProvider(tool.id));
-          await ref.read(toolDataProvider(tool.id).future);
+          try {
+            await ref.read(toolDataProvider(tool.id).future);
+          } catch (_) {
+            // The inline error remains visible and swipe-to-retry must not
+            // propagate provider failures to the Flutter gesture handler.
+          }
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
