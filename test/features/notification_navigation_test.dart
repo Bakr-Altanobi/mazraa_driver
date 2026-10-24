@@ -30,6 +30,24 @@ void main() {
     expect(safeDriverNotificationRoute(
       eventType: 'driver.trip_assigned'), '/tools/scheduled-trips');
   });
+  test('account, financial, safety and vehicle events route to relevant workflows', () {
+    expect(safeDriverNotificationRoute(eventType: 'driver.vehicle_change_reviewed'),
+        '/tools/vehicle-change');
+    expect(safeDriverNotificationRoute(eventType: 'driver.document_approved'),
+        '/tools/documents');
+    expect(safeDriverNotificationRoute(eventType: 'driver.cash_remitted'),
+        '/cash-custody');
+    expect(safeDriverNotificationRoute(eventType: 'driver.incident_update'),
+        '/tools/incidents');
+    expect(safeDriverNotificationRoute(eventType: 'driver.referral_reward'),
+        '/tools/referral');
+    expect(safeDriverNotificationRoute(eventType: 'driver.account_suspended'),
+        '/tools/account-status');
+    expect(safeDriverNotificationRoute(
+        deepLink: '/tools/vehicle-change',
+        eventType: 'driver.request_reviewed'), '/tools/vehicle-change');
+  });
+
   test('untrusted deep links never navigate outside the app', () {
     for (final link in [
       'https://malicious.example', '//malicious.example',
