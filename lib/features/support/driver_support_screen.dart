@@ -173,15 +173,7 @@ class _DriverSupportScreenState extends ConsumerState<DriverSupportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'المساعدة والدعم' : 'Help & support'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              ref.invalidate(supportFaqsProvider);
-              ref.invalidate(supportTicketsProvider);
-            },
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: RefreshIndicator(
         onRefresh: () async {
