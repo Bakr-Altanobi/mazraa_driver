@@ -205,6 +205,11 @@ class ErrorState extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRetry(),
       child: ListView(
+        // ErrorState also appears *inside* other scrolling pages (for example
+        // wallet transactions). A normal nested viewport gets infinite height
+        // and triggers the red Flutter layout/error screen.
+        shrinkWrap: true,
+        primary: false,
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
