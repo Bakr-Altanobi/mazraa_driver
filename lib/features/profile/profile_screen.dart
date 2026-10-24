@@ -50,18 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'حسابي' : 'Profile'),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: auth.isRefreshingProfile
-                ? null
-                : () => ref.read(authControllerProvider).refreshProfile(),
-            icon: auth.isRefreshingProfile
-                ? const SizedBox(width: 22, height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: profile == null
           ? auth.isRefreshingProfile
@@ -87,11 +76,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ? 'عرض آخر بيانات محفوظة؛ تعذر التحديث.'
                           : 'Showing last loaded data; refresh failed.'),
                       subtitle: Text(auth.profileError!),
-                      trailing: IconButton(
-                        tooltip: ar ? 'إعادة المحاولة' : 'Retry',
-                        onPressed: () => ref.read(authControllerProvider).refreshProfile(),
-                        icon: const Icon(Icons.refresh_rounded),
-                      ),
+
                     ),
                   ),
                 _ProfileHeader(profile: profile),
