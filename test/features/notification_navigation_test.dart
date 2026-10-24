@@ -28,7 +28,7 @@ void main() {
       eventType: 'driver.trip_assigned',
       deepLink: '/tools/current-trips/77'), '/tools/current-trips/77');
     expect(safeDriverNotificationRoute(
-      eventType: 'driver.trip_assigned'), '/tools/scheduled-trips');
+      eventType: 'driver.trip_assigned'), '/tools/current-trips');
   });
   test('account, financial, safety and vehicle events route to relevant workflows', () {
     expect(safeDriverNotificationRoute(eventType: 'driver.vehicle_change_reviewed'),
