@@ -84,40 +84,80 @@ class DriverContextNavigation extends StatelessWidget {
     return AnimatedBuilder(
       animation: router.routeInformationProvider,
       child: child,
-      builder: (context, child) {
+      builder: (context, routedChild) {
         final path = router.routeInformationProvider.value.uri.path;
         if (!showContextualDriverBar(path) ||
             MediaQuery.viewInsetsOf(context).bottom > 0) {
-          return child ?? const SizedBox.shrink();
+          return routedChild ?? const SizedBox.shrink();
         }
         final ar = Localizations.localeOf(context).languageCode == 'ar';
+        final colors = Theme.of(context).colorScheme;
         final items = driverDestinationsFor(path);
-        final selected = items.indexWhere((x) => x.route == path);
         return Column(
           children: [
-            Expanded(child: child ?? const SizedBox.shrink()),
+            Expanded(child: routedChild ?? const SizedBox.shrink()),
             Material(
+              color: colors.surface,
               elevation: 3,
               child: SafeArea(
                 top: false,
-                child: NavigationBar(
-                  height: 68,
-                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                  selectedIndex: selected < 0 ? 0 : selected,
-                  onDestinationSelected: (i) {
-                    if (items[i].route == path) return;
-                    // Changing a persistent navigation destination replaces
-                    // the branch location. Repeated cross-shell pushes can
-                    // reserve the same page key twice in go_router.
-                    router.go(items[i].route);
-                  },
-                  destinations: [
-                    for (final item in items)
-                      NavigationDestination(
-                        icon: Icon(item.icon),
-                        label: ar ? item.ar : item.en,
-                      ),
-                  ],
+                child: SizedBox(
+                  height: 70,
+                  child: Row(
+                    children: [
+                      for (final item in items)
+                        Expanded(
+                          child: InkWell(
+                            key: ValueKey('context-tab-${item.route}'),
+                            onTap: () {
+                              if (item.route == path) return;
+                              // Use replacement navigation instead of stacking
+                              // multiple nested Navigator pages with shared keys.
+                              router.go(item.route);
+                            },
+                            child: Semantics(
+                              button: true,
+                              selected: item.route == path,
+                              label: ar ? item.ar : item.en,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: item.route == path
+                                          ? colors.primaryContainer
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    child: Icon(
+                                      item.icon,
+                                      color: item.route == path
+                                          ? colors.onPrimaryContainer
+                                          : colors.onSurfaceVariant,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ar ? item.ar : item.en,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.labelSmall
+                                        ?.copyWith(
+                                            color: item.route == path
+                                                ? colors.primary
+                                                : colors.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
