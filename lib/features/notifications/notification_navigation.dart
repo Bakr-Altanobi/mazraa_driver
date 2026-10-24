@@ -23,6 +23,10 @@ String? safeDriverNotificationRoute({
         '/tools/scheduled-trips', '/tools/earnings', '/wallet',
         '/tools/incidents', '/tools/returns', '/support',
         '/tools/feedback', '/tools/account-status',
+        '/tools/vehicle', '/tools/vehicle-change',
+        '/tools/documents', '/tools/shifts', '/tools/bank',
+        '/tools/referral', '/tools/notification-preferences',
+        '/tools/service-area', '/cash-custody',
       }.contains(path)) return path;
     }
   }
@@ -41,6 +45,26 @@ String? safeDriverNotificationRoute({
   }
   if (event.contains('support') || event.contains('ticket')) return '/support';
   if (event.contains('return')) return '/tools/returns';
+  if (event.contains('vehicle') || event.contains('assignment')) {
+    return '/tools/vehicle-change';
+  }
+  if (event.contains('document') || event.contains('identity')) {
+    return '/tools/documents';
+  }
+  if (event.contains('incident') || event.contains('emergency')) {
+    return '/tools/incidents';
+  }
+  if (event.contains('review') || event.contains('rating') ||
+      event.contains('feedback')) return '/tools/feedback';
+  if (event.contains('cash') || event.contains('remittance') ||
+      event.contains('custody')) return '/cash-custody';
+  if (event.contains('shift')) return '/tools/shifts';
+  if (event.contains('bank')) return '/tools/bank';
+  if (event.contains('referral') || event.contains('reward')) {
+    return '/tools/referral';
+  }
+  if (event.contains('account') || event.contains('approved') ||
+      event.contains('suspension')) return '/tools/account-status';
   return null;
 }
 
