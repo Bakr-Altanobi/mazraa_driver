@@ -545,11 +545,9 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                                 )
                               : '$e',
                         ),
-                        TextButton(
-                          onPressed: () =>
-                              ref.invalidate(toolDataProvider(tool.id)),
-                          child: Text(ar ? 'إعادة المحاولة' : 'Retry'),
-                        ),
+                        Text(ar
+                            ? 'اسحب للأسفل لإعادة المحاولة'
+                            : 'Pull down to retry'),
                       ],
                     ),
                   ),
