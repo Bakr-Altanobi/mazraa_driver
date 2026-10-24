@@ -58,11 +58,7 @@ class _HomeDataWarning extends StatelessWidget {
         subtitle: Text(ar
             ? 'بيانات هذا القسم غير متاحة حاليًا، وليست صفرًا.'
             : 'This section is unavailable, not an empty account.'),
-        trailing: IconButton(
-          tooltip: ar ? 'إعادة المحاولة' : 'Retry',
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded),
-        ),
+
       ),
     );
   }
