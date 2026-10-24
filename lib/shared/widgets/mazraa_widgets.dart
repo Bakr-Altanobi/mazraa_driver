@@ -201,37 +201,39 @@ class ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 54,
-              color: Theme.of(context).colorScheme.error,
+    final ar = isArabic(context);
+    return RefreshIndicator(
+      onRefresh: () async => onRetry(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * .65,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off_rounded, size: 54,
+                      color: Theme.of(context).colorScheme.error),
+                    const SizedBox(height: 14),
+                    Text(ar ? 'تعذر تحميل البيانات' : 'Could not load data',
+                      style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 7),
+                    Text(error.toString(), textAlign: TextAlign.center,
+                      maxLines: 4, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 18),
+                    Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                        : 'Pull down to retry',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              isArabic(context) ? 'تعذر تحميل البيانات' : 'Could not load data',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 7),
-            Text(
-              error.toString(),
-              textAlign: TextAlign.center,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(isArabic(context) ? 'إعادة المحاولة' : 'Try again'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
