@@ -18,6 +18,7 @@ import 'driver_tool_catalog.dart';
 import 'driver_workspace_repository.dart';
 import 'driver_schedule_widgets.dart';
 import 'driver_service_areas_screen.dart';
+import 'driver_referral_links.dart';
 
 String toolText(BuildContext c, String ar, String en) => isArabic(c) ? ar : en;
 const _fields = <String, (String, String)>{
@@ -698,10 +699,7 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
       );
     if (tool.id == 'referral') {
       final code = (map['code'] ?? map['referralCode'])?.toString();
-      const placeholderStoreLink = 'https://example.com/mazraa-driver/download';
-      final invite = '🌿 مزرعتي للسائق — انضم إلى فريق التوصيل! '
-          '${code == null ? '' : 'رمز الدعوة: $code '}'
-          'رابط التطبيق: $placeholderStoreLink';
+      final invite = driverInviteMessage(code);
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(18),
@@ -711,8 +709,8 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
               DriverRecordFields(record: map),
               const SizedBox(height: 12),
               Text(toolText(c,
-                'الرابط مؤقت إلى أن يتم نشر التطبيق في المتجر.',
-                'Temporary app link until the store listing is published.')),
+                'صفحة الدعوة مؤقتة؛ معاينة شعار التطبيق تظهر بعد نشرها على السيرفر.',
+                'The temporary page shows its branded preview once deployed.')),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () async {
@@ -726,8 +724,7 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
               ),
               FilledButton.icon(
                 onPressed: () async {
-                  final uri = Uri.parse(
-                    'https://wa.me/?text=${Uri.encodeComponent(invite)}');
+                  final uri = driverWhatsAppInviteUri(invite);
                   if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
                       c.mounted) {
                     ScaffoldMessenger.of(c).showSnackBar(
