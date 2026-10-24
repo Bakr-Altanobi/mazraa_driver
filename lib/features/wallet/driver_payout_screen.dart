@@ -174,14 +174,23 @@ class _DriverPayoutScreenState extends ConsumerState<DriverPayoutScreen> {
     final banks = ref.watch(driverBankAccountsProvider);
     final payouts = ref.watch(driverPayoutsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(ar ? 'الحساب البنكي والسحب' : 'Bank & payouts'),
-        actions: [IconButton(icon: const Icon(Icons.refresh_rounded),
-          onPressed: () {
-            ref.invalidate(driverBankAccountsProvider);
-            ref.invalidate(driverPayoutsProvider);
-            ref.invalidate(walletSummaryProvider);
-          })]),
-      body: ListView(
+      appBar: AppBar(title: Text(ar ? 'الحساب البنكي والسحب' : 'Bank & payouts')),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(driverBankAccountsProvider);
+          ref.invalidate(driverPayoutsProvider);
+          ref.invalidate(walletSummaryProvider);
+          await Future.wait<void>([
+            ref.read(driverBankAccountsProvider.future).then<void>((_) {},
+                onError: (Object error, StackTrace stack) {}),
+            ref.read(driverPayoutsProvider.future).then<void>((_) {},
+                onError: (Object error, StackTrace stack) {}),
+            ref.read(walletSummaryProvider.future).then<void>((_) {},
+                onError: (Object error, StackTrace stack) {}),
+          ]);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(18, 6, 18, 32),
         children: [
           Card(child: Padding(padding: const EdgeInsets.all(18),
@@ -260,6 +269,7 @@ class _DriverPayoutScreenState extends ConsumerState<DriverPayoutScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+        ),
       ),
     );
   }
