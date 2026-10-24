@@ -231,7 +231,7 @@ const driverTools = <DriverTool>[
     'مناطق الخدمة',
     'Service areas',
     Icons.map_outlined,
-    'api/DeliveryZones',
+    'api/driver-journey/me/service-areas',
     group: 'vehicle',
   ),
   DriverTool(
