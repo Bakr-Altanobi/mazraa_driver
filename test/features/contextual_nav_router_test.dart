@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mazraa_driver/features/shell/driver_context_navigation.dart';
@@ -21,6 +22,12 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(
       locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: router,
       builder: (context, child) => DriverContextNavigation(
         router: router, child: child ?? const SizedBox.shrink(),
