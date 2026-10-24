@@ -27,12 +27,7 @@ class WalletScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'المحفظة' : 'Wallet'),
-        actions: [
-          IconButton(
-            onPressed: () => _refresh(ref),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: wallet.when(
         loading: LoadingList.new,
