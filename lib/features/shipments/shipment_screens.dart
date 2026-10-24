@@ -115,9 +115,32 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                   )
                 : state.when(
                     loading: LoadingList.new,
-                    error: (error, _) => ErrorState(
-                      error: error,
-                      onRetry: () => ref.invalidate(shipmentsProvider),
+                    error: (error, _) => RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(shipmentsProvider);
+                        try { await ref.read(shipmentsProvider.future); } catch (_) {}
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.sizeOf(context).height * .6,
+                            child: Center(child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.cloud_off_rounded, size: 44),
+                                const SizedBox(height: 12),
+                                Text(ar ? 'تعذر تحميل الشحنات' : 'Shipments unavailable',
+                                  style: Theme.of(context).textTheme.titleMedium),
+                                const SizedBox(height: 8),
+                                Text('$error', textAlign: TextAlign.center),
+                                Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                                  : 'Pull down to retry'),
+                              ]),
+                            )),
+                          ),
+                        ],
+                      ),
                     ),
                     data: (items) {
                       final query = _search.text.trim().toLowerCase();
@@ -149,8 +172,16 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                                 child: EmptyState(
                                   title: ar ? 'لا توجد شحنات' : 'No shipments',
                                   message: ar
-                                      ? 'لا توجد نتائج مطابقة. اسحب للأسفل لجلب أحدث الشحنات.'
-                                      : 'No matching deliveries. Pull down to check again.',
+                                      ? 'تظهر الشحنة المجدولة بعد تجهيز المتجر وإسناد الرحلة للسائق. يمكن متابعة طلب المشاركة في الرحلات المجدولة.'
+                                      : 'Scheduled shipments appear after merchant preparation and driver assignment. Check your scheduled trip participation.',
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: FilledButton.icon(
+                                  onPressed: () => context.push('/tools/scheduled-trips'),
+                                  icon: const Icon(Icons.event_available_outlined),
+                                  label: Text(ar ? 'الرحلات المجدولة' : 'Scheduled trips'),
                                 ),
                               ),
                             ],
