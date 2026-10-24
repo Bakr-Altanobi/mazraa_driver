@@ -61,12 +61,26 @@ class DriverTaskPickerScreen extends ConsumerWidget {
               )
               .toList();
           if (items.isEmpty)
-            return EmptyState(
-              title: toolText(c, 'لا توجد شحنة مؤهلة', 'No eligible shipment'),
-              message: toolText(
-                c,
-                'ستظهر المهام المناسبة هنا عند إسنادها إليك.',
-                'Eligible assigned tasks will appear here.',
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(shipmentsProvider);
+                try {
+                  await ref.read(shipmentsProvider.future);
+                } catch (_) {}
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(c).height * .6,
+                    child: EmptyState(
+                      title: toolText(c, 'لا توجد شحنة مؤهلة', 'No eligible shipment'),
+                      message: toolText(c,
+                          'ستظهر المهام هنا بعد التجهيز والإسناد. اسحب للأسفل للتحقق مجددًا.',
+                          'Tasks appear after preparation and assignment. Pull down to check again.'),
+                    ),
+                  ),
+                ],
               ),
             );
           return RefreshIndicator(
