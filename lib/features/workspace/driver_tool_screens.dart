@@ -421,13 +421,7 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
       key: Key('tool-${tool.id}'),
       appBar: AppBar(
         title: Text(ar ? tool.ar : tool.en),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(toolDataProvider(tool.id)),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
+
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -652,11 +646,7 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                   'Pull down to refresh or check your account and connection.'),
                   textAlign: TextAlign.center,
                   style: Theme.of(c).textTheme.bodySmall),
-              TextButton.icon(
-                onPressed: () => ref.invalidate(toolDataProvider(tool.id)),
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(toolText(c, 'إعادة التحميل', 'Refresh')),
-              ),
+
             ],
           ),
         ),
