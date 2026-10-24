@@ -148,7 +148,7 @@ class _DriverServiceAreasEditorState
             child: ListTile(
               title: Text('${row['zoneName'] ?? row['deliveryZoneId']}'),
               subtitle: Text('${row['maxDistanceKm'] ?? 50} km'),
-              trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
+              trailing: Wrap(spacing: 2, children: [
                 IconButton(
                   tooltip: ar ? 'تعديل' : 'Edit',
                   onPressed: _busy ? null : () => setState(() {
