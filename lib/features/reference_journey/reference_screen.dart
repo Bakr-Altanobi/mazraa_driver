@@ -43,12 +43,6 @@ class _ReferenceJourneyScreenState
           '${widget.screenNumber.toString().padLeft(2, '0')} · ${spec.titleAr}',
         ),
         actions: [
-          if (key != null)
-            IconButton(
-              tooltip: 'تحديث البيانات',
-              onPressed: () => ref.invalidate(referenceScreenPayloadProvider(key)),
-              icon: const Icon(Icons.refresh_rounded),
-            ),
           if (auth.isAuthenticated)
             IconButton(
               tooltip: 'الرئيسية',
