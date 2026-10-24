@@ -86,17 +86,19 @@ class DriverContextNavigation extends StatelessWidget {
       child: child,
       builder: (context, routedChild) {
         final path = router.routeInformationProvider.value.uri.path;
-        if (!showContextualDriverBar(path) ||
-            MediaQuery.viewInsetsOf(context).bottom > 0) {
-          return routedChild ?? const SizedBox.shrink();
-        }
+        // Keep the router Navigator under one stable ancestor on every route.
+        // Moving a GoRouter child between two parent slots during /home ↔
+        // /tools/... transitions can reserve its GlobalKey twice and throw
+        // "key reservation contains key is not true" on real devices.
+        final showBar = showContextualDriverBar(path) &&
+            MediaQuery.viewInsetsOf(context).bottom == 0;
         final ar = Localizations.localeOf(context).languageCode == 'ar';
         final colors = Theme.of(context).colorScheme;
         final items = driverDestinationsFor(path);
         return Column(
           children: [
             Expanded(child: routedChild ?? const SizedBox.shrink()),
-            Material(
+            if (showBar) Material(
               color: colors.surface,
               elevation: 3,
               child: SafeArea(
