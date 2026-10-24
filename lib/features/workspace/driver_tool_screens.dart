@@ -471,6 +471,17 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            if (tool.id == 'vehicle-change')
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.car_rental_outlined),
+                  title: Text(ar ? 'تغيير المركبة بطلب رسمي'
+                      : 'Change vehicle through a request'),
+                  subtitle: Text(ar
+                      ? 'اختر نوع المركبة الجديدة واذكر السبب. ستظهر طلباتك أدناه، وتظل المركبة الحالية مسندة حتى مراجعة الطلب من الإدارة.'
+                      : 'Select a replacement vehicle type and explain why. Requests appear below; your current vehicle remains assigned until operations reviews the request.'),
+                ),
+              ),
             if (tool.pending)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
