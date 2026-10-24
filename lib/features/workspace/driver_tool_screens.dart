@@ -425,6 +425,11 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          // The coverage editor reads the catalog of available zones as well
+          // as the driver's own selections. Refresh both together.
+          if (tool.id == 'service-area') {
+            ref.invalidate(availableDriverZonesProvider);
+          }
           ref.invalidate(toolDataProvider(tool.id));
           try {
             await ref.read(toolDataProvider(tool.id).future);
@@ -493,6 +498,8 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                               ? 'تسجيل صيانة'
                               : tool.id == 'availability'
                               ? 'إضافة فترة'
+                              : tool.id == 'vehicle-change'
+                              ? 'طلب تغيير المركبة'
                               : tool.id == 'emergency'
                               ? 'إرسال بلاغ عاجل'
                               : 'تعديل وحفظ')
@@ -500,6 +507,8 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
                               ? 'New report'
                               : tool.id == 'availability'
                               ? 'Add window'
+                              : tool.id == 'vehicle-change'
+                              ? 'Request vehicle change'
                               : tool.id == 'maintenance'
                               ? 'Record service'
                               : tool.id == 'emergency'
