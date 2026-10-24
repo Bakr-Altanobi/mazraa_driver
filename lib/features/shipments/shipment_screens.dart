@@ -134,11 +134,27 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                                 item.orderId.toString().contains(query));
                       }).toList();
                       if (filtered.isEmpty) {
-                        return EmptyState(
-                          title: ar ? 'لا توجد شحنات' : 'No shipments',
-                          message: ar
-                              ? 'لا توجد نتائج مطابقة في هذا القسم.'
-                              : 'There are no matching shipments in this section.',
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            ref.invalidate(shipmentsProvider);
+                            try {
+                              await ref.read(shipmentsProvider.future);
+                            } catch (_) {}
+                          },
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.sizeOf(context).height * .55,
+                                child: EmptyState(
+                                  title: ar ? 'لا توجد شحنات' : 'No shipments',
+                                  message: ar
+                                      ? 'لا توجد نتائج مطابقة. اسحب للأسفل لجلب أحدث الشحنات.'
+                                      : 'No matching deliveries. Pull down to check again.',
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                       }
                       return RefreshIndicator(
