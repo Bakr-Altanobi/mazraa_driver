@@ -17,6 +17,7 @@ import 'driver_forms.dart';
 import 'driver_tool_catalog.dart';
 import 'driver_workspace_repository.dart';
 import 'driver_schedule_widgets.dart';
+import 'driver_service_areas_screen.dart';
 
 String toolText(BuildContext c, String ar, String en) => isArabic(c) ? ar : en;
 const _fields = <String, (String, String)>{
@@ -625,6 +626,9 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
     }
     if (tool.id == 'availability') {
       return DriverAvailabilityTable(rows: recordRows(payload));
+    }
+    if (tool.id == 'service-area') {
+      return DriverServiceAreasEditor(rows: recordRows(payload));
     }
     final map = recordMap(payload);
     // A successful 200 with no fields is an empty server result, not a
