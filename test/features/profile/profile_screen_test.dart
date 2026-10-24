@@ -74,7 +74,7 @@ void main() {
     expect(find.byType(ErrorState), findsOneWidget);
     expect(find.byKey(const Key('profileLoadingIndicator')), findsNothing);
     expect(find.textContaining('test profile service unavailable'), findsOneWidget);
-    await tester.tap(find.text('إعادة المحاولة'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(api.calls, 2);
     expect(find.text('سائق الاختبار'), findsOneWidget);
@@ -86,7 +86,7 @@ void main() {
     await tester.pumpWidget(_host(_controller(api, profile: _driver)));
     await tester.pumpAndSettle();
     expect(find.text('سائق الاختبار'), findsOneWidget);
-    await tester.tap(find.byTooltip('تحديث'));
+    await tester.drag(find.byType(ListView).first, const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(find.text('سائق الاختبار'), findsOneWidget);
     expect(find.textContaining('test profile service unavailable'), findsOneWidget);
