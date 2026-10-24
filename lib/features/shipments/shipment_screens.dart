@@ -45,13 +45,7 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'الشحنات' : 'Shipments'),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(shipmentsProvider),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: Column(
         children: [
@@ -569,15 +563,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'تفاصيل الشحنة' : 'Shipment details'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
-              ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
-            },
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: details.when(
         loading: LoadingList.new,
