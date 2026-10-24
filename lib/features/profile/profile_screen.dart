@@ -56,12 +56,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ? auth.isRefreshingProfile
               ? const Center(child: CircularProgressIndicator(
                   key: Key('profileLoadingIndicator')))
-              : ErrorState(
-                  error: auth.profileError ??
-                      (ar ? 'تعذر الحصول على بيانات حساب السائق. أعد المحاولة.'
-                          : 'Your driver profile is not available. Try again.'),
-                  onRetry: () => ref.read(authControllerProvider).refreshProfile(),
-                )
+              : RefreshIndicator(
+              onRefresh: () => ref.read(authControllerProvider).refreshProfile(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * .65,
+                    child: Center(child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.person_off_outlined, size: 48),
+                        const SizedBox(height: 12),
+                        Text(ar ? 'تعذر تحميل الملف الشخصي'
+                            : 'Profile unavailable',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text(auth.profileError ??
+                            (ar ? 'بيانات السائق غير متاحة حاليًا.'
+                                : 'Driver profile is not available.'),
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                            : 'Pull down to retry'),
+                      ]),
+                    )),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: () => ref.read(authControllerProvider).refreshProfile(),
               child: ListView(
