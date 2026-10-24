@@ -158,6 +158,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const Divider(indent: 58, height: 1),
                       ListTile(
+                        leading: const Icon(Icons.car_rental_outlined),
+                        title: Text(ar ? 'طلب تغيير المركبة' : 'Request vehicle change'),
+                        subtitle: Text(ar
+                            ? 'اختر النوع المطلوب وتابع حالة طلبك.'
+                            : 'Choose a vehicle class and track the request.'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/vehicle-change'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.event_available_outlined),
+                        title: Text(ar ? 'الرحلات المجدولة' : 'Scheduled trips'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/scheduled-trips'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.map_outlined),
+                        title: Text(ar ? 'مناطق خدمتي' : 'My service areas'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/service-area'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
                         leading: const Icon(Icons.grid_view_rounded),
                         title: Text(ar ? 'كل خدمات السائق' : 'Driver services'),
                         subtitle: Text(
