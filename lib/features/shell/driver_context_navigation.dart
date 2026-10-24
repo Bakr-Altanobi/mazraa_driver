@@ -106,12 +106,10 @@ class DriverContextNavigation extends StatelessWidget {
                   selectedIndex: selected < 0 ? 0 : selected,
                   onDestinationSelected: (i) {
                     if (items[i].route == path) return;
-                    if (const {'/home', '/shipments', '/wallet',
-                                '/notifications', '/profile'}.contains(items[i].route)) {
-                      router.go(items[i].route);
-                    } else {
-                      router.push(items[i].route);
-                    }
+                    // Changing a persistent navigation destination replaces
+                    // the branch location. Repeated cross-shell pushes can
+                    // reserve the same page key twice in go_router.
+                    router.go(items[i].route);
                   },
                   destinations: [
                     for (final item in items)
