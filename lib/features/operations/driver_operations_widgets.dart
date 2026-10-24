@@ -447,10 +447,7 @@ class _DriverOfferListState extends ConsumerState<DriverOfferList>
           leading: const Icon(Icons.wifi_off_outlined),
           title: Text(ar ? 'تعذر تحميل العروض' : 'Could not load offers'),
           subtitle: Text(error.toString(), maxLines: 2),
-          trailing: IconButton(
-            onPressed: () => ref.invalidate(driverOffersProvider),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
+
         ),
       ),
       data: (items) {
