@@ -1,0 +1,79 @@
+import 'package:mazraa_driver/core/models/app_models.dart';
+
+/// Validate notification routes before opening authenticated screens.
+String? safeDriverNotificationRoute({
+  String? deepLink,
+  String? eventType,
+  int? shipmentId,
+  int? chatId,
+}) {
+  if (deepLink != null && deepLink.isNotEmpty) {
+    final uri = Uri.tryParse(deepLink);
+    if (uri != null && !uri.hasScheme &&
+        uri.host.isEmpty && uri.query.isEmpty && uri.fragment.isEmpty) {
+      final path = uri.path;
+      if (RegExp(r'^/chats/[1-9][0-9]*$').hasMatch(path) ||
+          RegExp(r'^/shipments/[1-9][0-9]*$').hasMatch(path) ||
+          RegExp(r'^/tools/current-trips/[1-9][0-9]*$').hasMatch(path) ||
+          RegExp(r'^/support/tickets/[1-9][0-9]*$').hasMatch(path)) {
+        return path;
+      }
+      if (const {
+        '/offers', '/notifications', '/tools/current-trips',
+        '/tools/scheduled-trips', '/tools/earnings', '/wallet',
+        '/tools/incidents', '/tools/returns', '/support',
+        '/tools/feedback', '/tools/account-status',
+        '/tools/vehicle', '/tools/vehicle-change',
+        '/tools/documents', '/tools/shifts', '/tools/bank',
+        '/tools/referral', '/tools/notification-preferences',
+        '/tools/service-area', '/cash-custody',
+      }.contains(path)) return path;
+    }
+  }
+  final event = eventType?.toLowerCase() ?? '';
+  if (event.startsWith('chat.') && chatId != null && chatId > 0) {
+    return '/chats/$chatId';
+  }
+  if (event.startsWith('chat.')) return '/tools/chats';
+  if (shipmentId != null && shipmentId > 0) return '/shipments/$shipmentId';
+  if (event.contains('trip_assigned') || event.contains('trip.assigned') ||
+      event.contains('trip-approved') || event.contains('trip_approved')) {
+    return '/tools/current-trips';
+  }
+  if (event.contains('scheduled') || event.contains('trip')) {
+    return '/tools/scheduled-trips';
+  }
+  if (event.contains('offer')) return '/offers';
+  if (event.contains('payout') || event.contains('earning')) {
+    return '/tools/earnings';
+  }
+  if (event.contains('support') || event.contains('ticket')) return '/support';
+  if (event.contains('return')) return '/tools/returns';
+  if (event.contains('vehicle') || event.contains('assignment')) {
+    return '/tools/vehicle-change';
+  }
+  if (event.contains('document') || event.contains('identity')) {
+    return '/tools/documents';
+  }
+  if (event.contains('incident') || event.contains('emergency')) {
+    return '/tools/incidents';
+  }
+  if (event.contains('review') || event.contains('rating') ||
+      event.contains('feedback')) return '/tools/feedback';
+  if (event.contains('cash') || event.contains('remittance') ||
+      event.contains('custody')) return '/cash-custody';
+  if (event.contains('shift')) return '/tools/shifts';
+  if (event.contains('bank')) return '/tools/bank';
+  if (event.contains('referral') || event.contains('reward')) {
+    return '/tools/referral';
+  }
+  if (event.contains('account') || event.contains('approved') ||
+      event.contains('suspension')) return '/tools/account-status';
+  return null;
+}
+
+String? notificationDestination(AppNotification item) =>
+    safeDriverNotificationRoute(
+      deepLink: item.deepLink, eventType: item.eventType,
+      chatId: item.chatId, shipmentId: item.shipmentId,
+    );

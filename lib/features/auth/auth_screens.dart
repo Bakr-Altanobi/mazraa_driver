@@ -41,7 +41,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     return Scaffold(
       key: const Key('splashScreen'),
-      body: DecoratedBox(
+      body: RefreshIndicator(
+        onRefresh: () => _bootstrap(force: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height -
+                  MediaQuery.paddingOf(context).top,
+              child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -104,11 +112,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    FilledButton.icon(
-                      key: const Key('bootstrapRetryButton'),
-                      onPressed: () => _bootstrap(force: true),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: Text(ar ? 'إعادة المحاولة' : 'Retry'),
+                    Text(
+                      ar ? 'اسحب للأسفل لإعادة المحاولة'
+                          : 'Pull down to retry',
+                      textAlign: TextAlign.center,
                     ),
                   ] else ...[
                     const SizedBox(
@@ -140,6 +147,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               ),
             ),
           ),
+              ),
+            ),
+            ),
+          ],
         ),
       ),
     );

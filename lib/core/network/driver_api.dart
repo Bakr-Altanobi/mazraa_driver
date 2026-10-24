@@ -4,7 +4,7 @@ import 'package:mazraa_driver/core/network/api_client.dart';
 import 'package:mazraa_driver/core/storage/secure_session_store.dart';
 
 class DriverApi {
-  const DriverApi(this._client, this._store);
+  DriverApi(this._client, this._store);
 
   final ApiClient _client;
   final SecureSessionStore _store;
@@ -56,19 +56,31 @@ class DriverApi {
     }
     await _store.write(temporary);
     try {
-      await _client.post<dynamic>('api/driver-journey/apply', data: {
-        'vehicleType': vehicleType,
-        'maxActiveShipments': 3,
-      });
+      await _client.post<dynamic>(
+        'api/driver-journey/apply',
+        data: {'vehicleType': vehicleType, 'maxActiveShipments': 3},
+      );
     } finally {
       await _store.clear();
     }
+  }
+
+  String? _registeredPushToken;
+  Future<void> registerPushToken(String token) async {
+    await _client.post<Object?>('api/device-tokens/register', data: {
+      'token': token, 'deviceType': 'android', 'deviceName': 'mazraa_driver'});
+    _registeredPushToken = token;
   }
 
   Future<void> logout() async {
     final session = await _store.read();
     try {
       if (session != null) {
+        final pushToken = _registeredPushToken;
+        if (pushToken != null) {
+          try { await _client.post<Object?>('api/device-tokens/unregister', data: {'token': pushToken}); } catch (_) {}
+          _registeredPushToken = null;
+        }
         await _client.post<Object?>(
           ApiEndpoints.logout,
           data: {'refreshToken': session.refreshToken},
@@ -91,16 +103,23 @@ class DriverApi {
     required bool isAcceptingOrders,
     double? latitude,
     double? longitude,
-  }) =>
-      _client.put<Map<String, dynamic>>(
-        'api/driver-journey/me/status',
-        data: {
-          'operationalStatus': operationalStatus,
-          'isAcceptingOrders': isAcceptingOrders,
-          'latitude': latitude,
-          'longitude': longitude,
-        },
-      );
+  }) => _client.put<Map<String, dynamic>>(
+    'api/driver-journey/me/status',
+    data: {
+      'operationalStatus': operationalStatus,
+      'isAcceptingOrders': isAcceptingOrders,
+      'latitude': latitude,
+      'longitude': longitude,
+    },
+  );
+
+  Future<void> updateAvailabilityLocation({
+    required double latitude,
+    required double longitude,
+  }) => _client.put<Object?>(
+    'api/driver-journey/me/location',
+    data: {'latitude': latitude, 'longitude': longitude},
+  );
 
   Future<Map<String, dynamic>> getDriverPreferences() =>
       _client.get<Map<String, dynamic>>('api/driver-journey/me/preferences');
@@ -112,28 +131,25 @@ class DriverApi {
     required bool isAvailableForOffers,
     double offerRadiusKm = 50,
     int offerTimeoutSeconds = 60,
-  }) =>
-      _client.put<Map<String, dynamic>>(
-        'api/driver-journey/me/preferences',
-        data: {
-          'acceptScheduledTrips': acceptScheduledTrips,
-          'acceptPrivateDeliveries': acceptPrivateDeliveries,
-          'acceptBatchDeliveries': acceptBatchDeliveries,
-          'isAvailableForOffers': isAvailableForOffers,
-          'offerRadiusKm': offerRadiusKm,
-          'offerTimeoutSeconds': offerTimeoutSeconds,
-        },
-      );
+  }) => _client.put<Map<String, dynamic>>(
+    'api/driver-journey/me/preferences',
+    data: {
+      'acceptScheduledTrips': acceptScheduledTrips,
+      'acceptPrivateDeliveries': acceptPrivateDeliveries,
+      'acceptBatchDeliveries': acceptBatchDeliveries,
+      'isAvailableForOffers': isAvailableForOffers,
+      'offerRadiusKm': offerRadiusKm,
+      'offerTimeoutSeconds': offerTimeoutSeconds,
+    },
+  );
 
   Future<List<dynamic>> getOffers() =>
       _client.get<List<dynamic>>('api/driver-journey/offers');
 
   /// Before acceptance, the API exposes only this driver's unexpired offer
   /// manifest: actual products/quantities, pickup/dropoff coordinates and COD.
-  Future<Map<String, dynamic>> getOfferDetails(int offerId) =>
-      _client.get<Map<String, dynamic>>(
-        'api/driver-journey/offers/$offerId/details',
-      );
+  Future<Map<String, dynamic>> getOfferDetails(int offerId) => _client
+      .get<Map<String, dynamic>>('api/driver-journey/offers/$offerId/details');
 
   Future<void> acceptOffer(int offerId) =>
       _client.post<Object?>('api/driver-journey/offers/$offerId/accept');
@@ -147,23 +163,28 @@ class DriverApi {
   Future<void> joinScheduledTrip(int tripId) =>
       _client.post<Object?>('api/driver-journey/scheduled-trips/$tripId/join');
 
-  Future<void> withdrawScheduledTrip(int tripId) =>
-      _client.post<Object?>('api/driver-journey/scheduled-trips/$tripId/withdraw');
+  Future<void> withdrawScheduledTrip(int tripId) => _client.post<Object?>(
+    'api/driver-journey/scheduled-trips/$tripId/withdraw',
+  );
 
   Future<List<dynamic>> getCurrentTrips() =>
       _client.get<List<dynamic>>('api/driver-journey/trips/current');
 
-  Future<Map<String, dynamic>> startShift({double? latitude, double? longitude}) =>
-      _client.post<Map<String, dynamic>>(
-        'api/driver-journey/shifts/start',
-        data: {'latitude': latitude, 'longitude': longitude},
-      );
+  Future<Map<String, dynamic>> startShift({
+    double? latitude,
+    double? longitude,
+  }) => _client.post<Map<String, dynamic>>(
+    'api/driver-journey/shifts/start',
+    data: {'latitude': latitude, 'longitude': longitude},
+  );
 
-  Future<Map<String, dynamic>> endShift({double? latitude, double? longitude}) =>
-      _client.post<Map<String, dynamic>>(
-        'api/driver-journey/shifts/end',
-        data: {'latitude': latitude, 'longitude': longitude},
-      );
+  Future<Map<String, dynamic>> endShift({
+    double? latitude,
+    double? longitude,
+  }) => _client.post<Map<String, dynamic>>(
+    'api/driver-journey/shifts/end',
+    data: {'latitude': latitude, 'longitude': longitude},
+  );
 
   Future<List<dynamic>> getShifts() =>
       _client.get<List<dynamic>>('api/driver-journey/shifts');
@@ -182,16 +203,15 @@ class DriverApi {
     required String accountHolderName,
     required String iban,
     String? accountNumber,
-  }) =>
-      _client.put<Map<String, dynamic>>(
-        'api/driver-journey/bank-account',
-        data: {
-          'bankName': bankName.trim(),
-          'accountHolderName': accountHolderName.trim(),
-          'iban': iban.trim(),
-          'accountNumber': accountNumber?.trim(),
-        },
-      );
+  }) => _client.put<Map<String, dynamic>>(
+    'api/driver-journey/bank-account',
+    data: {
+      'bankName': bankName.trim(),
+      'accountHolderName': accountHolderName.trim(),
+      'iban': iban.trim(),
+      'accountNumber': accountNumber?.trim(),
+    },
+  );
 
   Future<List<dynamic>> getPayouts() =>
       _client.get<List<dynamic>>('api/driver-journey/payouts');
@@ -200,15 +220,14 @@ class DriverApi {
     required int bankAccountId,
     required double amount,
     String currency = 'SAR',
-  }) =>
-      _client.post<Map<String, dynamic>>(
-        'api/driver-journey/payouts',
-        data: {
-          'bankAccountId': bankAccountId,
-          'amount': amount,
-          'currency': currency,
-        },
-      );
+  }) => _client.post<Map<String, dynamic>>(
+    'api/driver-journey/payouts',
+    data: {
+      'bankAccountId': bankAccountId,
+      'amount': amount,
+      'currency': currency,
+    },
+  );
 
   Future<List<dynamic>> getIncentives() =>
       _client.get<List<dynamic>>('api/driver-journey/incentives');
@@ -227,19 +246,18 @@ class DriverApi {
     int? shipmentId,
     double? latitude,
     double? longitude,
-  }) =>
-      _client.post<Map<String, dynamic>>(
-        'api/driver-journey/incidents',
-        data: {
-          'category': category.trim(),
-          'title': title.trim(),
-          'description': description.trim(),
-          'isEmergency': isEmergency,
-          'shipmentId': shipmentId,
-          'latitude': latitude,
-          'longitude': longitude,
-        },
-      );
+  }) => _client.post<Map<String, dynamic>>(
+    'api/driver-journey/incidents',
+    data: {
+      'category': category.trim(),
+      'title': title.trim(),
+      'description': description.trim(),
+      'isEmergency': isEmergency,
+      'shipmentId': shipmentId,
+      'latitude': latitude,
+      'longitude': longitude,
+    },
+  );
 
   Future<List<dynamic>> getReturnTasks() =>
       _client.get<List<dynamic>>('api/driver-journey/returns');
@@ -271,12 +289,19 @@ class DriverApi {
     String? reason,
     String? numericCode,
     String? qrToken,
+    bool cashReceivedConfirmed = false,
+    double? cashReceivedAmount,
   }) async {
     Object? data;
     if (action == 'fail') {
       data = {'reason': reason};
-    } else if (action == 'deliver' && (numericCode != null || qrToken != null)) {
-      data = {'numericCode': numericCode, 'qrToken': qrToken};
+    } else if (action == 'deliver') {
+      data = {
+        'numericCode': numericCode,
+        'qrToken': qrToken,
+        'cashReceivedConfirmed': cashReceivedConfirmed,
+        'cashReceivedAmount': cashReceivedAmount,
+      };
     }
     await _client.post<Object?>(
       '${ApiEndpoints.shipments}/$id/$action',
@@ -284,13 +309,49 @@ class DriverApi {
     );
   }
 
+  Future<Map<String, dynamic>> getDeliveryCapabilities() =>
+      _client.get<Map<String, dynamic>>('api/driver-journey/capabilities');
+
+  Future<Map<String, dynamic>> getShipmentManifest(int id) => _client
+      .get<Map<String, dynamic>>('api/driver-journey/shipments/$id/manifest');
+
+  Future<Map<String, dynamic>> getPickupChecklist(int id) =>
+      _client.get<Map<String, dynamic>>(
+        'api/driver-journey/shipments/$id/pickup-checklist',
+      );
+
+  Future<void> submitPickupChecklist(int id, Map<String, dynamic> data) async {
+    await _client.post<Object?>(
+      'api/driver-journey/shipments/$id/pickup-checklist',
+      data: data,
+    );
+  }
+
+  Future<void> requestDeliveryCode(int id) async {
+    await _client.post<Object?>(
+      'api/shipments/$id/delivery-proof/request-code',
+    );
+  }
+
+  Future<List<dynamic>> getCashCustody() =>
+      _client.get<List<dynamic>>('api/driver-journey/cash/me');
+
   Future<void> acceptShipment(int id) => changeShipmentStatus(id, 'accept');
   Future<void> rejectShipment(int id) => changeShipmentStatus(id, 'reject');
   Future<void> pickupShipment(int id) => changeShipmentStatus(id, 'pickup');
   Future<void> departShipment(int id) => changeShipmentStatus(id, 'depart');
-  Future<void> markNearCustomer(int id) => changeShipmentStatus(id, 'near-customer');
-  Future<void> deliverShipment(int id, {String? numericCode, String? qrToken}) =>
-      changeShipmentStatus(id, 'deliver', numericCode: numericCode, qrToken: qrToken);
+  Future<void> markNearCustomer(int id) =>
+      changeShipmentStatus(id, 'near-customer');
+  Future<void> deliverShipment(
+    int id, {
+    String? numericCode,
+    String? qrToken,
+  }) => changeShipmentStatus(
+    id,
+    'deliver',
+    numericCode: numericCode,
+    qrToken: qrToken,
+  );
   Future<void> failShipment(int id, {String? reason}) =>
       changeShipmentStatus(id, 'fail', reason: reason);
 

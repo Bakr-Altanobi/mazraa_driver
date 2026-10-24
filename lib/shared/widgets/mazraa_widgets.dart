@@ -107,34 +107,45 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A horizontal metric keeps its label and amount visible in both fixed
+    // dashboard cards and unbounded profile lists. It does not use Spacer or
+    // a fixed vertical column that can overflow on compact/RTL devices.
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: accent.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: accent, size: 20),
+              child: Icon(icon, color: accent, size: 19),
             ),
-            const Spacer(),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(value, style: Theme.of(context).textTheme.titleLarge),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(value,
+                        style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -198,37 +209,44 @@ class ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 54,
-              color: Theme.of(context).colorScheme.error,
+    final ar = isArabic(context);
+    return RefreshIndicator(
+      onRefresh: () async => onRetry(),
+      child: ListView(
+        // ErrorState also appears *inside* other scrolling pages (for example
+        // wallet transactions). A normal nested viewport gets infinite height
+        // and triggers the red Flutter layout/error screen.
+        shrinkWrap: true,
+        primary: false,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * .65,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off_rounded, size: 54,
+                      color: Theme.of(context).colorScheme.error),
+                    const SizedBox(height: 14),
+                    Text(ar ? 'تعذر تحميل البيانات' : 'Could not load data',
+                      style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 7),
+                    Text(error.toString(), textAlign: TextAlign.center,
+                      maxLines: 4, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 18),
+                    Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                        : 'Pull down to retry',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              isArabic(context) ? 'تعذر تحميل البيانات' : 'Could not load data',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 7),
-            Text(
-              error.toString(),
-              textAlign: TextAlign.center,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(isArabic(context) ? 'إعادة المحاولة' : 'Try again'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

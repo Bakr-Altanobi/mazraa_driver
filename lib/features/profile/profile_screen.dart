@@ -8,8 +8,25 @@ import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/features/auth/auth_controller.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = ref.read(authControllerProvider);
+      if (auth.isAuthenticated && auth.profile == null) {
+        auth.refreshProfile();
+      }
+    });
+  }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final ar = isArabic(context);
@@ -26,26 +43,65 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ar = isArabic(context);
     final auth = ref.watch(authControllerProvider);
     final profile = auth.profile;
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'حسابي' : 'Profile'),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.read(authControllerProvider).refreshProfile(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: profile == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+          ? auth.isRefreshingProfile
+              ? const Center(child: CircularProgressIndicator(
+                  key: Key('profileLoadingIndicator')))
+              : RefreshIndicator(
+              onRefresh: () => ref.read(authControllerProvider).refreshProfile(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * .65,
+                    child: Center(child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.person_off_outlined, size: 48),
+                        const SizedBox(height: 12),
+                        Text(ar ? 'تعذر تحميل الملف الشخصي'
+                            : 'Profile unavailable',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text(auth.profileError ??
+                            (ar ? 'بيانات السائق غير متاحة حاليًا.'
+                                : 'Driver profile is not available.'),
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                            : 'Pull down to retry'),
+                      ]),
+                    )),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () => ref.read(authControllerProvider).refreshProfile(),
+              child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
               children: [
+                if (auth.profileError != null)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.cloud_off_outlined),
+                      title: Text(ar
+                          ? 'عرض آخر بيانات محفوظة؛ تعذر التحديث.'
+                          : 'Showing last loaded data; refresh failed.'),
+                      subtitle: Text(auth.profileError!),
+
+                    ),
+                  ),
                 _ProfileHeader(profile: profile),
                 const SizedBox(height: 18),
                 SectionHeader(
@@ -117,16 +173,45 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.upload_file_outlined),
-                        title: Text(ar ? 'رفع مستندات السائق' : 'Upload driver documents'),
+                        title: Text(
+                          ar ? 'رفع مستندات السائق' : 'Upload driver documents',
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => context.push('/upload-document'),
                       ),
                       const Divider(indent: 58, height: 1),
                       ListTile(
+                        leading: const Icon(Icons.car_rental_outlined),
+                        title: Text(ar ? 'طلب تغيير المركبة' : 'Request vehicle change'),
+                        subtitle: Text(ar
+                            ? 'اختر النوع المطلوب وتابع حالة طلبك.'
+                            : 'Choose a vehicle class and track the request.'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/vehicle-change'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.event_available_outlined),
+                        title: Text(ar ? 'الرحلات المجدولة' : 'Scheduled trips'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/scheduled-trips'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.map_outlined),
+                        title: Text(ar ? 'مناطق خدمتي' : 'My service areas'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/tools/service-area'),
+                      ),
+                      const Divider(indent: 58, height: 1),
+                      ListTile(
                         leading: const Icon(Icons.grid_view_rounded),
                         title: Text(ar ? 'كل خدمات السائق' : 'Driver services'),
-                        subtitle: Text(ar ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
-                            : 'Schedule, vehicle, returns, incidents and earnings'),
+                        subtitle: Text(
+                          ar
+                              ? 'الجدول، المركبة، المرتجعات، البلاغات والأرباح'
+                              : 'Schedule, vehicle, returns, incidents and earnings',
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => context.push('/services'),
                       ),
@@ -148,6 +233,24 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
+                for (final link in <String, String>{
+                  '/tools/edit-profile': ar ? 'تعديل بياناتي' : 'Edit profile',
+                  '/tools/avatar': ar ? 'الصورة الشخصية' : 'Profile photo',
+                  '/tools/phone-change': ar
+                      ? 'تغيير الهاتف والتحقق'
+                      : 'Change phone & verify',
+                  '/tools/preferences': ar
+                      ? 'تفضيلات العمل'
+                      : 'Work preferences',
+                  '/tools/account-status': ar
+                      ? 'حالة الاعتماد'
+                      : 'Approval status',
+                }.entries)
+                  ListTile(
+                    title: Text(link.value),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(link.key),
+                  ),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
@@ -158,8 +261,22 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            ),
     );
   }
+}
+
+/// The media service may return relative image paths from uploaded files.
+String? _resolveProfileImage(String? raw) {
+  final image = raw?.trim();
+  if (image == null || image.isEmpty || image.startsWith('//')) return null;
+  final uri = Uri.tryParse(image);
+  if (uri == null) return null;
+  if (uri.hasScheme) {
+    return uri.scheme == 'https' || uri.scheme == 'http' ? image : null;
+  }
+  final base = Uri.tryParse(ApiEndpoints.baseUrl);
+  return base?.resolve(image).toString();
 }
 
 class _ProfileHeader extends StatelessWidget {
@@ -169,7 +286,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ar = isArabic(context);
-    final image = profile.profileImageUrl;
+    final image = _resolveProfileImage(profile.profileImageUrl);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -183,16 +300,14 @@ class _ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white.withValues(alpha: .18),
-            foregroundImage: image == null || image.isEmpty
-                ? null
-                : NetworkImage(image),
-            child: image == null || image.isEmpty
-                ? const Icon(
-                    Icons.person_rounded,
-                    size: 38,
-                    color: Colors.white,
-                  )
-                : null,
+            // Server uploads may return a relative /images/... path. The
+            // fallback icon must remain visible when an image fetch fails.
+            foregroundImage: image == null ? null : NetworkImage(image),
+            child: const Icon(
+              Icons.person_rounded,
+              size: 38,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -300,6 +415,15 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(ar ? 'حول التطبيق والتراخيص' : 'About & licenses'),
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: ar ? 'مزرعتي للسائق' : 'Mazraa Driver',
+              applicationVersion: '1.1.0',
+            ),
+          ),
           const SizedBox(height: 20),
           SectionHeader(
             title: ar ? 'المظهر' : 'Appearance',
@@ -352,18 +476,39 @@ class SettingsScreen extends ConsumerWidget {
               ),
               title: Text(
                 AppEnvironment.mapsEnabled
-                    ? (ar ? 'Google Maps مفعلة' : 'Google Maps enabled')
-                    : (ar
-                          ? 'Google Maps غير مهيأة'
-                          : 'Google Maps not configured'),
+                    ? (ar
+                          ? 'الخرائط التفاعلية مفعلة'
+                          : 'Interactive maps enabled')
+                    : (ar ? 'الخرائط غير مفعلة' : 'Maps not enabled'),
               ),
               subtitle: Text(
                 ar
-                    ? 'تتم إدارة المفتاح خارج ملفات Dart عبر إعدادات البناء الآمنة.'
-                    : 'The key is managed outside Dart through secure build configuration.',
+                    ? 'اختر OpenStreetMap أو Google من الخريطة؛ المسار يعتمد على خدمة الطرق.'
+                    : 'Choose OpenStreetMap or Google on the map; road routes depend on the routing service.',
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          for (final link in <String, String>{
+            '/tools/notification-preferences': ar
+                ? 'تفضيلات الإشعارات'
+                : 'Notification preferences',
+            '/tools/security': ar ? 'تغيير كلمة المرور' : 'Change password',
+            '/tools/sessions': ar ? 'الأجهزة والجلسات' : 'Devices & sessions',
+            '/tools/privacy': ar ? 'الخصوصية' : 'Privacy',
+            '/tools/health': ar
+                ? 'الأذونات والاتصال'
+                : 'Permissions & connection',
+            '/tools/delete-account': ar
+                ? 'طلب حذف الحساب'
+                : 'Request account deletion',
+            '/tools/training': ar ? 'دليل السائق' : 'Driver guide',
+          }.entries)
+            ListTile(
+              title: Text(link.value),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(link.key),
+            ),
           const SizedBox(height: 20),
           Card(
             child: Column(
@@ -373,8 +518,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: Text(ar ? 'الخصوصية' : 'Privacy'),
                   subtitle: Text(
                     ar
-                        ? 'لا يتم تتبع الموقع خارج مهمة نشطة.'
-                        : 'Location is not tracked outside an active mission.',
+                        ? 'تتم مشاركة الموقع أثناء التوفر للعروض أو تفعيل تتبع شحنة، وتتوقف عند إيقاف المشاركة أو تسجيل الخروج.'
+                        : 'Location is shared while available for offers or tracking a shipment, and stops when sharing is disabled or you sign out.',
                   ),
                 ),
                 const Divider(indent: 58, height: 1),

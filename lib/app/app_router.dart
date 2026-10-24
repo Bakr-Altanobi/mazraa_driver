@@ -10,18 +10,19 @@ import 'package:mazraa_driver/features/notifications/notifications_screen.dart';
 import 'package:mazraa_driver/features/operations/driver_operations_widgets.dart';
 import 'package:mazraa_driver/features/operations/driver_services_screen.dart';
 import 'package:mazraa_driver/features/operations/driver_media_screens.dart';
-import 'package:mazraa_driver/features/reference_journey/reference_screen.dart';
+import 'package:mazraa_driver/features/workspace/driver_tool_catalog.dart';
+import 'package:mazraa_driver/features/workspace/driver_ticket_screen.dart';
+import 'package:mazraa_driver/features/workspace/driver_tool_screens.dart';
+import 'package:mazraa_driver/features/workspace/driver_delivery_screens.dart';
 import 'package:mazraa_driver/features/profile/profile_screen.dart';
 import 'package:mazraa_driver/features/shell/app_shell.dart';
 import 'package:mazraa_driver/features/shipments/shipment_screens.dart';
 import 'package:mazraa_driver/features/support/driver_support_screen.dart';
 import 'package:mazraa_driver/features/wallet/wallet_screen.dart';
+import 'package:mazraa_driver/features/wallet/cash_custody_screen.dart';
 import 'package:mazraa_driver/features/wallet/driver_payout_screen.dart';
 
-const _ciSmokeHome = bool.fromEnvironment(
-  'CI_SMOKE_HOME',
-  defaultValue: false,
-);
+const _ciSmokeHome = bool.fromEnvironment('CI_SMOKE_HOME', defaultValue: false);
 
 String? resolveAuthRedirect({
   required AuthState authState,
@@ -48,7 +49,8 @@ String? resolveAuthRedirect({
   }
 
   if (authState != AuthState.authenticated) {
-    if (location == '/splash') return hasSeenOnboarding ? '/login' : '/onboarding';
+    if (location == '/splash')
+      return hasSeenOnboarding ? '/login' : '/onboarding';
     return isPublic ? null : '/login';
   }
 
@@ -75,7 +77,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/apply', builder: (_, _) => const DriverApplicationScreen()),
+      GoRoute(
+        path: '/cash-custody',
+        builder: (_, _) => const CashCustodyScreen(),
+      ),
+      GoRoute(
+        path: '/apply',
+        builder: (_, _) => const DriverApplicationScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -122,7 +131,79 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
         ),
       ),
+      GoRoute(
+        path: '/history',
+        builder: (_, _) =>
+            const DriverTaskPickerScreen(task: 'details', history: true),
+      ),
+      GoRoute(
+        path: '/tasks/:task',
+        builder: (_, state) =>
+            DriverTaskPickerScreen(task: state.pathParameters['task']!),
+      ),
+      GoRoute(
+        path: '/tools/:tool',
+        builder: (_, state) =>
+            driverTools.any((t) => t.id == state.pathParameters['tool'])
+            ? DriverToolScreen(toolId: state.pathParameters['tool']!)
+            : const DriverServicesScreen(),
+      ),
+      GoRoute(
+        path: '/tools/:tool/:record',
+        builder: (_, state) =>
+            driverTools.any((t) => t.id == state.pathParameters['tool'])
+            ? DriverToolScreen(
+                toolId: state.pathParameters['tool']!,
+                recordId: int.tryParse(state.pathParameters['record'] ?? ''),
+              )
+            : const DriverServicesScreen(),
+      ),
+      GoRoute(
+        path: '/shipments/:id/scan',
+        builder: (_, state) => DriverQrScannerScreen(
+          shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/shipments/:id/signature',
+        builder: (_, state) => DriverSignatureScreen(
+          shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/shipments/:id/qr',
+        builder: (_, state) => DriverQrDeliveryScreen(
+          shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      for (final tool in [
+        'navigation',
+        'pickup',
+        'proofs',
+        'fees',
+        'unavailable',
+        'contacts',
+      ])
+        GoRoute(
+          path: '/shipments/:id/$tool',
+          builder: (_, state) => DriverShipmentToolScreen(
+            shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            tool: tool,
+          ),
+        ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(
+        path: '/support/tickets/:id',
+        builder: (_, state) => DriverTicketScreen(
+          ticketId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/chat-attachment',
+        builder: (_, state) => DriverChatAttachmentScreen(
+          url: state.extra is String ? state.extra! as String : '',
+        ),
+      ),
       GoRoute(path: '/support', builder: (_, _) => const DriverSupportScreen()),
       GoRoute(
         path: '/chats/:id',
@@ -132,23 +213,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/offers', builder: (_, _) => const DriverOffersScreen()),
       GoRoute(path: '/payouts', builder: (_, _) => const DriverPayoutScreen()),
-      GoRoute(path: '/services', builder: (_, _) => const DriverServicesScreen()),
-      GoRoute(path: '/upload-document', builder: (_, _) => const DriverDocumentUploadScreen()),
+      GoRoute(
+        path: '/services',
+        builder: (_, _) => const DriverServicesScreen(),
+      ),
+      GoRoute(
+        path: '/upload-document',
+        builder: (_, _) => const DriverDocumentUploadScreen(),
+      ),
       GoRoute(
         path: '/shipments/:id/evidence',
         builder: (_, state) => DriverProofPhotoScreen(
+          initialType: state.uri.queryParameters['type'] == '1' ? 1 : 0,
           shipmentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
         ),
       ),
       GoRoute(
         path: '/journey/:number',
-        builder: (_, state) {
-          final number = int.tryParse(state.pathParameters['number'] ?? '');
-          if (number == null || number < 1 || number > 48) {
-            return const DriverServicesScreen();
-          }
-          return ReferenceJourneyScreen(screenNumber: number);
-        },
+        redirect: (_, state) =>
+            journeyDestinations[int.tryParse(
+              state.pathParameters['number'] ?? '',
+            )] ??
+            '/services',
       ),
     ],
   );

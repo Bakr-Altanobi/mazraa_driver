@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import 'shipment_handoff_dialogs.dart';
+import 'driver_location_session.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -41,13 +45,7 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'الشحنات' : 'Shipments'),
-        actions: [
-          IconButton(
-            tooltip: ar ? 'تحديث' : 'Refresh',
-            onPressed: () => ref.invalidate(shipmentsProvider),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: Column(
         children: [
@@ -116,48 +114,96 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                     ),
                   )
                 : state.when(
-              loading: LoadingList.new,
-              error: (error, _) => ErrorState(
-                error: error,
-                onRetry: () => ref.invalidate(shipmentsProvider),
-              ),
-              data: (items) {
-                final query = _search.text.trim().toLowerCase();
-                final filtered = items.where((item) {
-                  final matchesFilter = switch (_filter) {
-                    _ShipmentFilter.all => true,
-                    _ShipmentFilter.active => item.status.isActive,
-                    _ShipmentFilter.completed => item.status.isClosed,
-                    _ShipmentFilter.available => false,
-                  };
-                  return matchesFilter &&
-                      (query.isEmpty ||
-                          item.number.toLowerCase().contains(query) ||
-                          item.orderId.toString().contains(query));
-                }).toList();
-                if (filtered.isEmpty) {
-                  return EmptyState(
-                    title: ar ? 'لا توجد شحنات' : 'No shipments',
-                    message: ar
-                        ? 'لا توجد نتائج مطابقة في هذا القسم.'
-                        : 'There are no matching shipments in this section.',
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(shipmentsProvider);
-                    await ref.read(shipmentsProvider.future);
-                  },
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 11),
-                    itemBuilder: (context, index) =>
-                        _ShipmentCard(shipment: filtered[index]),
+                    loading: LoadingList.new,
+                    error: (error, _) => RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(shipmentsProvider);
+                        try { await ref.read(shipmentsProvider.future); } catch (_) {}
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.sizeOf(context).height * .6,
+                            child: Center(child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.cloud_off_rounded, size: 44),
+                                const SizedBox(height: 12),
+                                Text(ar ? 'تعذر تحميل الشحنات' : 'Shipments unavailable',
+                                  style: Theme.of(context).textTheme.titleMedium),
+                                const SizedBox(height: 8),
+                                Text('$error', textAlign: TextAlign.center),
+                                Text(ar ? 'اسحب للأسفل لإعادة المحاولة'
+                                  : 'Pull down to retry'),
+                              ]),
+                            )),
+                          ),
+                        ],
+                      ),
+                    ),
+                    data: (items) {
+                      final query = _search.text.trim().toLowerCase();
+                      final filtered = items.where((item) {
+                        final matchesFilter = switch (_filter) {
+                          _ShipmentFilter.all => true,
+                          _ShipmentFilter.active => item.status.isActive,
+                          _ShipmentFilter.completed => item.status.isClosed,
+                          _ShipmentFilter.available => false,
+                        };
+                        return matchesFilter &&
+                            (query.isEmpty ||
+                                item.number.toLowerCase().contains(query) ||
+                                item.orderId.toString().contains(query));
+                      }).toList();
+                      if (filtered.isEmpty) {
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            ref.invalidate(shipmentsProvider);
+                            try {
+                              await ref.read(shipmentsProvider.future);
+                            } catch (_) {}
+                          },
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.sizeOf(context).height * .55,
+                                child: EmptyState(
+                                  title: ar ? 'لا توجد شحنات' : 'No shipments',
+                                  message: ar
+                                      ? 'تظهر الشحنة المجدولة بعد تجهيز المتجر وإسناد الرحلة للسائق. يمكن متابعة طلب المشاركة في الرحلات المجدولة.'
+                                      : 'Scheduled shipments appear after merchant preparation and driver assignment. Check your scheduled trip participation.',
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: FilledButton.icon(
+                                  onPressed: () => context.push('/tools/scheduled-trips'),
+                                  icon: const Icon(Icons.event_available_outlined),
+                                  label: Text(ar ? 'الرحلات المجدولة' : 'Scheduled trips'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(shipmentsProvider);
+                          await ref.read(shipmentsProvider.future);
+                        },
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 11),
+                          itemBuilder: (context, index) =>
+                              _ShipmentCard(shipment: filtered[index]),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -214,7 +260,11 @@ class _ShipmentCard extends StatelessWidget {
                       color: color.withValues(alpha: .12),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Image.asset(ReferenceAssets.deliveryParcel, fit: BoxFit.contain, cacheWidth: 160),
+                    child: Image.asset(
+                      ReferenceAssets.deliveryParcel,
+                      fit: BoxFit.contain,
+                      cacheWidth: 160,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -297,95 +347,144 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
   bool _sendingLocation = false;
 
   Future<void> _runAction(String action, Shipment shipment) async {
-    final ar = isArabic(context);
-    final label = _actionLabel(action, ar);
-    final confirmed = await confirmAction(
-      context,
-      title: label,
-      message: ar
-          ? 'سيتم إرسال العملية مباشرة إلى السيرفر. هل تريد المتابعة؟'
-          : 'This action will be sent directly to the server. Continue?',
-      confirmLabel: label,
-      destructive: action == 'reject' || action == 'fail',
-    );
-    if (!confirmed || !mounted) return;
-    String? reason;
-    String? numericCode;
-    if (action == 'deliver') {
-      numericCode = await _deliveryCode();
-      if (numericCode == null || !mounted) return;
-    }
-    if (action == 'fail') {
-      reason = await _failureReason();
-      if (reason == null || !mounted) return;
-    }
+    if (_acting) return;
     setState(() => _acting = true);
+    final ar = isArabic(context);
+    final api = ref.read(driverApiProvider);
     try {
-      await ref
-          .read(driverApiProvider)
-          .changeShipmentStatus(shipment.id, action, reason: reason, numericCode: numericCode?.isEmpty == true ? null : numericCode);
+      DeliveryConfirmation? delivery;
+      if (action == 'pickup') {
+        final capabilities = await api.getDeliveryCapabilities();
+        final manifest = await api.getShipmentManifest(shipment.id);
+        if (!mounted) return;
+        if (capabilities['pickupChecklistAvailable'] == true) {
+          final saved = await api.getPickupChecklist(shipment.id);
+          if (!mounted) return;
+          if (saved['submitted'] == true) {
+            final checklist = saved['checklist'] as Map<String, dynamic>?;
+            if (checklist?['hasDiscrepancy'] == true) {
+              throw StateError(
+                ar
+                    ? 'يوجد نقص أو تلف مسجل. راجع الدعم قبل الاستلام.'
+                    : 'A discrepancy is recorded. Contact support before pickup.',
+              );
+            }
+          } else {
+            final payload = await showDialog<Map<String, dynamic>>(
+              context: context,
+              builder: (_) => PickupChecklistDialog(manifest: manifest),
+            );
+            if (payload == null) return;
+            await api.submitPickupChecklist(shipment.id, payload);
+            final lines = (payload['lines'] as List)
+                .cast<Map<String, dynamic>>();
+            if (lines.any(
+              (x) =>
+                  (x['missingQuantity'] as int) > 0 ||
+                  (x['damagedQuantity'] as int) > 0,
+            )) {
+              throw StateError(
+                ar
+                    ? 'تم حفظ النقص أو التلف. أبلغ الدعم قبل تحريك الشحنة.'
+                    : 'Discrepancy saved. Report it to support before moving the shipment.',
+              );
+            }
+          }
+        } else if (capabilities['pickupChecklistRequired'] == true) {
+          throw StateError(
+            ar
+                ? 'قائمة الاستلام غير متاحة حاليًا.'
+                : 'Pickup verification is currently unavailable.',
+          );
+        } else {
+          if (!mounted) return;
+          final reviewed = await showDialog<bool>(
+            context: context,
+            builder: (_) =>
+                ShipmentManifestDialog(manifest: manifest, confirmPickup: true),
+          );
+          if (reviewed != true) return;
+        }
+      } else if (action == 'deliver') {
+        final manifest = await api.getShipmentManifest(shipment.id);
+        if (!mounted) return;
+        delivery = await showDialog<DeliveryConfirmation>(
+          context: context,
+          builder: (_) => DeliveryConfirmationDialog(
+            manifest: manifest,
+            requestCode: () => api.requestDeliveryCode(shipment.id),
+            scanQr: () =>
+                context.push<String>('/shipments/${shipment.id}/scan'),
+          ),
+        );
+        if (delivery == null) return;
+      } else {
+        final label = _actionLabel(action, ar);
+        final confirmed = await confirmAction(
+          context,
+          title: label,
+          message: ar
+              ? 'تأكيد الانتقال إلى الخطوة التالية؟'
+              : 'Confirm the next step?',
+          confirmLabel: label,
+          destructive: action == 'reject' || action == 'fail',
+        );
+        if (!confirmed) return;
+      }
+      if (!mounted) return;
+      String? reason;
+      if (action == 'fail') {
+        reason = await _failureReason();
+        if (reason == null || !mounted) return;
+      }
+      await api.changeShipmentStatus(
+        shipment.id,
+        action,
+        reason: reason,
+        numericCode: delivery?.numericCode,
+        qrToken: delivery?.qrToken,
+        cashReceivedConfirmed: delivery?.cashConfirmed ?? false,
+        cashReceivedAmount: delivery?.cashAmount,
+      );
+      if (action == 'deliver' || action == 'fail' || action == 'reject')
+        ref.read(driverLocationSessionProvider).disable(shipment.id);
       ref.invalidate(shipmentsProvider);
       ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
       ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(ar ? 'تم تحديث الشحنة بنجاح' : 'Shipment updated'),
           ),
         );
-      }
     } catch (error) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString()),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
-      }
     } finally {
       if (mounted) setState(() => _acting = false);
     }
   }
 
-  Future<String?> _deliveryCode() async {
-    final controller = TextEditingController();
+  Future<void> _showManifest(int shipmentId) async {
     try {
-      return await showDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(isArabic(context) ? 'تأكيد التسليم' : 'Confirm delivery'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(isArabic(context)
-                  ? 'إذا طلب السيرفر رمز تسليم، أدخل الرمز الذي استلمه العميل. اتركه فارغًا فقط إذا لم يتطلب الطلب رمزًا.'
-                  : 'Enter the customer delivery code when required by the server. Leave blank only for deliveries without verification.'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                textDirection: TextDirection.ltr,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: isArabic(context) ? 'رمز التسليم' : 'Delivery code',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(isArabic(context) ? 'إلغاء' : 'Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-              child: Text(isArabic(context) ? 'متابعة' : 'Continue'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.dispose();
+      final manifest = await ref
+          .read(driverApiProvider)
+          .getShipmentManifest(shipmentId);
+      if (mounted)
+        await showDialog<void>(
+          context: context,
+          builder: (_) => ShipmentManifestDialog(manifest: manifest),
+        );
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -511,15 +610,7 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'تفاصيل الشحنة' : 'Shipment details'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
-              ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
-            },
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: details.when(
         loading: LoadingList.new,
@@ -531,7 +622,16 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
         data: (shipment) {
           final tracked = tracking.valueOrNull;
           final mapShipment = tracked ?? shipment;
-          return ListView(
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
+              ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+              try {
+                await ref.read(shipmentDetailsProvider(widget.shipmentId).future);
+              } catch (_) {}
+            },
+            child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
             children: [
               Row(
@@ -571,6 +671,27 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                 height: 285,
               ),
               const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final entry in <String, String>{
+                    'navigation': ar ? 'الخريطة والمسار' : 'Map & route',
+                    'proofs': ar ? 'الإثباتات والتوقيع' : 'Proofs & signature',
+                    'contacts': ar ? 'التواصل والاتصال' : 'Contacts & calls',
+                    'fees': ar ? 'الرسوم' : 'Fees',
+                    if (!shipment.status.isClosed)
+                      'unavailable': ar ? 'مشكلة التسليم' : 'Delivery issue',
+                  }.entries)
+                    ActionChip(
+                      label: Text(entry.value),
+                      onPressed: () => context.push(
+                        '/shipments/${shipment.id}/${entry.key}',
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -600,20 +721,71 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _acting ? null : () => _showManifest(shipment.id),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: Text(
+                  ar
+                      ? 'المنتجات وتعليمات التسليم'
+                      : 'Items and delivery instructions',
+                ),
+              ),
+              if (shipment.customerId != null && !shipment.status.isClosed)
+                OutlinedButton.icon(
+                  onPressed: _acting
+                      ? null
+                      : () async {
+                          setState(() => _acting = true);
+                          try {
+                            final chat = await ref
+                                .read(apiClientProvider)
+                                .post<Map<String, dynamic>>(
+                                  'api/chats',
+                                  data: {
+                                    'recipientId': shipment.customerId,
+                                    'isSupport': false,
+                                  },
+                                );
+                            final id = (chat['id'] as num?)?.toInt();
+                            if (id == null)
+                              throw StateError('Chat ID unavailable');
+                            if (context.mounted) context.push('/chats/$id');
+                          } catch (e) {
+                            if (context.mounted)
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text('$e')));
+                          } finally {
+                            if (mounted) setState(() => _acting = false);
+                          }
+                        },
+                  icon: const Icon(Icons.chat_outlined),
+                  label: Text(ar ? 'محادثة العميل' : 'Chat with customer'),
+                ),
               const SizedBox(height: 20),
               if (shipment.status == ShipmentStatus.accepted ||
                   shipment.status == ShipmentStatus.pickedUp ||
                   shipment.status == ShipmentStatus.nearCustomer) ...[
                 OutlinedButton.icon(
-                  onPressed: () => context.push('/shipments/${shipment.id}/evidence')
+                  onPressed: () => context
+                      .push(
+                        '/shipments/${shipment.id}/evidence?type=${shipment.status == ShipmentStatus.nearCustomer ? 1 : 0}',
+                      )
                       .then((_) {
                         if (mounted) {
-                          ref.invalidate(shipmentDetailsProvider(widget.shipmentId));
-                          ref.invalidate(shipmentTrackingProvider(widget.shipmentId));
+                          ref.invalidate(
+                            shipmentDetailsProvider(widget.shipmentId),
+                          );
+                          ref.invalidate(
+                            shipmentTrackingProvider(widget.shipmentId),
+                          );
                         }
                       }),
                   icon: const Icon(Icons.add_a_photo_outlined),
-                  label: Text(ar ? 'إضافة صورة إثبات حقيقية' : 'Upload real proof photo'),
+                  label: Text(
+                    ar ? 'إضافة صورة إثبات حقيقية' : 'Upload real proof photo',
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -688,9 +860,10 @@ class _ShipmentDetailsScreenState extends ConsumerState<ShipmentDetailsScreen> {
               ),
               const SizedBox(height: 10),
               _ShipmentTimeline(status: shipment.status),
-const SizedBox(height: 22),
+              const SizedBox(height: 22),
               ..._actionButtons(shipment, ar),
             ],
+            ),
           );
         },
       ),

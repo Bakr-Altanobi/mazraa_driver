@@ -34,6 +34,7 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: dark
           ? const Color(0xFF0D1510)
           : MazraaColors.cream,
+      fontFamily: 'NotoSansArabic',
       fontFamilyFallback: const ['Noto Sans Arabic', 'Segoe UI', 'Arial'],
       visualDensity: VisualDensity.standard,
     );

@@ -27,12 +27,7 @@ class WalletScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'المحفظة' : 'Wallet'),
-        actions: [
-          IconButton(
-            onPressed: () => _refresh(ref),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
+
       ),
       body: wallet.when(
         loading: LoadingList.new,
@@ -46,6 +41,9 @@ class WalletScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
             children: [
               _WalletHero(summary: summary),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(onPressed: () => context.push('/cash-custody'),
+                icon: const Icon(Icons.payments_outlined), label: Text(ar ? 'عهدة التحصيل وسندات التوريد' : 'Cash custody and remittance receipts')),
               const SizedBox(height: 12),
               Row(
                 children: [

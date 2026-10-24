@@ -1,37 +1,18 @@
-# Maps configuration
+# Driver maps
 
-Google Maps is enabled in the ARM64 Debug APK only when the build is supplied a valid restricted Android SDK key through the GitHub Actions secret `GOOGLE_MAPS_API_KEY`, or via the untracked local Android properties and the `ENABLE_GOOGLE_MAPS=true` Flutter flag. The UI displays a branded map preview and can still open external Google Maps navigation when destination coordinates are available.
+Google Maps credentials are **not committed**. Android reads `GOOGLE_MAPS_API_KEY` or `MAPS_API_KEY` from ignored `android/local.properties`; iOS reads the ignored `ios/Flutter/Secrets.xcconfig`. Android CI may inject the SDK key from repository secrets. OpenStreetMap remains the working default when Google credentials are absent. The default visible map uses OpenStreetMap because the existing Google key failed authorization for the driver package; Google remains selectable. These are development settings, not a claim that the Google project enables every Maps API or permits every signing certificate.
 
-## Android
+Supply a new, app-restricted key via `GOOGLE_MAPS_API_KEY`, or `MAPS_API_KEY` in ignored `android/local.properties`. iOS uses `Secrets.xcconfig`. Rotate previously committed development keys and restrict the replacement to `com.mazraa.driver` and the correct signing-certificate SHA-1. The package/bundle identifier is `com.mazraa.driver`. Maps SDK for Android/iOS and the appropriate Google project billing/credentials restrictions must permit that app. CI checks the package and verifies Maps metadata only when keys are supplied through secrets, without logging values.
 
-Add a restricted Android SDK key to the untracked `android/local.properties`:
+The shared map displays actual driver, pickup and customer coordinates. Google additionally supports traffic and dark map styling. `/shipments/{id}/navigation` requests the authenticated server endpoint `GET api/Shipments/{id}/road-route?to=pickup|customer`. Only a successful `isRoadRoute=true` response with a valid encoded polyline is drawn as a road route. An unavailable/unconfigured server Routes service produces an explicit message and external Google Maps navigation remains available. The SDK key is not used to make unauthenticated client Routes REST calls.
 
-```properties
-MAPS_API_KEY=YOUR_ANDROID_KEY
-```
+Widget tests disable native map surfaces with `ENABLE_GOOGLE_MAPS=false`; APK and unsigned iOS builds enable them. Compilation and a packaged key do not prove Google authorization or tile rendering on a real device. Device validation should confirm map tiles, live permission grants, GPS, QR camera and push delivery. Driver Firebase app configuration is separate from the existing Google key.
 
-Then run with the Dart feature flag:
-
-```powershell
-flutter run --dart-define=ENABLE_GOOGLE_MAPS=true
-```
-
-Restrict the key to package `com.mazraa.driver` and the correct SHA-1/SHA-256 signing certificates. Enable Maps SDK for Android. Do not use this key for server-side Routes REST calls.
-
-## iOS
-
-Copy `ios/Flutter/Secrets.xcconfig.example` to `ios/Flutter/Secrets.xcconfig`, set a restricted iOS key, and keep the file untracked. Restrict it to bundle ID `com.mazraa.driver`. `AppDelegate.swift` only initializes Google Maps when a non-placeholder key exists.
-
-An actual iOS build requires macOS, Xcode, CocoaPods or supported Swift Package Manager configuration, and Apple signing.
-
-## Routes and ETA
-
-The current backend tracking endpoint returns Haversine distance and an estimated time based on recent driver speed. It does not expose a Google Routes proxy or an encoded road polyline. The app labels these as estimates and never draws a straight line as if it were a road route.
-
-For production road routing, add an authenticated backend proxy that returns route distance, duration, encoded polyline, waypoint order, and traffic-aware ETA. Keep the server key restricted and never ship it in the application.
+Google setup reference: https://developers.google.com/maps/flutter-package/config
 
 
+## Device verification on 2026-10-21
 
-## GitHub Actions Debug APK
+The Android emulator confirmed a Google SDK `Authorization failure` for the existing key and package `com.mazraa.driver`. A blank Google surface is not treated as working maps. OpenStreetMap is therefore the default real map, with real coordinates and the same road polylines/markers; the map's provider menu retains Google for a replacement/authorized key. Set `MAP_PROVIDER=google` at build time to choose Google by default after credentials are fixed.
 
-Set the repository Actions secret `GOOGLE_MAPS_API_KEY` to your restricted Android Maps SDK key. The key is read by Gradle from the build environment, not written into the Git repository or CI logs. The CI Flutter command enables Maps only when the secret exists. Confirm that the key allows package `com.mazraa.driver` and the **GitHub runner's debug signing certificate SHA-1**, which may differ from the local computer's debug key. Prefer a dedicated development key and restrict it by package and signing fingerprint; never commit the value. Enable billing and Maps SDK for Android on the Google Cloud project. Building with a secret does not itself prove tile rendering; verify it on a physical device.
+OpenStreetMap requests identify `com.mazraa.driver` and display permanent attribution. `MAP_TILE_URL` supports replacing the tile provider for deployment scale. The app does not implement bulk tile downloads or offline prefetch. Policy: https://operations.osmfoundation.org/policies/tiles/ . The native emulator smoke test now verifies the working default surface; the failed Google check remains recorded in run 39533037791 and its redacted device artifact.

@@ -6,6 +6,7 @@ import 'package:mazraa_driver/core/network/providers.dart';
 import 'package:mazraa_driver/core/theme/app_theme.dart';
 import 'package:mazraa_driver/core/utils/formatters.dart';
 import 'package:mazraa_driver/features/notifications/notification_providers.dart';
+import 'package:mazraa_driver/features/notifications/notification_navigation.dart';
 import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -34,6 +35,11 @@ class NotificationsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(ar ? 'الإشعارات' : 'Notifications'),
         actions: [
+          IconButton(
+            tooltip: ar ? 'تفضيلات الإشعارات' : 'Notification preferences',
+            onPressed: () => context.push('/tools/notification-preferences'),
+            icon: const Icon(Icons.tune_rounded),
+          ),
           if (unread > 0)
             TextButton(
               onPressed: () => _markAll(context, ref),
@@ -41,33 +47,60 @@ class NotificationsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: state.when(
-        loading: LoadingList.new,
-        error: (error, _) => ErrorState(
-          error: error,
-          onRetry: () => ref.invalidate(notificationsProvider),
-        ),
-        data: (items) => items.isEmpty
-            ? EmptyState(
-                title: ar ? 'لا توجد إشعارات' : 'No notifications',
-                message: ar
-                    ? 'ستصلك هنا تحديثات الشحنات والحساب.'
-                    : 'Shipment and account updates will appear here.',
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  ref.invalidate(notificationsProvider);
-                  ref.invalidate(unreadNotificationsProvider);
-                  await ref.read(notificationsProvider.future);
-                },
-                child: ListView.separated(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(notificationsProvider);
+          ref.invalidate(unreadNotificationsProvider);
+          try {
+            await ref.read(notificationsProvider.future);
+          } catch (_) {
+            // The error state is displayed inline, not hidden behind a spinner.
+          }
+        },
+        child: state.when(
+          loading: () => const LoadingList(),
+          error: (error, _) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: MediaQuery.sizeOf(context).height * .65,
+                child: Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.cloud_off_rounded, size: 48),
+                    const SizedBox(height: 12),
+                    Text(ar ? 'تعذر تحميل الإشعارات' : 'Notifications unavailable'),
+                    Text('$error', textAlign: TextAlign.center),
+                    Text(ar ? 'اسحب للأسفل لإعادة المحاولة' : 'Pull down to retry'),
+                  ]),
+                )),
+              ),
+            ],
+          ),
+          data: (items) => items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * .6,
+                      child: EmptyState(
+                        title: ar ? 'لا توجد إشعارات' : 'No notifications',
+                        message: ar
+                            ? 'ستظهر هنا الرسائل والطلبات والتحديثات. اسحب للأسفل للتحديث.'
+                            : 'Messages, orders and updates appear here. Pull down to refresh.',
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
                   itemCount: items.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 9),
                   itemBuilder: (context, index) =>
                       _NotificationCard(notification: items[index]),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -89,8 +122,25 @@ class _NotificationCard extends ConsumerWidget {
         // Reading the target remains useful even if the read receipt fails.
       }
     }
-    if (context.mounted && notification.shipmentId != null) {
-      context.push('/shipments/${notification.shipmentId}');
+    final destination = notificationDestination(notification);
+    if (context.mounted && destination != null) {
+      context.push(destination);
+    } else if (context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text(notification.title),
+          content: SingleChildScrollView(
+            child: SelectableText(notification.message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: Text(isArabic(c) ? 'إغلاق' : 'Close'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -165,7 +215,7 @@ class _NotificationCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (notification.shipmentId != null)
+              if (notificationDestination(notification) != null)
                 const Padding(
                   padding: EdgeInsetsDirectional.only(start: 6, top: 25),
                   child: Icon(Icons.chevron_right_rounded),

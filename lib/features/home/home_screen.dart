@@ -40,6 +40,30 @@ final currentPositionProvider = FutureProvider<Position>((ref) async {
   );
 });
 
+class _HomeDataWarning extends StatelessWidget {
+  const _HomeDataWarning({required this.title, required this.onRetry});
+
+  final String title;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ar = isArabic(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(Icons.cloud_off_outlined,
+            color: Theme.of(context).colorScheme.error),
+        title: Text(title),
+        subtitle: Text(ar
+            ? 'بيانات هذا القسم غير متاحة حاليًا، وليست صفرًا.'
+            : 'This section is unavailable, not an empty account.'),
+
+      ),
+    );
+  }
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -50,9 +74,13 @@ class HomeScreen extends ConsumerWidget {
     ref.invalidate(driverOffersProvider);
     ref.invalidate(connectionProvider);
     ref.invalidate(currentPositionProvider);
-    await Future.wait([
-      ref.read(shipmentsProvider.future),
-      ref.read(walletSummaryProvider.future),
+    // Show failures as retryable cards on this screen rather than allowing
+    // pull-to-refresh to throw while silently displaying zero shipments.
+    await Future.wait<void>([
+      ref.read(shipmentsProvider.future).then<void>((_) {},
+          onError: (Object error, StackTrace stack) {}),
+      ref.read(walletSummaryProvider.future).then<void>((_) {},
+          onError: (Object error, StackTrace stack) {}),
     ]);
   }
 
@@ -62,6 +90,7 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final shipments = ref.watch(shipmentsProvider);
     final wallet = ref.watch(walletSummaryProvider);
+    final journey = ref.watch(driverJourneyProvider);
     final connection = ref.watch(connectionProvider);
     final position = ref.watch(currentPositionProvider);
     final profile = auth.profile;
@@ -137,9 +166,24 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    if (shipments.hasError)
+                      _HomeDataWarning(
+                        title: ar ? 'تعذر تحميل الشحنات' : 'Shipments unavailable',
+                        onRetry: () => ref.invalidate(shipmentsProvider),
+                      ),
+                    if (wallet.hasError)
+                      _HomeDataWarning(
+                        title: ar ? 'تعذر تحميل المحفظة' : 'Wallet unavailable',
+                        onRetry: () => ref.invalidate(walletSummaryProvider),
+                      ),
+                    if (journey.hasError)
+                      _HomeDataWarning(
+                        title: ar ? 'تعذر تحميل حالة السائق' : 'Driver status unavailable',
+                        onRetry: () => ref.invalidate(driverJourneyProvider),
+                      ),
                     _StatusBanner(
                       profile: profile,
-                      journey: ref.watch(driverJourneyProvider).valueOrNull,
+                      journey: journey.valueOrNull,
                       connected: connection.valueOrNull,
                     ),
                     const SizedBox(height: 12),
@@ -253,6 +297,34 @@ class HomeScreen extends ConsumerWidget {
                             icon: Icons.support_agent_rounded,
                             label: ar ? 'المساعدة' : 'Support',
                             onTap: () => context.push('/support'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.event_available_outlined,
+                            label: ar ? 'الرحلات' : 'Scheduled',
+                            onTap: () => context.push('/tools/scheduled-trips'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.calendar_month_outlined,
+                            label: ar ? 'التوفر' : 'Availability',
+                            onTap: () => context.push('/tools/availability'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.chat_bubble_outline,
+                            label: ar ? 'المحادثات' : 'Chats',
+                            onTap: () => context.push('/tools/chats'),
                           ),
                         ),
                       ],

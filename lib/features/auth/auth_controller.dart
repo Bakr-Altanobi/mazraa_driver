@@ -53,6 +53,8 @@ class AuthController extends ChangeNotifier {
   AuthSession? session;
   DriverProfile? profile;
   String? errorMessage;
+  String? profileError;
+  bool isRefreshingProfile = false;
 
   bool get isAuthenticated => state == AuthState.authenticated;
   bool get isBootstrapping =>
@@ -186,11 +188,37 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Refreshing a profile must never leave the account screen on an endless
+  /// spinner. Retain the last confirmed server profile if a transient request
+  /// fails, and expose a recoverable error if none is available.
   Future<void> refreshProfile() async {
+    if (isRefreshingProfile) return;
     final current = session;
-    if (current == null) return;
-    profile = await _api.getDriver(current.userId).timeout(_requestTimeout);
+    if (current == null) {
+      profileError = 'لا توجد جلسة سائق صالحة. سجّل الدخول مجددًا.';
+      notifyListeners();
+      return;
+    }
+    isRefreshingProfile = true;
+    profileError = null;
     notifyListeners();
+    try {
+      final loaded = await _api.getDriver(current.userId).timeout(_requestTimeout);
+      // Logout or account switch can occur before an in-flight GET completes.
+      if (session?.userId == current.userId &&
+          state == AuthState.authenticated) {
+        profile = loaded;
+      }
+    } on TimeoutException {
+      profileError = 'انتهت مهلة تحميل الملف الشخصي. تحقق من الاتصال وأعد المحاولة.';
+    } on ApiException catch (error) {
+      profileError = error.message;
+    } catch (error) {
+      profileError = 'تعذر تحميل الملف الشخصي: $error';
+    } finally {
+      isRefreshingProfile = false;
+      notifyListeners();
+    }
   }
 
   Future<void> logout() async {
@@ -200,6 +228,7 @@ class AuthController extends ChangeNotifier {
       session = null;
       profile = null;
       errorMessage = null;
+      profileError = null;
       state = AuthState.signedOut;
       notifyListeners();
     }

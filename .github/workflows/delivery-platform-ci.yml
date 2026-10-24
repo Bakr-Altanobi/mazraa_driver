@@ -1,0 +1,106 @@
+name: Delivery platform verification
+on:
+  push:
+    branches: [chatgpt/delivery-platform-20261020]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: driver-workspace-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FIREBASE_API_KEY: ${{ secrets.DRIVER_FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ secrets.DRIVER_FIREBASE_APP_ID }}
+      FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.DRIVER_FIREBASE_MESSAGING_SENDER_ID }}
+      FIREBASE_PROJECT_ID: ${{ secrets.DRIVER_FIREBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.7'
+          cache: true
+      - run: flutter pub get
+      - run: mkdir -p build/driver-qa && cp pubspec.lock build/driver-qa/pubspec.lock
+      - run: flutter analyze lib test --no-fatal-infos --no-fatal-warnings
+      - run: flutter test --dart-define=ENABLE_GOOGLE_MAPS=false --timeout=2m --reporter expanded
+      - name: Save screen previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: driver-screen-previews
+          path: build/driver-qa/
+          if-no-files-found: ignore
+      - name: Configure existing Google client settings
+        shell: bash
+        run: |
+          if [ -z "$GOOGLE_MAPS_API_KEY" ] && [ -n "$MAPS_API_KEY" ]; then
+            echo "GOOGLE_MAPS_API_KEY=$MAPS_API_KEY" >> "$GITHUB_ENV"
+            GOOGLE_MAPS_API_KEY="$MAPS_API_KEY"
+          fi
+          # Real OSM tiles remain available without an optional Google SDK key.
+          # Native Google Maps requires project-scoped credentials at build time.
+          echo "MAPS_ENABLED=true" >> "$GITHUB_ENV"
+      - name: Configure optional registered driver push application
+        shell: bash
+        run: |
+          python3 - <<'CONFIG'
+          import os,json,pathlib
+          values={k:os.getenv(k,'') for k in ['FIREBASE_API_KEY','FIREBASE_APP_ID','FIREBASE_MESSAGING_SENDER_ID','FIREBASE_PROJECT_ID']}
+          pathlib.Path('/tmp/driver-client-defines.json').write_text(json.dumps(values))
+          print('Driver FCM client configuration present.' if all(values.values()) else 'Driver FCM requires its registered Firebase app configuration; foreground refresh remains active.')
+          CONFIG
+      - name: Build ARM64 test APK
+        run: flutter build apk --debug --target-platform android-arm64 --dart-define=ENABLE_GOOGLE_MAPS="$MAPS_ENABLED" --dart-define-from-file=/tmp/driver-client-defines.json
+      - name: Verify native Maps configuration in APK
+        shell: bash
+        run: |
+          python3 - <<'VERIFY'
+          import pathlib, subprocess
+          root=pathlib.Path('/usr/local/lib/android/sdk/build-tools')
+          candidates=list(root.glob('*/aapt'))
+          if not candidates:
+              import os
+              candidates=list(pathlib.Path(os.environ['ANDROID_HOME']).glob('build-tools/*/aapt'))
+          xml=subprocess.check_output([str(sorted(candidates)[-1]),'dump','xmltree','build/app/outputs/flutter-apk/app-debug.apk','AndroidManifest.xml'],text=True)
+          assert 'com.mazraa.driver' in xml, 'Unexpected Android package'
+          # Never require or package a checked-in key. Check the native binding
+          # only when a credential was intentionally supplied as a CI secret.
+          if __import__('os').environ.get('GOOGLE_MAPS_API_KEY') or __import__('os').environ.get('MAPS_API_KEY'):
+              assert 'com.google.android.geo.API_KEY' in xml, 'Maps SDK metadata missing'
+              print('Google SDK metadata present for configured credentials (value redacted).')
+          else:
+              print('OSM-ready APK verified; Google SDK authorization awaits CI credentials.')
+          VERIFY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mazraa_driver-delivery-test-arm64
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+  ios-build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.7'
+          cache: true
+      - run: flutter pub get
+      - name: Build unsigned iOS simulator app
+        run: flutter build ios --simulator --debug --no-codesign --dart-define=ENABLE_GOOGLE_MAPS=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mazraa-driver-ios-simulator-unsigned
+          path: build/ios/iphonesimulator/Runner.app
