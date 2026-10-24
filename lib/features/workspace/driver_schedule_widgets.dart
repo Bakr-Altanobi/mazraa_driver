@@ -71,6 +71,8 @@ class _DriverScheduledTripsTableState
             columns: [
               DataColumn(label: Text(ar ? 'الانطلاق' : 'Departure')),
               DataColumn(label: Text(ar ? 'الوجهة' : 'Destination')),
+              DataColumn(label: Text(ar ? 'الحجوزات' : 'Booked')),
+              DataColumn(label: Text(ar ? 'المجهزة' : 'Prepared')),
               DataColumn(label: Text(ar ? 'إسناد' : 'Assignment')),
               DataColumn(label: Text(ar ? 'طلب المشاركة' : 'Participation')),
             ],
@@ -111,6 +113,8 @@ class _DriverScheduledTripsTableState
       cells: [
         DataCell(Text('${trip['plannedDepartureAt'] ?? '—'}')),
         DataCell(Text('${trip['dropoffName'] ?? trip['name'] ?? '—'}')),
+        DataCell(Text('${entry['bookedOrdersCount'] ?? 0}')),
+        DataCell(Text('${entry['preparedShipmentsCount'] ?? 0}')),
         DataCell(Text(trip['driverId'] == null
             ? (ar ? 'بانتظار السائق' : 'Unassigned')
             : (ar ? 'مسندة' : 'Assigned'))),
@@ -151,7 +155,7 @@ class DriverAvailabilityTable extends ConsumerWidget {
         rows: [
           for (final r in rows)
             DataRow(cells: [
-              DataCell(Text(days[(int.tryParse('${r['dayOfWeek']}') ?? 0).clamp(0,6)])),
+              DataCell(Text(days[(int.tryParse('${r['dayOfWeek']}') ?? 0).clamp(0,6).toInt()])),
               DataCell(Text('${r['startTime'] ?? '—'}')),
               DataCell(Text('${r['endTime'] ?? '—'}')),
               DataCell(Icon(r['isActive'] == true ? Icons.check_circle :
