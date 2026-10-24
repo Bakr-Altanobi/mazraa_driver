@@ -442,13 +442,7 @@ class _DriverChatScreenState extends ConsumerState<DriverChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(ar ? 'المحادثة' : 'Conversation'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () =>
-                ref.invalidate(driverChatMessagesProvider(widget.chatId)),
-          ),
-        ],
+
       ),
       body: Column(
         children: [
@@ -460,7 +454,13 @@ class _DriverChatScreenState extends ConsumerState<DriverChatScreen> {
                 onRetry: () =>
                     ref.invalidate(driverChatMessagesProvider(widget.chatId)),
               ),
-              data: (rows) => ListView.builder(
+              data: (rows) => RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(driverChatMessagesProvider(widget.chatId));
+                  await ref.read(driverChatMessagesProvider(widget.chatId).future);
+                },
+                child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 reverse: true,
                 itemCount: rows.length,
@@ -499,6 +499,7 @@ class _DriverChatScreenState extends ConsumerState<DriverChatScreen> {
                     ),
                   );
                 },
+                ),
               ),
             ),
           ),
