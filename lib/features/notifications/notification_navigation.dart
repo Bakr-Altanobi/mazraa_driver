@@ -36,6 +36,10 @@ String? safeDriverNotificationRoute({
   }
   if (event.startsWith('chat.')) return '/tools/chats';
   if (shipmentId != null && shipmentId > 0) return '/shipments/$shipmentId';
+  if (event.contains('trip_assigned') || event.contains('trip.assigned') ||
+      event.contains('trip-approved') || event.contains('trip_approved')) {
+    return '/tools/current-trips';
+  }
   if (event.contains('scheduled') || event.contains('trip')) {
     return '/tools/scheduled-trips';
   }
