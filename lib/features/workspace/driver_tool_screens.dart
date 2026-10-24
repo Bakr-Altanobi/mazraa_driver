@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ import 'package:mazraa_driver/shared/widgets/mazraa_widgets.dart';
 import 'driver_forms.dart';
 import 'driver_tool_catalog.dart';
 import 'driver_workspace_repository.dart';
+import 'driver_schedule_widgets.dart';
 
 String toolText(BuildContext c, String ar, String en) => isArabic(c) ? ar : en;
 const _fields = <String, (String, String)>{
@@ -618,6 +620,12 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
   }
 
   Widget _content(BuildContext c, dynamic payload) {
+    if (tool.id == 'scheduled-trips') {
+      return DriverScheduledTripsTable(rows: recordRows(payload));
+    }
+    if (tool.id == 'availability') {
+      return DriverAvailabilityTable(rows: recordRows(payload));
+    }
     final map = recordMap(payload);
     // A successful 200 with no fields is an empty server result, not a
     // reason to render an invisible blank card. This matters especially for
@@ -671,41 +679,55 @@ class _DriverToolScreenState extends ConsumerState<DriverToolScreen> {
             Text(toolText(c, 'لم تصل تقييمات بعد.', 'No feedback yet.')),
         ],
       );
-    if (tool.id == 'referral')
+    if (tool.id == 'referral') {
+      final code = (map['code'] ?? map['referralCode'])?.toString();
+      const placeholderStoreLink = 'https://example.com/mazraa-driver/download';
+      final invite = '🌿 مزرعتي للسائق — انضم إلى فريق التوصيل! '
+          '${code == null ? '' : 'رمز الدعوة: $code '}'
+          'رابط التطبيق: $placeholderStoreLink';
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DriverRecordFields(record: map),
-              if (map['code'] != null)
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: '${map['code']}'),
+              const SizedBox(height: 12),
+              Text(toolText(c,
+                'الرابط مؤقت إلى أن يتم نشر التطبيق في المتجر.',
+                'Temporary app link until the store listing is published.')),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: invite));
+                  if (c.mounted) ScaffoldMessenger.of(c).showSnackBar(
+                    SnackBar(content: Text(toolText(c, 'تم نسخ الدعوة', 'Invitation copied'))),
+                  );
+                },
+                icon: const Icon(Icons.copy_outlined),
+                label: Text(toolText(c, 'نسخ رابط الدعوة', 'Copy invitation')),
+              ),
+              FilledButton.icon(
+                onPressed: () async {
+                  final uri = Uri.parse(
+                    'https://wa.me/?text=${Uri.encodeComponent(invite)}');
+                  if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+                      c.mounted) {
+                    ScaffoldMessenger.of(c).showSnackBar(
+                      SnackBar(content: Text(toolText(c,
+                          'تعذر فتح واتساب؛ يمكنك نسخ الرابط.',
+                          'Could not open WhatsApp; copy the invite instead.'))),
                     );
-                    if (c.mounted)
-                      ScaffoldMessenger.of(c).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            toolText(
-                              c,
-                              'تم نسخ رمز الدعوة',
-                              'Referral code copied',
-                            ),
-                          ),
-                        ),
-                      );
-                  },
-                  icon: const Icon(Icons.copy),
-                  label: Text(
-                    toolText(c, 'نسخ رمز الدعوة', 'Copy referral code'),
-                  ),
-                ),
+                  }
+                },
+                icon: const Icon(Icons.chat_bubble_outline_rounded),
+                label: const Text('WhatsApp'),
+              ),
             ],
           ),
         ),
       );
+    }
     if (payload is! List &&
         !map.containsKey('items') &&
         !map.containsKey('data'))
