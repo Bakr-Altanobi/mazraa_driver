@@ -13,8 +13,7 @@ class CashCustodyScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ar = isArabic(context);
     final state = ref.watch(cashCustodyProvider);
-    return Scaffold(appBar: AppBar(title: Text(ar ? 'عهدة التحصيل النقدي' : 'Cash custody'), actions: [
-      IconButton(onPressed: () => ref.invalidate(cashCustodyProvider), icon: const Icon(Icons.refresh))]),
+    return Scaffold(appBar: AppBar(title: Text(ar ? 'عهدة التحصيل النقدي' : 'Cash custody')),
       body: state.when(loading: LoadingList.new,
         error: (error, _) => ErrorState(error: error, onRetry: () => ref.invalidate(cashCustodyProvider)),
         data: (rows) {
