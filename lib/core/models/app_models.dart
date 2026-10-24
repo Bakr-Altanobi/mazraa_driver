@@ -361,6 +361,8 @@ class AppNotification {
     required this.createdAt,
     this.eventType,
     this.shipmentId,
+    this.chatId,
+    this.deepLink,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) =>
@@ -371,11 +373,11 @@ class AppNotification {
         isRead: json['isRead'] == true,
         createdAt: _asDate(json['createdAt']) ?? DateTime.now(),
         eventType: json['eventType']?.toString(),
+        deepLink: json['deepLink']?.toString(),
+        chatId: _asNullableInt(json['chatId'] ?? _notificationData(json)['chatId']),
         shipmentId: _asNullableInt(
           json['shipmentId'] ??
-              (json['data'] is Map<String, dynamic>
-                  ? (json['data'] as Map<String, dynamic>)['shipmentId']
-                  : null),
+              _notificationData(json)['shipmentId'],
         ),
       );
 
@@ -386,6 +388,22 @@ class AppNotification {
   final DateTime createdAt;
   final String? eventType;
   final int? shipmentId;
+  final int? chatId;
+  final String? deepLink;
+}
+
+Map<String, dynamic> _notificationData(Map<String, dynamic> json) {
+  final raw = json['data'] ?? json['dataJson'];
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  if (raw is String && raw.isNotEmpty) {
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) return Map<String, dynamic>.from(parsed);
+    } catch (_) {
+      // Malformed notification data cannot break the inbox.
+    }
+  }
+  return const {};
 }
 
 /// Explicit server enum values. Do not assume these enums are zero-based or
